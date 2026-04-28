@@ -55,10 +55,17 @@
 
   // Redundant encoding: line/marker thickness grows with score so the map
   // still ranks correctly when printed grayscale or read by colorblind users.
+  // Tuned to be visible against the busy USGS Topo basemap at zoom 8 (the
+  // regional default); thin lines disappeared into the topographic shading.
   function scoreWeight(score) {
-    if (score == null) return 3;
+    if (score == null) return 5;
     const s = Math.max(0, Math.min(1, score));
-    return 3 + Math.round(s * 4);  // 3..7 px
+    return 5 + Math.round(s * 4);  // 5..9 px
+  }
+  function dotRadius(score) {
+    if (score == null) return 6;
+    const s = Math.max(0, Math.min(1, score));
+    return 7 + Math.round(s * 4);  // 7..11 px
   }
 
   function scoreLabel(score) {
@@ -194,33 +201,33 @@
           // any basemap (USGS topo green hillshade was washing out yellows).
           const halo = L.polyline(latlngs, {
             color: "#ffffff",
-            weight: scoreWeight(score) + 4,
-            opacity: 0.7,
+            weight: scoreWeight(score) + 6,
+            opacity: 0.85,
             lineCap: "round",
           });
           group.addLayer(halo);
           group.addLayer(primaryLayer);
         } else {
           primaryLayer = L.circleMarker([reach.centroid_lat, reach.centroid_lon], {
-            radius: score == null ? 6 : 8,
+            radius: dotRadius(score),
             color: scoreColor(score),
-            weight: 2,
+            weight: 3,
             fillColor: scoreColor(score),
-            fillOpacity: score == null ? 0.35 : 0.75,
+            fillOpacity: score == null ? 0.45 : 0.85,
           });
           group.addLayer(primaryLayer);
         }
         primaryLayer.bindTooltip(reachTooltip(reach), { sticky: true });
         primaryLayer.on("click", () => showReachDetail(reach.reach_id));
 
-        // Small centroid marker — click target on mobile and a stable place to
-        // anchor the segment label even when the polyline is short.
+        // Centroid marker — primary tap target. Sized with score, filled with
+        // score color, dark border for contrast against the topo basemap.
         const dot = L.circleMarker([reach.centroid_lat, reach.centroid_lon], {
-          radius: 4,
-          color: scoreColor(score),
-          weight: 1,
-          fillColor: "#ffffff",
-          fillOpacity: 0.95,
+          radius: dotRadius(score),
+          color: "#1f2933",
+          weight: 2,
+          fillColor: scoreColor(score),
+          fillOpacity: score == null ? 0.5 : 0.95,
         });
         dot.bindTooltip(reachTooltip(reach));
         dot.on("click", () => showReachDetail(reach.reach_id));
@@ -240,12 +247,17 @@
       const score = effectiveScore(reach);
       if (line.setStyle) line.setStyle(styleForReach(reach));
       if (line.setTooltipContent) line.setTooltipContent(reachTooltip(reach));
-      if (dot && dot.setStyle) {
-        dot.setStyle({
-          color: scoreColor(score),
-          fillColor: "#ffffff",
-        });
-        dot.setTooltipContent(reachTooltip(reach));
+      if (dot) {
+        if (dot.setStyle) {
+          dot.setStyle({
+            color: "#1f2933",
+            fillColor: scoreColor(score),
+            fillOpacity: score == null ? 0.5 : 0.95,
+          });
+        }
+        // setRadius is on circleMarker — updates the dot size with the new score.
+        if (dot.setRadius) dot.setRadius(dotRadius(score));
+        if (dot.setTooltipContent) dot.setTooltipContent(reachTooltip(reach));
       }
     });
   }
