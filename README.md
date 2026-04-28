@@ -1,5 +1,8 @@
 # Driftless Cast
 
+[![Fly Deploy](https://github.com/Vermillion94/driftless-cast/actions/workflows/fly-deploy.yml/badge.svg)](https://github.com/Vermillion94/driftless-cast/actions/workflows/fly-deploy.yml)
+[![Backtest + acceptance](https://github.com/Vermillion94/driftless-cast/actions/workflows/backtest.yml/badge.svg)](https://github.com/Vermillion94/driftless-cast/actions/workflows/backtest.yml)
+
 A hyperlocal fly-fishing forecast for the Driftless Area (SE MN, W WI, NE IA).
 Predicts per-reach, per-hour fishing quality from public no-key data sources.
 Live at **<https://driftless-cast.fly.dev/>**.
