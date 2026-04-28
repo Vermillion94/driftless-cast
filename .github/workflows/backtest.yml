@@ -1,0 +1,58 @@
+# Quality gate: run the model against historical USGS + Mohseni data and the
+# synthetic acceptance suite on every PR. The backtest exit-codes 0/1 against
+# configured thresholds (see src/scripts/backtest.py#THRESHOLDS) so a model
+# regression breaks the build before merge.
+#
+# The backtest hits live USGS / Open-Meteo APIs — runs once per PR, not on
+# every push, to be a polite citizen.
+name: Backtest + acceptance
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  acceptance:
+    name: Synthetic acceptance suite
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - name: Install
+        run: |
+          pip install --upgrade pip
+          pip install poetry==1.8.3
+          poetry config virtualenvs.create false
+          poetry install --without dev --no-root --no-interaction
+      - name: Run acceptance tests
+        run: python -m tests.test_acceptance
+
+  backtest:
+    name: Hindcast against USGS + Mohseni
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.13" }
+      - name: Install
+        run: |
+          pip install --upgrade pip
+          pip install poetry==1.8.3
+          poetry config virtualenvs.create false
+          poetry install --without dev --no-root --no-interaction
+      - name: Bootstrap seed (so backtest can iterate reaches)
+        run: python -m src.scripts.bootstrap_reaches
+      - name: Backtest (90-day window — fast, sufficient for CI)
+        run: python -m src.scripts.backtest --days 90
+      - name: Upload backtest report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-report
+          path: |
+            data/calibration/backtest_report.md
+            data/calibration/backtest_metrics.json
+            data/calibration/backtest_flow.csv
+            data/calibration/backtest_mohseni.csv
+          if-no-files-found: ignore

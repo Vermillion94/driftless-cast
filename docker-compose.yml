@@ -1,0 +1,18 @@
+version: "3.9"
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app:cached
+    environment:
+      - PYTHONUNBUFFERED=1
+  web:
+    image: nginx:stable-alpine
+    ports:
+      - "8080:80"
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+    depends_on:
+      - api

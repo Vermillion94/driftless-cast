@@ -1,0 +1,43 @@
+# Live state — never commit. Production runs against /data on a Fly volume;
+# locally this is rebuilt on each `python -m src.scripts.bootstrap_reaches`
+# + `POST /refresh`.
+driftless_cast.db
+driftless_cast.db-*
+
+# Python build / venv / caches
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Logs (api.log, web.log)
+*.log
+
+# Calibration outputs that the model regenerates on demand. We commit the
+# *model artifacts* (mohseni_fit.json, dd_fit_diagnostics.json) but not the
+# raw API caches or backtest scratch — those are large and re-runnable.
+data/calibration/*_cache/
+data/calibration/backtest_flow.csv
+data/calibration/backtest_mohseni.csv
+data/calibration/backtest_report.md
+data/calibration/backtest_metrics.json
+data/calibration/inat_driftless.parquet
+
+# Timestamped backups created by fetch_nhdplus_geometry.py
+data/seed/*.bak.json
+
+# Editor / IDE / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Claude Code workspace artifacts
+.claude/
+memory/

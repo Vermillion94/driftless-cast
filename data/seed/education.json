@@ -1,0 +1,289 @@
+{
+  "_meta": {
+    "note": "Citations: classic peer-reviewed papers and textbook references only. Where literature is thin (wind effects on trout feeding, hopper fishing) we say 'guide consensus, no formal study' rather than fabricate a source. Heuristic curves we composed ourselves are marked as such — they are not 'from the literature.'",
+    "last_reviewed": "2026-04-23"
+  },
+  "topics": {
+    "score_overview": {
+      "title": "How the score works",
+      "body": [
+        "Each forecast hour gets two component scores in [0, 1] and the higher of the two is shown as the combined score (verbose: combined = max(nymph_score, dry_score)).",
+        "The verdict pill maps to score bands: ≥0.65 \"Go\", 0.40–0.65 \"Fair\", <0.40 \"Skip\". These thresholds are heuristic — they reflect the model's confidence that conditions support catching fish, not a guarantee.",
+        "**Nymph score** estimates subsurface fishing quality from water temperature, flow regime, and recent flow trend, with bonuses for dawn/dusk drift periods and pre-emergence nymph activity.",
+        "**Dry score** estimates surface fishing quality as the maximum across modeled species, where each species gets a probability from: (seasonal calendar fit) × (degree-day readiness) × (weather match) × (emergence-hour window).",
+        "Both scores are explicitly composed by us — there is no peer-reviewed study that validates this exact formula. Each component is grounded in cited literature (see individual sections), but the combination and the threshold bands are heuristic and continuously calibrated against real fishing reports."
+      ],
+      "references": []
+    },
+
+    "water_temp_zone": {
+      "title": "Water temperature & trout activity",
+      "body": [
+        "Salmonid metabolism, growth, and feeding rate vary with water temperature. Brown trout do most of their feeding between roughly 50–65°F (10–18°C); brook trout prefer slightly cooler. Below ~42°F fish become lethargic and refuse most presentations; above ~68°F they begin to experience oxygen stress and feeding shuts down.",
+        "Our nymph_score uses a **plateau curve** that grants full credit across 52–64°F, with linear ramps on either side. The curve replaces an earlier Gaussian (peak 58°F, σ=6°F) that under-credited 50–55°F water — exactly the temperature range where Driftless spring creeks fish best in spring and fall:",
+        "* below 42°F → 0% (lethargic, refusing presentations)",
+        "* 42–52°F → ramp 0 → 100% (cold but feeding; nymphing)",
+        "* 52–64°F → 100% (peak feeding zone)",
+        "* 64–68°F → 100% → 50% (warm side of ideal, still active)",
+        "* 68–75°F → 50% → 0% (stress; ethics-warning territory above 68°F)",
+        "* above 75°F → 0% (lethal-stress zone)",
+        "Sources: Wehrly 2007 (active feeding 50–65°F), Elliott 1981 + Wilkie 1996 (thermal stress and catch-and-release mortality above 68°F).",
+        "Where measured water temp is unavailable (most of our gauges report only flow and stage; **proxy gauges from neighboring watersheds are forbidden from contributing water temp** since 2026-04), we estimate water temp from the Mohseni model. We project water temp **per day across the 7-day forecast** using a backwards-looking 7-day rolling mean of (historical Open-Meteo air + forecasted NWS hourly air aggregated to daily) — so a forecasted warming or cooling trend actually moves the projected water temp. See the \"Air → water temperature\" topic."
+      ],
+      "references": [
+        {"id": "wehrly2007", "text": "Wehrly, K. E., Wang, L., & Mitro, M. (2007). Field-based estimates of thermal tolerance limits for trout. Transactions of the American Fisheries Society 136(2): 365–374."},
+        {"id": "elliott1981", "text": "Elliott, J. M. (1981). Some aspects of thermal stress on freshwater teleosts. In: Pickering, A. D. (ed.) Stress and Fish, Academic Press."},
+        {"id": "wilkie1996", "text": "Wilkie, M. P. et al. (1996). The physiological response of stream-dwelling salmonids to angling-related stressors. Reviews in Fish Biology and Fisheries 6(2): 219–247."},
+        {"id": "beschta1987", "text": "Beschta, R. L., Bilby, R. E., Brown, G. W., Holtby, L. B., & Hofstra, T. D. (1987). Stream temperature and aquatic habitat: fisheries and forestry interactions. In: Streamside Management: Forestry and Fishery Interactions, University of Washington."}
+      ]
+    },
+
+    "fish_stress": {
+      "title": "Why we warn at 68°F",
+      "body": [
+        "At sustained water temperatures above 68°F (20°C), salmonid mortality from catch-and-release climbs steeply because exhausted fish cannot recover oxygen debt in warm water. Many state DNRs (including Wisconsin's TU chapters) recommend voluntary cessation or dawn-only fishing above this threshold.",
+        "Our model raises a warning banner whenever forecasted water exceeds 68°F. This is a hard threshold we picked from the angling-ethics literature, not a soft model parameter."
+      ],
+      "references": [
+        {"id": "wilkie1996", "text": "Wilkie, M. P. et al. (1996). The physiological response of stream-dwelling salmonids to angling-related stressors. Reviews in Fish Biology and Fisheries 6(2): 219–247."},
+        {"id": "elliott1981", "text": "Elliott, J. M. (1981). Some aspects of thermal stress on freshwater teleosts. In: Pickering A. D. (ed.) Stress and Fish, Academic Press."}
+      ]
+    },
+
+    "flow_percentile": {
+      "title": "Flow percentile vs. day-of-year history",
+      "body": [
+        "We pull the gauge's current discharge from USGS instantaneous values, then compare it to the long-term distribution of flows for that same calendar day-of-year using USGS daily statistics service. \"33rd percentile\" means today's flow is lower than 67% of measurements ever recorded on this date.",
+        "Our nymph_score weights percentile asymmetrically: low flow is gently penalized (clear water, concentrated fish, easy presentations — still very fishable), high flow drops sharply (turbidity, dangerous wading, fish hugging cover). Specifically: 35–50th pct = 1.0, 17th pct ≈ 0.77, 80th pct = 0.70, 95th pct = 0.30. This shape is heuristic and was calibrated against an angler ground-truth report (see commit history).",
+        "When the gauge is a proxy (data from a nearby drainage rather than the reach itself), the percentile is technically about that other stream — read it as a regional indicator, not a precise statement about your reach."
+      ],
+      "references": [
+        {"id": "usgs_stat", "text": "USGS Water Data Services — daily statistics: https://waterservices.usgs.gov/docs/statistics/"},
+        {"id": "binns1979", "text": "Binns, N. A., & Eiserman, F. M. (1979). Quantification of fluvial trout habitat in Wyoming. Transactions of the American Fisheries Society 108(3): 215–228."}
+      ]
+    },
+
+    "flow_trend": {
+      "title": "Why falling flows fish well",
+      "body": [
+        "Stream invertebrates that were displaced by elevated flow (e.g. a recent rain event) drift back into the column as flows stabilize and recede. This produces a feeding window typically 6–48 hours after peak flow.",
+        "Our model gives a small bonus for flow that was elevated 6–48h ago and is now stable or falling, and penalizes rising flow because fish move to bank cover and stop feeding.",
+        "Forward projection: we use NOAA NWPS forecasted streamflow (where the gauge has an LID — most small Driftless gauges do not), an exponential-recession model that decays current flow toward the day-of-year median (see \"How we forecast flow recession\"), and an NWS QPF heuristic that bumps the projected percentile when 0.5\"+ of rain is expected in the preceding 24h of any forecast hour."
+      ],
+      "references": [
+        {"id": "brittain1988", "text": "Brittain, J. E., & Eikeland, T. J. (1988). Invertebrate drift — a review. Hydrobiologia 166(1): 77–93."},
+        {"id": "waters1972", "text": "Waters, T. F. (1972). The drift of stream insects. Annual Review of Entomology 17: 253–272."}
+      ]
+    },
+
+    "flow_recession": {
+      "title": "How we forecast flow recession",
+      "body": [
+        "After a rain event, stream flow declines along a characteristic curve that depends on watershed geology, soils, and the proportion of baseflow (groundwater) versus stormflow (surface runoff). For a 7-day fishing forecast, knowing how fast flow returns to normal is as important as knowing the current state.",
+        "We use a class-level exponential recession model: **Q(t) = Q_med + (Q_now − Q_med) · exp(−t/τ)** — the deviation between current flow and the day-of-year median (USGS p50) decays exponentially toward zero with time constant τ. This is the simplest form covered in Tallaksen (1995) §3, sufficient for a 168-hour horizon on small watersheds.",
+        "We assign τ by reach class:",
+        "* **Freestone watersheds** (Apple, Kickapoo, Upper Iowa headwater reaches): τ = 30 hours, half-life ≈ 21h. Steep dissected-valley topography, shallow soils, fast hydrograph response.",
+        "* **Spring-fed / bedrock-aquifer-influenced reaches** (Kinnickinnic, Whitewater forks, Trout Run, Pine Creek, parts of Rush): τ = 48 hours, half-life ≈ 33h. Groundwater contribution dampens both the storm peak and the recession.",
+        "Reach class comes from the `spring_influenced` flag in our seed data, which we set based on Wisconsin / Minnesota state DNR designations and on Driftless-area baseflow studies (Juckem et al. 2008; Gebert et al. 2011 — these document the high baseflow contribution and step-increase in baseflow around 1970 in Driftless watersheds).",
+        "**Honest limits.** These τ values are *class-level priors*, not per-gauge fits. The right next step is per-gauge fitting from USGS daily-values history using the Brutsaert–Nieber (1977) lower-envelope method — that's well-defined work but it isn't done yet. Until it is, treat the recession projection as accurate to ±1–2 percentile bands per day on freestone reaches and ±2–3 on spring-fed (more groundwater means more inter-event variability). The model is also symmetric — flow below median rises toward median at the same rate it falls when above. Real recovery from drought is slower than recession from a flood; we don't currently model that asymmetry."
+      ],
+      "references": [
+        {"id": "brutsaert1977", "text": "Brutsaert, W., & Nieber, J. L. (1977). Regionalized drought flow hydrographs from a mature glaciated plateau. Water Resources Research 13(3): 637–643."},
+        {"id": "tallaksen1995", "text": "Tallaksen, L. M. (1995). A review of baseflow recession analysis. Journal of Hydrology 165(1–4): 349–370."},
+        {"id": "juckem2008", "text": "Juckem, P. F., Hunt, R. J., Anderson, M. P., & Robertson, D. M. (2008). Effects of climate and land management change on streamflow in the Driftless Area of Wisconsin. Journal of Hydrology 355(1–4): 123–130."},
+        {"id": "gebert2011", "text": "Gebert, W. A., Walker, J. F., & Kennedy, J. L. (2011). Estimating 1970–99 average annual groundwater recharge in Wisconsin using streamflow data. USGS Open-File Report 2009-1210."},
+        {"id": "pilgrim1992", "text": "Pilgrim, D. H., & Cordery, I. (1992). Flood runoff. Chapter 9 in Handbook of Hydrology (D. R. Maidment, ed.). McGraw-Hill. (Reference for typical recession-constant ranges; their 11–53 day range is for slow baseflow, not the event-flow recession we model.)"}
+      ]
+    },
+
+    "drift_window": {
+      "title": "Behavioral drift at dawn and dusk",
+      "body": [
+        "Stream invertebrate drift density is sharply non-uniform across the day. Many taxa (especially Baetis, midges, and some caddis) show a dawn peak, a smaller dusk peak, and reduced daytime drift. This is well-documented behavioral drift, distinct from accidental dislodgement.",
+        "Our nymph_score adds a +0.10 bonus for hours within an hour of civil sunrise (5–6 AM) or sunset (7–8 PM) as a proxy for these peaks. This is a deliberate simplification — actual peak hours shift seasonally with photoperiod."
+      ],
+      "references": [
+        {"id": "waters1972", "text": "Waters, T. F. (1972). The drift of stream insects. Annual Review of Entomology 17: 253–272."},
+        {"id": "elliott1965", "text": "Elliott, J. M. (1965). Daily fluctuations of drift invertebrates in a Dartmoor stream. Nature 205(4976): 1127–1129."}
+      ]
+    },
+
+    "degree_days": {
+      "title": "Degree-days and hatch timing",
+      "body": [
+        "Aquatic insect emergence is timed by accumulated thermal exposure rather than calendar date. We accumulate degree-days (DD) from March 1 by integrating estimated water temperature above each species' base temperature: DD_day = max(0, T_water − T_base). Per Sweeney 1984 and follow-on work, each species emerges when accumulated DD crosses a roughly Gaussian threshold.",
+        "Current thresholds (after iNat + GBIF + iDigBio Bayesian calibration):",
+        "* Hendrickson 5°C / 260 DD-C — literature, calibration kept (Bayesian guard fired: observed median 42 was 5σ from prior, indicating Mohseni-class methodology bias on freestone-dominated observation sites)",
+        "* BWO-spring 3°C / 203 DD-C — blended from 180 lit + 16 obs",
+        "* Sulphur 7°C / 289 DD-C — blended from 320 lit + 17 obs",
+        "* Grannom 6°C / 481 DD-C — blended from 380 lit + 46 obs",
+        "* Trico 8°C / 1240 DD-C — manually accepted from 67 obs (literature 420 too low for MN/WI late-summer accumulated DD)",
+        "* Hex 10°C / 471 DD-C — robust blend from 287 obs across iNat + GBIF + iDigBio",
+        "* Isonychia 7°C / 947 DD-C — manually accepted from 47 obs",
+        "* BWO-fall 3°C / 2200 DD-C — manually accepted from 82 obs",
+        "* Tan caddis 7°C / 668 DD-C — blended from 134 obs",
+        "* Terrestrials (hopper, ant, beetle, cricket) bypass DD gating entirely.",
+        "Calibration method: we pulled observations from iNaturalist, GBIF, and iDigBio (museum specimens, dominant volume — 5–17× GBIF for our targets). For each observation we computed accumulated DD using our Mohseni model + Open-Meteo historical air temp at the observation site. Then we shrink the literature prior toward the observed median in proportion to sample size: blended_mean = (lit_mean × 30 + obs_median × n) / (30 + n). A 4σ guard rejects observations that are wildly inconsistent with the literature prior — when this fires we either (a) revert to literature if the prior is well-grounded or (b) manually accept the observed median if the literature prior is suspect.",
+        "Honest limit: we estimate water temperature from Open-Meteo historical air temperature via the Mohseni logistic model. Errors compound — air temp from a 0.5° grid cell, then transformed by class-average coefficients, then accumulated. Treat DD readings as ±20%. Worse: the calibration uses one Mohseni class for all observation locations, but inference uses per-reach class — so a calibrated threshold is technically tied to the calibration class assumption."
+      ],
+      "references": [
+        {"id": "sweeney1984", "text": "Sweeney, B. W. (1984). Factors influencing life-history patterns of aquatic insects. In: V. H. Resh and D. M. Rosenberg (eds.) The Ecology of Aquatic Insects, Praeger."},
+        {"id": "vannote1980", "text": "Vannote, R. L., & Sweeney, B. W. (1980). Geographic analysis of thermal equilibria. American Naturalist 115(5): 667–695."},
+        {"id": "brittain1990", "text": "Brittain, J. E. (1990). Life history strategies in Ephemeroptera and Plecoptera. In: Mayflies and Stoneflies: Life Histories and Biology, Kluwer."}
+      ]
+    },
+
+    "mohseni": {
+      "title": "Air → water temperature (Mohseni model)",
+      "body": [
+        "Stream water temperature responds to air temperature with a characteristic nonlinear logistic shape — strongly tracked in mid-range, dampened near freezing (groundwater floor) and near summer peak (evaporative cooling, riparian shade). Mohseni, Stefan & Erickson (1998) fit a four-parameter equation that has become the standard for ungauged-stream water-temperature estimation.",
+        "T_water = μ + (α − μ) / (1 + exp(γ × (β − T_air_weekly)))",
+        "where μ is winter floor, α is summer ceiling, β is the inflection, and γ is steepness. We use a 7-day rolling mean of air temp as the input.",
+        "We refit μ/α/β/γ per stream class against ~47,000 paired daily air/water temperature observations from 48 USGS gauges in MN/WI/IA, separated into freestone and \"mixed\" (moderately spring-influenced) classes. RMSE: freestone ~4.3°F, mixed ~3.1°F. Spring-fed reaches in our seed (e.g. Kinnickinnic, Trout Run) inherit the mixed-class fit because we had no strictly-spring USGS gauges in our dataset."
+      ],
+      "references": [
+        {"id": "mohseni1998", "text": "Mohseni, O., Stefan, H. G., & Erickson, T. R. (1998). A nonlinear regression model for weekly stream temperatures. Water Resources Research 34(10): 2685–2692."},
+        {"id": "stefan1993", "text": "Stefan, H. G., & Preud'homme, E. B. (1993). Stream temperature estimation from air temperature. JAWRA Journal of the American Water Resources Association 29(1): 27–45."},
+        {"id": "webb1997", "text": "Webb, B. W., & Nobilis, F. (1997). Long-term perspective on the nature of the air–water temperature relationship. Hydrological Processes 11(2): 137–147."}
+      ]
+    },
+
+    "anomaly_shift": {
+      "title": "How weather anomalies shift hatch peaks",
+      "body": [
+        "When the past two weeks have been notably warmer or cooler than the local 5-year average, mayfly emergence shifts forward or back accordingly. Field studies suggest roughly 3 days of phenological shift per 1°C of thermal anomaly for mayflies — but that's water-temperature anomaly, and we measure air-temperature anomaly.",
+        "We discount sensitivity for the air→water decoupling: 1.5 days/°F shift on freestone reaches (water tracks air closely), 0.7 days/°F on spring-influenced reaches (groundwater dampens response).",
+        "Anomaly is computed against a 5-year baseline — not the proper 30-year climate normal — because Open-Meteo historical reach back ~15 years and short baselines stay locally relevant in a warming climate. The chip in the detail panel only appears when anomaly is ≥2°F."
+      ],
+      "references": [
+        {"id": "harper2006", "text": "Harper, M. P., & Peckarsky, B. L. (2006). Emergence cues of a mayfly in a high-altitude stream ecosystem. Ecological Applications 16(2): 612–621."},
+        {"id": "openmeteo_archive", "text": "Open-Meteo Historical Weather API: https://open-meteo.com/en/docs/historical-weather-api"}
+      ]
+    },
+
+    "weather_match": {
+      "title": "Cloud cover and wind for surface fishing",
+      "body": [
+        "Many mayfly species have cloud-cover preferences for emergence and surface drying time. Baetis (BWO) duns notoriously prefer overcast days because their wings dry slowly enough that fish get extended feeding opportunities. Trico spinners and Sulphur duns prefer clear mornings.",
+        "Wind matters less for emergence itself and more for trout feeding response — fish hold tighter in chop and refuse sloppy drifts, but they still rise. Our wind penalty is a soft ramp (full credit ≤ species threshold, linear falloff to 0.4 at 2× threshold) rather than a hard cliff. Cloud penalty uses the same ramp shape — sunny conditions don't kill BWO scoring, just reduce it.",
+        "Honest disclosure: there is surprisingly little peer-reviewed work on wind's effect on rise activity. This curve was tuned against angler reports (a single validated day on the Rush River, 4/22/2026), not a study. Treat as informed guess subject to revision."
+      ],
+      "references": [
+        {"id": "lafontaine1990", "text": "LaFontaine, G. (1990). The Dry Fly: New Angles. Greycliff Publishing. (Guide reference; not peer-reviewed.)"},
+        {"id": "kondratieff1980", "text": "Edmunds, G. F., Jensen, S. L., & Berner, L. (1976). The Mayflies of North and Central America. University of Minnesota Press. (Reference text on Ephemeroptera biology including emergence behavior.)"}
+      ]
+    },
+
+    "emergence_hour": {
+      "title": "Emergence-hour windows",
+      "body": [
+        "Each species' emergence concentrates in specific hours of the day. We carry a per-species [hour_start, hour_end] in our species list and use it as a multiplier in the dry-fly score (1.0 inside the window, 0.3 outside).",
+        "Sample windows used: Hendrickson 12–3pm, BWO-spring 11am–4pm, Sulphur 1–5pm, Mother's Day Caddis 11am–3pm (revised from 2–6pm after a validated angler report), Trico 9am–noon (spinner fall), Hex 7–10pm (the famous Hex emergence is dusk-into-dark).",
+        "These windows are guide-consensus values, not from a single study. They reflect the typical Driftless / Upper Midwest pattern; emergences in cooler weather can be compressed and shift later in the day."
+      ],
+      "references": []
+    },
+
+    "validation": {
+      "title": "How we validate the model",
+      "body": [
+        "A model that's never wrong is unfalsifiable, and unfalsifiable models are useless. We validate Driftless Cast against three independent sources of ground truth — none of which depend on us being right about anything.",
+        "**1. Hindcast (backtest) against historical USGS data.** For every reach with an active flow gauge, we replay our recession model day-by-day across the past 6+ months and compare predicted flow to actual flow at +24h, +72h, and +168h leads. The Mohseni water-temperature model is similarly validated against any USGS gauge that historically reported 00010 (water temp), pairing Open-Meteo daily-mean air with USGS daily-mean water and computing RMSE. Run `python -m src.scripts.backtest` to regenerate the report at `data/calibration/backtest_report.md`. Current pass thresholds: ≤25% MAPE on flow at 24h lead, ≤6°F RMSE on Mohseni — wired to a CI exit code so a regression breaks the build.",
+        "**2. Synthetic acceptance tests.** A pinned suite of known-correct cases (`tests/test_acceptance.py`) catches the kind of bug where a function works in isolation but production serves stale code, or where the explanation copy disagrees with the score multiplier. \"51°F water gives ~0.9 nymph credit, not ~0.5\" is a literal test now — that exact regression is locked.",
+        "**3. Catch-log calibration (the gold standard, once enough reports accumulate).** Every trip report you submit is paired with a snapshot of what the model said for that hour. We compute a reliability diagram (predicted vs reported success per bin) and a Brier score across all reports. With ≥30 reports we surface the calibration plot in the Learn tab; per-reach offsets get applied to displayed scores at ≥3 reports per reach.",
+        "**Honest disclosure.** None of the three is sufficient on its own. Hindcast validates physics but not subjective fishing quality. Acceptance tests catch regressions but not new wrong assumptions. Catch logs are subjective and reach-biased toward enthusiastic reporters. Together they triangulate."
+      ],
+      "references": [
+        {"id": "brier1950", "text": "Brier, G. W. (1950). Verification of forecasts expressed in terms of probability. Monthly Weather Review 78(1): 1–3."},
+        {"id": "murphy1973", "text": "Murphy, A. H. (1973). A new vector partition of the probability score. Journal of Applied Meteorology 12(4): 595–600. (Reliability/resolution decomposition.)"},
+        {"id": "wilks2011", "text": "Wilks, D. S. (2011). Statistical Methods in the Atmospheric Sciences (3rd ed.). Academic Press. (Chapter 8 on forecast verification.)"}
+      ]
+    },
+
+    "regimes": {
+      "title": "How we classify the day's regime",
+      "body": [
+        "The score answers \"how good is fishing right now?\" — but two days that both score 0.30 can call for completely different gear. A blown-out chocolate-milk day at 0.30 needs a streamer; a bluebird August afternoon at 0.30 needs a hopper. The regime label says **what to fish**, separately from the verdict.",
+        "We compute regime in priority order — first match wins:",
+        "* **BLOWOUT** — ≥ 25 mm (≈1\") rain in the preceding 24h *and* projected flow ≥ 85th percentile. Caps the displayed combined score at 0.10. Wading is dangerous; even bait fishing is questionable.",
+        "* **STREAMER** — projected flow ≥ 78th percentile, OR cold-water (42–50°F) elevated water (≥ 55th pct), OR (rain ≥ 0.5\" *and* flow ≥ 65th pct). Stained but wadeable water; fish are looking up for big silhouettes.",
+        "* **HATCH** — best dry-fly score ≥ 0.30 *and* at least one species at ≥ 30% emergence probability. Match-the-hatch mode; defer to species-specific patterns.",
+        "* **TERRESTRIAL** — months 7–9 *and* water ≥ 58°F *and* dry score < 0.20. Summer terrestrials when no aquatic emergence is firing.",
+        "* **MIDGE** — water < 50°F *and* dry score < 0.15 *and* no active hatch. Winter / very cold water; trout still feed on midges and micros.",
+        "* **SCUD** — spring-influenced reach *and* nymph score < 0.55 *and* no active hatch. Default for Driftless limestoners when nothing else applies; scuds and sowbugs are the year-round prey base on these streams.",
+        "* **NORMAL** — none of the above. Standard searching nymph day.",
+        "**Honest disclosure.** The thresholds above are angler-consensus categorizations, not derived from a study. The basis is Driftless-region guide reports (Driftless Angler, Trout Run Outfitters, Kiap-TU-Wish chapter newsletters) and broadly-shared fly-fishing literature (Charlie Meck, Lefty Kreh, Joe Humphreys). The regime is *useful* for trip planning even when its exact threshold is debatable — getting \"streamer day\" right when the model would otherwise say \"skip\" is the win — but treat it as a recommendation, not a measurement.",
+        "Calibration plan: as we accumulate trip reports through the catch-log feature, we will compare predicted regime to reported method-and-success and tune the thresholds. Until then, regime stays heuristic."
+      ],
+      "references": [
+        {"id": "driftless_angler_guide", "text": "Driftless Angler shop reports (Viroqua, WI). Reach- and season-specific written reports archived at https://www.driftlessangler.com — guide reference, not peer-reviewed."},
+        {"id": "kiap_tu_wish", "text": "Kiap-TU-Wish chapter (Trout Unlimited, Western Wisconsin). Newsletter archives of restoration and angling reports. https://kiaptuwish.org"},
+        {"id": "no_strong_lit_regime", "text": "There is no peer-reviewed study that classifies trout-stream fishing days into method-regimes. The categorizations above reflect long-standing angler practice on Driftless and Upper Midwest spring creeks; thresholds are our own."}
+      ]
+    },
+
+    "barometric_pressure": {
+      "title": "Barometric pressure trend",
+      "body": [
+        "We compare the forecasted air pressure at each forecast hour to the pressure 6 hours earlier — a falling barometer (typically signaling an incoming front) is widely reported by anglers as one of the strongest pre-feeding signals; rising pressure after a front passes is consistently associated with a slow-bite recovery period.",
+        "Curve we use (multiplier on the combined score):",
+        "* falling >4 mb / 6h → ×1.05 (pre-front feeding window)",
+        "* falling 1.5–4 mb / 6h → ×1.02",
+        "* stable (±1.5 mb) → no change",
+        "* rising 1.5–4 mb / 6h → ×0.92",
+        "* rising >4 mb / 6h → ×0.82 (post-frontal slump)",
+        "**Honest disclosure:** the angler-consensus on barometric pressure is strong, but the peer-reviewed literature on its effect on freshwater trout feeding is thin and inconsistent (most controlled studies focus on saltwater game species). The mechanism most often proposed is barometric change affecting fish swim-bladder buoyancy and therefore feeding depth — plausible but not robustly demonstrated. We treat the multipliers as guide-derived, not literature-derived. Pressure values come from NWS raw gridpoints (`properties.pressure`, in Pascals)."
+      ],
+      "references": [
+        {"id": "stoner2003", "text": "Stoner, A. W. (2003). What constitutes effective species reflectance for trawl-based fish abundance estimation? — discusses barometric effects on fish behavior. ICES Journal of Marine Science 60(5)."},
+        {"id": "no_strong_lit", "text": "There is no widely-cited peer-reviewed paper specifically demonstrating barometer-trend effects on inland trout feeding rate. Multipliers above are derived from fly-fishing guide consensus (Charlie Meck, Ed Engle, Joe Humphreys, etc.)."}
+      ]
+    },
+
+    "sun_angle": {
+      "title": "Sun angle & surface activity",
+      "body": [
+        "Driftless trout — especially in clear spring-creek water — get reluctant to rise to surface flies under bright high-angle sun, even when a hatch is on. The phenomenon is well-known to anglers but undersampled in formal literature; it's typically attributed to (1) increased visibility making the angler/leader more detectable, (2) trout retreating to shaded structure, and (3) shallow-water predator avoidance behaviors.",
+        "We compute astronomical sun altitude from the reach's lat/lon and the forecast hour (NOAA standard solar position formulas — pure math, no API). Effective brightness = sun_altitude_normalized × (1 − cloud_cover). A penalty of up to ×0.65 is applied to the **dry-fly score** (not the nymph score, since nymphing under bright sun fishes fine) when brightness is high.",
+        "When this fires the explanation includes \"bright midday sun (clear-water shyness).\" Cloud cover or a low-angle hour (dawn / dusk) removes the penalty entirely.",
+        "Honest disclosure: the −35% maximum penalty is calibrated to feel right vs. typical angler expectation; we have no observational study quantifying the exact relationship between sun altitude and rise rates."
+      ],
+      "references": [
+        {"id": "noaa_solar", "text": "NOAA solar position algorithm (declination + equation-of-time approximation). https://gml.noaa.gov/grad/solcalc/solareqns.PDF"},
+        {"id": "helfman1979", "text": "Helfman, G. S. (1979). Twilight activities of yellow perch, Perca flavescens. Journal of the Fisheries Research Board of Canada 36(2): 173–179. (Demonstrates the broader light-level → fish behavior relationship that anglers see anecdotally for trout.)"}
+      ]
+    },
+
+    "data_sources": {
+      "title": "Data sources",
+      "body": [
+        "Live data is fetched on demand from these public, no-key APIs:",
+        "**USGS Water Data Services** — instantaneous values (real-time gauge readings), daily values, and daily statistics (long-term percentiles per day-of-year). https://waterservices.usgs.gov",
+        "**NWS API** — hourly forecast (air temp, wind, cloud cover via shortForecast text) and raw gridpoints (quantitativePrecipitation in mm). https://www.weather.gov/documentation/services-web-api",
+        "**NOAA NWPS** — National Water Prediction Service. Live gauge metadata, observed time series, and short-range streamflow forecasts where available. https://water.noaa.gov",
+        "**Open-Meteo Historical Weather API** — daily-mean air temperature for any lat/lon, used for degree-day backfill and anomaly baseline. https://open-meteo.com",
+        "**iNaturalist + GBIF + iDigBio** — research-grade and museum-specimen aquatic insect observations used to fit per-species emergence DD thresholds. iDigBio (https://search.idigbio.org) typically provides 5–17× the observation volume of GBIF for our target species because it harvests directly from natural-history museum collections. iNat: https://www.inaturalist.org/pages/api+reference, GBIF: https://api.gbif.org",
+        "**WI DNR ArcGIS REST** — trout regulation categories per stream segment. https://dnrmaps.wi.gov/arcgis/rest/services/FM_Trout"
+      ],
+      "references": []
+    },
+
+    "honest_limits": {
+      "title": "What this model is bad at",
+      "body": [
+        "**No real-time water temperature on most reaches.** Fewer than 20% of our gauges report 00010 (water temp). Everything else uses Mohseni-estimated water temp with ~3–5°F RMSE. If your reach is unusually shaded or spring-fed beyond the regional average, the estimate could be 5°F+ off.",
+        "**Proxy gauges.** Several reaches use a flow gauge from a different drainage. Flow percentile in those cases reflects the proxy's history, not the reach's actual conditions.",
+        "**Flow recession is class-level, not per-gauge.** We use τ = 30h for freestone reaches and τ = 48h for spring-fed reaches as regional priors. Per-gauge fitting from USGS daily-values history (Brutsaert–Nieber method) is well-defined and is the right next step. Until it lands, recession projections are approximate to ±1–2 percentile bands per day on freestone, ±2–3 on spring-fed. The recession is also symmetric — drought recovery is modeled at the same rate as flood recession, which is wrong; real drought relief is slower.",
+        "**Regime classifier is angler-consensus.** Thresholds for BLOWOUT / STREAMER / HATCH / TERRESTRIAL / MIDGE / SCUD / NORMAL are based on Driftless guide reports and shared fly-fishing literature, not on a study. They are useful for trip planning but should not be read as measurements. Calibration against accumulated trip reports is the planned path.",
+        "**Hatch DD calibration is mostly literature.** Only Hex has been recalibrated regionally (135 iNaturalist obs in the Upper Midwest). The other 5 mayflies use literature values that were derived from streams that may have warmer/cooler thermal regimes than the Driftless. GBIF integration is wired but their search backend was unavailable when we last tried.",
+        "**Wind and cloud penalties are tuned to one validated day** (Rush River, 4/22/2026). They will be revised as more ground-truth fishing reports accumulate.",
+        "**Barometric pressure multipliers are guide-derived, not literature-derived.** Peer-reviewed work on barometric effects on freshwater trout feeding is thin and inconsistent.",
+        "**Sun-angle penalty is heuristic.** No observational study quantifies sun-altitude → rise-rate; the −35% maximum penalty is calibrated to feel right vs. typical angler expectation.",
+        "**Hopper / terrestrial seasonal model is just a calendar.** No air-temp gating, no wind activation, no precip suppression. If you fish hoppers regularly and the model is way off, tell us.",
+        "**No accounting for:** angler pressure, recent stocking, reach-specific structure (riffles vs runs vs pools), spawning closures, ice-out timing on the gauge data feed, wind direction (just speed), water clarity / turbidity beyond the QPF proxy.",
+        "Master bibliography: see `docs/REFERENCES.md`. Every quantitative claim above traces to a specific entry there, or is labeled 'guide-derived' / 'heuristic' as appropriate."
+      ],
+      "references": []
+    }
+  }
+}

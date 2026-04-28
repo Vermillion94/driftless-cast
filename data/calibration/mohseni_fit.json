@@ -1,0 +1,515 @@
+{
+  "generated": "2026-04-23T20:38:16.145649",
+  "years_back": 4,
+  "sites_used": [
+    {
+      "site_no": "04024000",
+      "name": "ST. LOUIS RIVER AT SCANLON, MN",
+      "lat": 46.703511,
+      "lon": -92.418378,
+      "n_pairs": 1461,
+      "classification": "freestone",
+      "water_min_f": 32.0,
+      "water_max_f": 78.98
+    },
+    {
+      "site_no": "05288705",
+      "name": "SHINGLE CREEK AT QUEEN AVE IN MINNEAPOLIS, MN",
+      "lat": 45.049798,
+      "lon": -93.310445,
+      "n_pairs": 1450,
+      "classification": "freestone",
+      "water_min_f": 32.0,
+      "water_max_f": 78.62
+    },
+    {
+      "site_no": "05289800",
+      "name": "MINNEHAHA CREEK AT HIAWATHA AVE. IN MINNEAPOLIS,MN",
+      "lat": 44.91550278,
+      "lon": -93.21293889,
+      "n_pairs": 1334,
+      "classification": "freestone",
+      "water_min_f": 29.3,
+      "water_max_f": 83.12
+    },
+    {
+      "site_no": "04026561",
+      "name": "TYLER FORKS RIVER AT STRICKER ROAD NEAR MELLEN, WI",
+      "lat": 46.3947222,
+      "lon": -90.59,
+      "n_pairs": 1373,
+      "classification": "freestone",
+      "water_min_f": 31.64,
+      "water_max_f": 78.25999999999999
+    },
+    {
+      "site_no": "04027000",
+      "name": "BAD RIVER NEAR ODANAH, WI",
+      "lat": 46.4866144,
+      "lon": -90.696297,
+      "n_pairs": 1378,
+      "classification": "freestone",
+      "water_min_f": 31.82,
+      "water_max_f": 81.32
+    },
+    {
+      "site_no": "04063700",
+      "name": "POPPLE RIVER NEAR FENCE, WI",
+      "lat": 45.7636111,
+      "lon": -88.4636111,
+      "n_pairs": 1444,
+      "classification": "freestone",
+      "water_min_f": 32.0,
+      "water_max_f": 78.98
+    },
+    {
+      "site_no": "04067500",
+      "name": "MENOMINEE RIVER NEAR MC ALLISTER, WI",
+      "lat": 45.3258333,
+      "lon": -87.6633333,
+      "n_pairs": 1283,
+      "classification": "freestone",
+      "water_min_f": 32.0,
+      "water_max_f": 81.14
+    },
+    {
+      "site_no": "04069500",
+      "name": "PESHTIGO RIVER AT PESHTIGO, WI",
+      "lat": 45.0475,
+      "lon": -87.7444444,
+      "n_pairs": 1092,
+      "classification": "freestone",
+      "water_min_f": 32.0,
+      "water_max_f": 80.78
+    },
+    {
+      "site_no": "04071765",
+      "name": "OCONTO RIVER NEAR OCONTO, WI",
+      "lat": 44.86055556,
+      "lon": -87.98388889,
+      "n_pairs": 1250,
+      "classification": "freestone",
+      "water_min_f": 32.18,
+      "water_max_f": 80.06
+    },
+    {
+      "site_no": "04073500",
+      "name": "FOX RIVER AT BERLIN, WI",
+      "lat": 43.96875,
+      "lon": -88.950306,
+      "n_pairs": 1354,
+      "classification": "freestone",
+      "water_min_f": 32.0,
+      "water_max_f": 86.18
+    },
+    {
+      "site_no": "04077630",
+      "name": "RED RIVER AT MORGAN ROAD NEAR MORGAN, WI",
+      "lat": 44.8980311,
+      "lon": -88.8442729,
+      "n_pairs": 1440,
+      "classification": "freestone",
+      "water_min_f": 31.64,
+      "water_max_f": 74.66
+    },
+    {
+      "site_no": "04082400",
+      "name": "FOX RIVER AT OSHKOSH, WI",
+      "lat": 44.01361209,
+      "lon": -88.5408823,
+      "n_pairs": 1091,
+      "classification": "freestone",
+      "water_min_f": 32.72,
+      "water_max_f": 84.56
+    },
+    {
+      "site_no": "04084422",
+      "name": "LITTLE LAKE BUTTE DES MORTS AT MENASHA, WI",
+      "lat": 44.2047225,
+      "lon": -88.4686577,
+      "n_pairs": 495,
+      "classification": "freestone",
+      "water_min_f": 39.74,
+      "water_max_f": 82.58
+    },
+    {
+      "site_no": "04084445",
+      "name": "FOX RIVER AT APPLETON, WI",
+      "lat": 44.24805556,
+      "lon": -88.4230556,
+      "n_pairs": 1456,
+      "classification": "freestone",
+      "water_min_f": 31.82,
+      "water_max_f": 82.4
+    },
+    {
+      "site_no": "040844505",
+      "name": "FOX RIVER AT COLLEGE AVENUE BRIDGE AT APPLETON, WI",
+      "lat": 44.2610978,
+      "lon": -88.3895513,
+      "n_pairs": 355,
+      "classification": "freestone",
+      "water_min_f": 40.1,
+      "water_max_f": 82.58
+    },
+    {
+      "site_no": "04084500",
+      "name": "FOX R AT RAPIDE CROCHE DAM NEAR WRIGHTSTOWN, WI",
+      "lat": 44.3174889,
+      "lon": -88.1973263,
+      "n_pairs": 358,
+      "classification": "freestone",
+      "water_min_f": 41.72,
+      "water_max_f": 84.91999999999999
+    },
+    {
+      "site_no": "04085059",
+      "name": "FOX RIVER AT DE PERE, WI",
+      "lat": 44.44944406,
+      "lon": -88.064477,
+      "n_pairs": 421,
+      "classification": "freestone",
+      "water_min_f": 44.42,
+      "water_max_f": 84.91999999999999
+    },
+    {
+      "site_no": "04085138",
+      "name": "EAST RIVER AT GREEN BAY, WI",
+      "lat": 44.5091661,
+      "lon": -87.9916967,
+      "n_pairs": 691,
+      "classification": "freestone",
+      "water_min_f": 19.4,
+      "water_max_f": 83.12
+    },
+    {
+      "site_no": "040851385",
+      "name": "FOX RIVER AT OIL TANK DEPOT AT GREEN BAY, WI",
+      "lat": 44.5286111,
+      "lon": -88.01,
+      "n_pairs": 1441,
+      "classification": "freestone",
+      "water_min_f": 32.18,
+      "water_max_f": 83.3
+    },
+    {
+      "site_no": "04085427",
+      "name": "MANITOWOC RIVER AT MANITOWOC, WI",
+      "lat": 44.10616667,
+      "lon": -87.7160278,
+      "n_pairs": 125,
+      "classification": "freestone",
+      "water_min_f": 41.72,
+      "water_max_f": 79.88
+    },
+    {
+      "site_no": "04087000",
+      "name": "MILWAUKEE RIVER AT MILWAUKEE, WI",
+      "lat": 43.10001159,
+      "lon": -87.9089745,
+      "n_pairs": 670,
+      "classification": "freestone",
+      "water_min_f": 30.2,
+      "water_max_f": 78.25999999999999
+    },
+    {
+      "site_no": "040871473",
+      "name": "WILSON PARK CREEK AT GMIA INFALL AT MILWAUKEE, WI",
+      "lat": 42.9457222,
+      "lon": -87.8862222,
+      "n_pairs": 542,
+      "classification": "freestone",
+      "water_min_f": 32.0,
+      "water_max_f": 74.12
+    },
+    {
+      "site_no": "040871475",
+      "name": "WILSON PARK CREEK @ GMIA OUTFALL 7 @ MILWAUKEE,WI",
+      "lat": 42.95702778,
+      "lon": -87.9073056,
+      "n_pairs": 472,
+      "classification": "freestone",
+      "water_min_f": 35.42,
+      "water_max_f": 73.75999999999999
+    },
+    {
+      "site_no": "04087170",
+      "name": "MILWAUKEE RIVER AT MOUTH AT MILWAUKEE, WI",
+      "lat": 43.02444444,
+      "lon": -87.8983333,
+      "n_pairs": 762,
+      "classification": "freestone",
+      "water_min_f": 32.0,
+      "water_max_f": 81.14
+    },
+    {
+      "site_no": "05331833",
+      "name": "NAMEKAGON RIVER AT LEONARDS, WI",
+      "lat": 46.1713687,
+      "lon": -91.3293778,
+      "n_pairs": 1445,
+      "classification": "freestone",
+      "water_min_f": 32.0,
+      "water_max_f": 73.04
+    },
+    {
+      "site_no": "05340500",
+      "name": "ST. CROIX RIVER AT ST. CROIX FALLS, WI",
+      "lat": 45.4069444,
+      "lon": -92.6469444,
+      "n_pairs": 1451,
+      "classification": "freestone",
+      "water_min_f": 31.82,
+      "water_max_f": 82.22
+    },
+    {
+      "site_no": "05370000",
+      "name": "EAU GALLE RIVER AT SPRING VALLEY, WI",
+      "lat": 44.85277778,
+      "lon": -92.2383333,
+      "n_pairs": 1456,
+      "classification": "freestone",
+      "water_min_f": 33.26,
+      "water_max_f": 76.28
+    },
+    {
+      "site_no": "05382255",
+      "name": "STILLWELL CREEK AT SIXTEENTH COURT NEAR TOMAH, WI",
+      "lat": 43.99388889,
+      "lon": -90.6572222,
+      "n_pairs": 1457,
+      "classification": "mixed",
+      "water_min_f": 32.18,
+      "water_max_f": 66.02
+    },
+    {
+      "site_no": "05382257",
+      "name": "STILLWELL CREEK AT YARD ROAD NEAR TOMAH, WI",
+      "lat": 44.00055556,
+      "lon": -90.6811111,
+      "n_pairs": 1453,
+      "classification": "freestone",
+      "water_min_f": 34.52,
+      "water_max_f": 74.3
+    },
+    {
+      "site_no": "05382267",
+      "name": "LA CROSSE RIVER @ CNTY TRUNK HIGHWY BB NR TOMAH,WI",
+      "lat": 44.00027778,
+      "lon": -90.7244444,
+      "n_pairs": 1452,
+      "classification": "mixed",
+      "water_min_f": 32.0,
+      "water_max_f": 68.9
+    },
+    {
+      "site_no": "05382284",
+      "name": "SILVER CREEK AT STATE HIGHWAY 21 NEAR ANGELO, WI",
+      "lat": 43.9672222,
+      "lon": -90.765,
+      "n_pairs": 1080,
+      "classification": "freestone",
+      "water_min_f": 31.64,
+      "water_max_f": 72.14
+    },
+    {
+      "site_no": "05406457",
+      "name": "BLACK EARTH CREEK NR BREWERY RD AT CROSS PLAINS,WI",
+      "lat": 43.1097222,
+      "lon": -89.6408333,
+      "n_pairs": 1381,
+      "classification": "mixed",
+      "water_min_f": 35.42,
+      "water_max_f": 66.92
+    },
+    {
+      "site_no": "05406469",
+      "name": "BREWERY CREEK-UPSTREAM SITE-AT CROSS PLAINS, WI",
+      "lat": 43.12527778,
+      "lon": -89.635,
+      "n_pairs": 1223,
+      "classification": "freestone",
+      "water_min_f": 32.0,
+      "water_max_f": 71.06
+    },
+    {
+      "site_no": "05406479",
+      "name": "BLACK EARTH CK NR TREATMENT PLNT @ CROSS PLAINS,WI",
+      "lat": 43.1147222,
+      "lon": -89.6641667,
+      "n_pairs": 1399,
+      "classification": "mixed",
+      "water_min_f": 32.9,
+      "water_max_f": 67.64
+    },
+    {
+      "site_no": "05427930",
+      "name": "DORN (SPRING) CREEK AT CT HIGHWAY M NR WAUNAKEE,WI",
+      "lat": 43.14027778,
+      "lon": -89.4423056,
+      "n_pairs": 958,
+      "classification": "freestone",
+      "water_min_f": 31.46,
+      "water_max_f": 76.82
+    },
+    {
+      "site_no": "05427948",
+      "name": "PHEASANT BRANCH AT MIDDLETON, WI",
+      "lat": 43.1033333,
+      "lon": -89.5116667,
+      "n_pairs": 1095,
+      "classification": "freestone",
+      "water_min_f": 32.54,
+      "water_max_f": 81.14
+    },
+    {
+      "site_no": "05429369",
+      "name": "SWAN CREEK AT LALOR ROAD NEAR FITCHBURG, WI",
+      "lat": 42.99951944,
+      "lon": -89.3615417,
+      "n_pairs": 1087,
+      "classification": "freestone",
+      "water_min_f": 31.82,
+      "water_max_f": 71.24000000000001
+    },
+    {
+      "site_no": "05435943",
+      "name": "BADGER MILL CREEK AT VERONA, WI",
+      "lat": 42.97694444,
+      "lon": -89.5394444,
+      "n_pairs": 1454,
+      "classification": "freestone",
+      "water_min_f": 32.72,
+      "water_max_f": 73.94
+    },
+    {
+      "site_no": "05435950",
+      "name": "SUGAR RIVER NEAR VERONA, WI",
+      "lat": 42.94916667,
+      "lon": -89.5441667,
+      "n_pairs": 1457,
+      "classification": "freestone",
+      "water_min_f": 31.82,
+      "water_max_f": 75.2
+    },
+    {
+      "site_no": "05545750",
+      "name": "FOX RIVER NEAR NEW MUNSTER, WI",
+      "lat": 42.61085116,
+      "lon": -88.225923,
+      "n_pairs": 1359,
+      "classification": "freestone",
+      "water_min_f": 31.82,
+      "water_max_f": 88.34
+    },
+    {
+      "site_no": "05412500",
+      "name": "Turkey River at Garber, IA",
+      "lat": 42.7399884,
+      "lon": -91.261799,
+      "n_pairs": 981,
+      "classification": "freestone",
+      "water_min_f": 32.18,
+      "water_max_f": 85.82
+    },
+    {
+      "site_no": "05420460",
+      "name": "Beaver Slough at 3rd Street at Clinton, IA",
+      "lat": 41.82725278,
+      "lon": -90.1904056,
+      "n_pairs": 1454,
+      "classification": "freestone",
+      "water_min_f": 32.18,
+      "water_max_f": 84.74
+    },
+    {
+      "site_no": "05458300",
+      "name": "Cedar River at Waverly, IA",
+      "lat": 42.7372222,
+      "lon": -92.4700917,
+      "n_pairs": 1442,
+      "classification": "freestone",
+      "water_min_f": 33.26,
+      "water_max_f": 85.46000000000001
+    },
+    {
+      "site_no": "05464475",
+      "name": "Morgan Creek near Covington, IA",
+      "lat": 41.98941597,
+      "lon": -91.7595985,
+      "n_pairs": 1147,
+      "classification": "freestone",
+      "water_min_f": 32.36,
+      "water_max_f": 80.78
+    },
+    {
+      "site_no": "05484500",
+      "name": "Raccoon River at Van Meter, IA",
+      "lat": 41.53402778,
+      "lon": -93.9497778,
+      "n_pairs": 65,
+      "classification": "mixed",
+      "water_min_f": 49.64,
+      "water_max_f": 82.58
+    },
+    {
+      "site_no": "05487520",
+      "name": "Des Moines River near Swan, IA",
+      "lat": 41.48938889,
+      "lon": -93.2782222,
+      "n_pairs": 63,
+      "classification": "mixed",
+      "water_min_f": 50.36,
+      "water_max_f": 81.68
+    },
+    {
+      "site_no": "05488110",
+      "name": "Des Moines River near Pella, IA",
+      "lat": 41.36416667,
+      "lon": -92.9754722,
+      "n_pairs": 1362,
+      "classification": "freestone",
+      "water_min_f": 32.0,
+      "water_max_f": 83.3
+    },
+    {
+      "site_no": "05489500",
+      "name": "Des Moines River at Ottumwa, IA",
+      "lat": 41.0108472,
+      "lon": -92.4112917,
+      "n_pairs": 1224,
+      "classification": "freestone",
+      "water_min_f": 32.18,
+      "water_max_f": 88.7
+    }
+  ],
+  "classes": {
+    "freestone": {
+      "n_pairs": 46866,
+      "fit": {
+        "mu_f": 32,
+        "alpha_f": 76,
+        "beta_f": 52,
+        "gamma": 0.1
+      },
+      "rmse_f": 4.325717800312332,
+      "literature": {
+        "mu_f": 34.0,
+        "alpha_f": 77.0,
+        "beta_f": 60.0,
+        "gamma": 0.095
+      }
+    },
+    "mixed": {
+      "n_pairs": 5817,
+      "fit": {
+        "mu_f": 36,
+        "alpha_f": 68,
+        "beta_f": 52,
+        "gamma": 0.08
+      },
+      "rmse_f": 3.083171366592359,
+      "literature": null
+    }
+  }
+}

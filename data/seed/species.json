@@ -1,0 +1,460 @@
+[
+  {
+    "species_id": "hendrickson",
+    "common_name": "Hendrickson",
+    "scientific_name": "Ephemerella subvaria",
+    "base_temp_c": 5.0,
+    "dd_threshold_mean": 260.0,
+    "dd_threshold_sd": 40.0,
+    "emergence_hr_start": 12,
+    "emergence_hr_end": 15,
+    "weather_prefs": {
+      "clouds": "any",
+      "wind": "<15"
+    },
+    "fly_patterns": [
+      {
+        "pattern": "Hendrickson Parachute",
+        "size": 14,
+        "stage": "dun"
+      },
+      {
+        "pattern": "Pheasant Tail BH",
+        "size": 14,
+        "stage": "nymph"
+      },
+      {
+        "pattern": "Rusty Spinner",
+        "size": 14,
+        "stage": "spinner"
+      }
+    ]
+  },
+  {
+    "species_id": "bwo-spring",
+    "common_name": "Blue-Winged Olive (spring)",
+    "scientific_name": "Baetis tricaudatus",
+    "base_temp_c": 3.0,
+    "dd_threshold_mean": 203.1,
+    "dd_threshold_sd": 95.0,
+    "emergence_hr_start": 11,
+    "emergence_hr_end": 16,
+    "weather_prefs": {
+      "clouds": "high",
+      "wind": "<10"
+    },
+    "fly_patterns": [
+      {
+        "pattern": "BWO Comparadun",
+        "size": 18,
+        "stage": "dun"
+      },
+      {
+        "pattern": "WD-40",
+        "size": 18,
+        "stage": "emerger"
+      },
+      {
+        "pattern": "Pheasant Tail",
+        "size": 18,
+        "stage": "nymph"
+      }
+    ]
+  },
+  {
+    "species_id": "sulphur",
+    "common_name": "Sulphur",
+    "scientific_name": "Ephemerella spp.",
+    "base_temp_c": 7.0,
+    "dd_threshold_mean": 289.0,
+    "dd_threshold_sd": 64.3,
+    "emergence_hr_start": 13,
+    "emergence_hr_end": 17,
+    "weather_prefs": {
+      "clouds": "low",
+      "wind": "<12"
+    },
+    "fly_patterns": [
+      {
+        "pattern": "Sparkle Dun",
+        "size": 14,
+        "stage": "dun"
+      },
+      {
+        "pattern": "Sulphur Soft Hackle",
+        "size": 14,
+        "stage": "emerger"
+      },
+      {
+        "pattern": "Pheasant Tail",
+        "size": 14,
+        "stage": "nymph"
+      }
+    ]
+  },
+  {
+    "species_id": "grannom-caddis",
+    "common_name": "Grannom (Mother's Day Caddis)",
+    "scientific_name": "Brachycentrus spp.",
+    "base_temp_c": 6.0,
+    "dd_threshold_mean": 481.0,
+    "dd_threshold_sd": 183.8,
+    "emergence_hr_start": 11,
+    "emergence_hr_end": 15,
+    "weather_prefs": {
+      "clouds": "any",
+      "wind": "<15"
+    },
+    "fly_patterns": [
+      {
+        "pattern": "Grannom Sparkle",
+        "size": 14,
+        "stage": "dun"
+      },
+      {
+        "pattern": "Greenwell's Glory",
+        "size": 14,
+        "stage": "emerger"
+      },
+      {
+        "pattern": "Pheasant Tail",
+        "size": 14,
+        "stage": "nymph"
+      }
+    ]
+  },
+  {
+    "species_id": "trico",
+    "common_name": "Trico",
+    "scientific_name": "Baetis tricaudatus",
+    "base_temp_c": 8.0,
+    "dd_threshold_mean": 1240,
+    "dd_threshold_sd": 200,
+    "emergence_hr_start": 9,
+    "emergence_hr_end": 12,
+    "weather_prefs": {
+      "clouds": "low",
+      "wind": "<8"
+    },
+    "fly_patterns": [
+      {
+        "pattern": "Trico Spinner",
+        "size": 20,
+        "stage": "spinner"
+      },
+      {
+        "pattern": "Trico Emerger",
+        "size": 20,
+        "stage": "emerger"
+      },
+      {
+        "pattern": "Trico Dun",
+        "size": 20,
+        "stage": "dun"
+      }
+    ],
+    "_calibration_note": "manually accepted observed median; literature prior superseded"
+  },
+  {
+    "species_id": "hex",
+    "common_name": "Hexagenia",
+    "scientific_name": "Hexagenia limbata",
+    "base_temp_c": 10.0,
+    "dd_threshold_mean": 471.0,
+    "dd_threshold_sd": 121.8,
+    "emergence_hr_start": 19,
+    "emergence_hr_end": 22,
+    "weather_prefs": {
+      "clouds": "any",
+      "wind": "<10"
+    },
+    "fly_patterns": [
+      {
+        "pattern": "Hex Spinner",
+        "size": 10,
+        "stage": "spinner"
+      },
+      {
+        "pattern": "Hex Dun",
+        "size": 10,
+        "stage": "dun"
+      },
+      {
+        "pattern": "Pheasant Tail",
+        "size": 14,
+        "stage": "nymph"
+      }
+    ]
+  },
+  {
+    "species_id": "bwo-fall",
+    "common_name": "Blue-Winged Olive (fall)",
+    "scientific_name": "Baetis spp.",
+    "base_temp_c": 3.0,
+    "dd_threshold_mean": 2200,
+    "dd_threshold_sd": 600,
+    "emergence_hr_start": 11,
+    "emergence_hr_end": 15,
+    "weather_prefs": {
+      "clouds": "high",
+      "wind": "<10"
+    },
+    "fly_patterns": [
+      {
+        "pattern": "BWO Comparadun",
+        "size": 20,
+        "stage": "dun"
+      },
+      {
+        "pattern": "WD-40",
+        "size": 20,
+        "stage": "emerger"
+      },
+      {
+        "pattern": "Sparkle Dun BWO",
+        "size": 20,
+        "stage": "dun"
+      },
+      {
+        "pattern": "RS2 Olive",
+        "size": 22,
+        "stage": "emerger"
+      },
+      {
+        "pattern": "Pheasant Tail BH",
+        "size": 20,
+        "stage": "nymph"
+      }
+    ],
+    "_calibration_note": "manually accepted observed median; literature prior superseded"
+  },
+  {
+    "species_id": "hopper",
+    "common_name": "Grasshopper",
+    "scientific_name": "Acrididae spp.",
+    "base_temp_c": 0,
+    "dd_threshold_mean": 0,
+    "dd_threshold_sd": 1,
+    "emergence_hr_start": 11,
+    "emergence_hr_end": 18,
+    "weather_prefs": {
+      "clouds": "any",
+      "wind": "<25"
+    },
+    "fly_patterns": [
+      {
+        "pattern": "Foam Hopper Tan",
+        "size": 10,
+        "stage": "adult"
+      },
+      {
+        "pattern": "Dave's Hopper",
+        "size": 12,
+        "stage": "adult"
+      },
+      {
+        "pattern": "Chubby Chernobyl Tan",
+        "size": 10,
+        "stage": "adult"
+      },
+      {
+        "pattern": "Morrish Hopper",
+        "size": 12,
+        "stage": "adult"
+      },
+      {
+        "pattern": "Parachute Hopper",
+        "size": 14,
+        "stage": "adult"
+      }
+    ]
+  },
+  {
+    "species_id": "ant",
+    "common_name": "Flying Ant / Black Ant",
+    "scientific_name": "Formicidae spp.",
+    "base_temp_c": 0,
+    "dd_threshold_mean": 0,
+    "dd_threshold_sd": 1,
+    "emergence_hr_start": 10,
+    "emergence_hr_end": 18,
+    "weather_prefs": {
+      "clouds": "any",
+      "wind": "<20"
+    },
+    "fly_patterns": [
+      {
+        "pattern": "Foam Ant Black",
+        "size": 16,
+        "stage": "adult"
+      },
+      {
+        "pattern": "Cinnamon Flying Ant",
+        "size": 16,
+        "stage": "adult"
+      },
+      {
+        "pattern": "Parachute Ant",
+        "size": 18,
+        "stage": "adult"
+      }
+    ]
+  },
+  {
+    "species_id": "beetle",
+    "common_name": "Beetle",
+    "scientific_name": "Coleoptera",
+    "base_temp_c": 0,
+    "dd_threshold_mean": 0,
+    "dd_threshold_sd": 1,
+    "emergence_hr_start": 10,
+    "emergence_hr_end": 18,
+    "weather_prefs": {
+      "clouds": "any",
+      "wind": "<25"
+    },
+    "fly_patterns": [
+      {
+        "pattern": "Foam Beetle Black",
+        "size": 14,
+        "stage": "adult"
+      },
+      {
+        "pattern": "Crowe Beetle",
+        "size": 14,
+        "stage": "adult"
+      },
+      {
+        "pattern": "Japanese Beetle",
+        "size": 14,
+        "stage": "adult"
+      }
+    ]
+  },
+  {
+    "species_id": "cricket",
+    "common_name": "Cricket",
+    "scientific_name": "Gryllidae",
+    "base_temp_c": 0,
+    "dd_threshold_mean": 0,
+    "dd_threshold_sd": 1,
+    "emergence_hr_start": 11,
+    "emergence_hr_end": 19,
+    "weather_prefs": {
+      "clouds": "any",
+      "wind": "<25"
+    },
+    "fly_patterns": [
+      {
+        "pattern": "Foam Cricket Black",
+        "size": 12,
+        "stage": "adult"
+      },
+      {
+        "pattern": "Dave's Cricket",
+        "size": 12,
+        "stage": "adult"
+      }
+    ]
+  },
+  {
+    "species_id": "isonychia",
+    "common_name": "Isonychia (Slate Drake / White-Gloved Howdy)",
+    "scientific_name": "Isonychia bicolor",
+    "base_temp_c": 7.0,
+    "dd_threshold_mean": 947,
+    "dd_threshold_sd": 200,
+    "emergence_hr_start": 17,
+    "emergence_hr_end": 21,
+    "weather_prefs": {
+      "clouds": "any",
+      "wind": "<15"
+    },
+    "fly_patterns": [
+      {
+        "pattern": "Iso Comparadun",
+        "size": 12,
+        "stage": "dun"
+      },
+      {
+        "pattern": "Mahogany Spinner",
+        "size": 12,
+        "stage": "spinner"
+      },
+      {
+        "pattern": "Iso Nymph (Pheasant Tail)",
+        "size": 10,
+        "stage": "nymph"
+      }
+    ],
+    "_calibration_note": "manually accepted observed median; literature prior superseded"
+  },
+  {
+    "species_id": "tan-caddis",
+    "common_name": "Tan Caddis (Hydropsyche / Cinnamon Sedge)",
+    "scientific_name": "Hydropsyche spp.",
+    "base_temp_c": 7.0,
+    "dd_threshold_mean": 667.9,
+    "dd_threshold_sd": 291.6,
+    "emergence_hr_start": 17,
+    "emergence_hr_end": 21,
+    "weather_prefs": {
+      "clouds": "any",
+      "wind": "<15"
+    },
+    "fly_patterns": [
+      {
+        "pattern": "Elk Hair Caddis Tan",
+        "size": 14,
+        "stage": "adult"
+      },
+      {
+        "pattern": "X-Caddis Tan",
+        "size": 14,
+        "stage": "emerger"
+      },
+      {
+        "pattern": "LaFontaine Sparkle Pupa",
+        "size": 14,
+        "stage": "emerger"
+      },
+      {
+        "pattern": "Hare's Ear",
+        "size": 14,
+        "stage": "nymph"
+      }
+    ]
+  },
+  {
+    "species_id": "early-black-stone",
+    "common_name": "Early Black Stonefly",
+    "scientific_name": "Allocapnia spp.",
+    "base_temp_c": 1.0,
+    "dd_threshold_mean": 35.0,
+    "dd_threshold_sd": 25.0,
+    "emergence_hr_start": 12,
+    "emergence_hr_end": 16,
+    "weather_prefs": {
+      "clouds": "any",
+      "wind": "<15"
+    },
+    "fly_patterns": [
+      {
+        "pattern": "Black Stonefly Adult",
+        "size": 16,
+        "stage": "adult"
+      },
+      {
+        "pattern": "Little Black Stone Nymph",
+        "size": 18,
+        "stage": "nymph"
+      },
+      {
+        "pattern": "Griffith's Gnat",
+        "size": 18,
+        "stage": "adult"
+      }
+    ],
+    "_calibration_note": "Capniidae adults walk to streamside vegetation Feb-Mar; one of the only winter aquatic emergences in the Driftless"
+  }
+]

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Driftless Cast</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <button id="sidebar-toggle" type="button" aria-label="Toggle sidebar" aria-expanded="true">☰</button>
+  <div id="app">
+    <aside id="sidebar">
+      <header>
+        <h1>Driftless Cast</h1>
+        <p id="summary" class="muted">Loading…</p>
+        <nav class="tab-bar">
+          <button class="tab tab-active" data-view="windows">Best windows</button>
+          <button class="tab" data-view="calendar">Hatch calendar</button>
+          <button class="tab" data-view="learn">Learn</button>
+        </nav>
+      </header>
+      <section id="best-windows">
+        <h2>Best next 72h</h2>
+        <ol id="windows-list"><li class="muted">computing…</li></ol>
+      </section>
+      <section id="calendar" class="hidden">
+        <h2>Hatch calendar</h2>
+        <div id="calendar-body"><p class="muted">loading…</p></div>
+      </section>
+      <section id="learn" class="hidden">
+        <h2>Learn</h2>
+        <div id="learn-body"><p class="muted">loading…</p></div>
+      </section>
+      <section id="detail" class="hidden">
+        <button id="close-detail" type="button" aria-label="Back to list">← back</button>
+        <div id="detail-body"></div>
+      </section>
+    </aside>
+    <div id="map">
+      <div id="scrubber" class="scrubber scrubber-empty" aria-label="Forecast time scrubber">
+        <button id="scrub-now" type="button" title="Jump to now">Now</button>
+        <input id="scrub-slider" type="range" min="0" max="0" value="0" step="1" disabled aria-label="Forecast hour" />
+        <span id="scrub-label" class="scrub-label">loading…</span>
+      </div>
+    </div>
+  </div>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="map.js"></script>
+</body>
+</html>

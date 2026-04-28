@@ -1,0 +1,130 @@
+[
+  {
+    "gauge_id": "05342000",
+    "name": "Kinnickinnic River near River Falls, WI",
+    "source": "usgs",
+    "lat": 44.8308,
+    "lon": -92.7331,
+    "params": ["00060", "00065", "00010"]
+  },
+  {
+    "gauge_id": "05341498",
+    "name": "Apple River at Park in Somerset, WI",
+    "source": "usgs",
+    "lat": 45.1286,
+    "lon": -92.6776,
+    "params": ["00060", "00065"]
+  },
+  {
+    "gauge_id": "05370000",
+    "name": "Eau Galle River at Spring Valley, WI",
+    "source": "usgs",
+    "lat": 44.8528,
+    "lon": -92.2383,
+    "params": ["00060", "00065"]
+  },
+  {
+    "gauge_id": "05408000",
+    "name": "Kickapoo River at La Farge, WI",
+    "source": "usgs",
+    "lat": 43.5742,
+    "lon": -90.6432,
+    "params": ["00060", "00065"]
+  },
+  {
+    "gauge_id": "05388250",
+    "name": "Upper Iowa River near Dorchester, IA",
+    "source": "usgs",
+    "lat": 43.4211,
+    "lon": -91.5088,
+    "params": ["00060", "00065"]
+  },
+  {
+    "gauge_id": "05389000",
+    "name": "Yellow River near Ion, IA",
+    "source": "usgs",
+    "lat": 43.1119,
+    "lon": -91.2651,
+    "params": ["00060", "00065"]
+  },
+  {
+    "gauge_id": "05383950",
+    "name": "Root River near Pilot Mound, MN",
+    "source": "usgs",
+    "lat": 43.7828,
+    "lon": -92.0316,
+    "params": ["00060", "00065"]
+  },
+  {
+    "gauge_id": "05385000",
+    "name": "Root River near Houston, MN",
+    "source": "usgs",
+    "lat": 43.7686,
+    "lon": -91.5699,
+    "params": ["00060", "00065"]
+  },
+  {
+    "gauge_id": "05385500",
+    "name": "South Fork Root River near Houston, MN",
+    "source": "usgs",
+    "lat": 43.7388,
+    "lon": -91.5643,
+    "params": ["00060", "00065"]
+  },
+  {
+    "gauge_id": "05384500",
+    "name": "Rush Creek near Rushford, MN",
+    "source": "usgs",
+    "lat": 43.8324,
+    "lon": -91.7767,
+    "params": ["00065"]
+  },
+  {
+    "gauge_id": "EBWM5",
+    "name": "North Fork Whitewater River near Elba, MN (NOAA)",
+    "source": "noaa",
+    "lat": 44.087,
+    "lon": -92.030,
+    "params": ["stage", "discharge"]
+  },
+  {
+    "gauge_id": "WWPM5",
+    "name": "Middle Fork Whitewater River at Whitewater SP Group Camp, MN (NOAA)",
+    "source": "noaa",
+    "lat": 44.056,
+    "lon": -92.054,
+    "params": ["stage", "discharge"]
+  },
+  {
+    "gauge_id": "FLMM5",
+    "name": "Middle Branch Root River at Fillmore, MN (NOAA)",
+    "source": "noaa",
+    "lat": 43.759,
+    "lon": -92.271,
+    "params": ["stage", "discharge"]
+  },
+  {
+    "gauge_id": "DWCI4",
+    "name": "Waterloo Creek near Dorchester, IA (NOAA)",
+    "source": "noaa",
+    "lat": 43.451,
+    "lon": -91.505,
+    "params": ["stage"]
+  },
+  {
+    "gauge_id": "DDGW3",
+    "name": "Trempealeau River at Dodge, WI (NOAA)",
+    "source": "noaa",
+    "lat": 44.132,
+    "lon": -91.553,
+    "params": ["stage", "discharge"]
+  },
+  {
+    "gauge_id": "FRCM5",
+    "name": "Wells Creek near Frontenac, MN (NOAA)",
+    "source": "noaa",
+    "lat": 44.507,
+    "lon": -92.333,
+    "params": ["stage", "discharge"]
+  }
+]

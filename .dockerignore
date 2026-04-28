@@ -1,0 +1,37 @@
+# Don't ship local state into the image — production starts with a fresh DB
+# on the persistent volume and rebuilds the forecast on first launch.
+driftless_cast.db
+driftless_cast.db-*
+*.bak.json
+data/seed/*.bak.json
+
+# Build / dev artifacts
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.log
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Calibration outputs (locally generated, regenerated on demand via backtest)
+data/calibration/backtest_*
+data/calibration/*_cache/
+
+# Git + CI metadata
+.git/
+.github/
+
+# Test scratch
+tests/__pycache__/
+
+# Plan / scratch docs not needed in image
+driftless-cast-plan.md

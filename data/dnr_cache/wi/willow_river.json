@@ -1,0 +1,65 @@
+[
+{
+"STREAM": "South Fork Willow River",
+"REGCAT": "5 Trout in Total of Any Length",
+"GEAR_RESTRICTIONS": "N/A",
+"SEASON_TXT": "First Saturday in April at 5:00 a.m. to Oct. 15.",
+"EARLY_SEASON_TXT": "First Saturday in January to First Saturday in April all trout shall be immediately released. Only artificial lures may be used.",
+"BAG_LMT": "5 trout in total of any length.",
+"SPECIALREG1": null
+},
+{
+"STREAM": "Willow River",
+"REGCAT": "5 Trout in Total of Any Length",
+"GEAR_RESTRICTIONS": "N/A",
+"SEASON_TXT": "First Saturday in April at 5:00 a.m. to Oct. 15.",
+"EARLY_SEASON_TXT": "First Saturday in January to First Saturday in April all trout shall be immediately released. Only artificial lures may be used.",
+"BAG_LMT": "5 trout in total of any length.",
+"SPECIALREG1": null
+},
+{
+"STREAM": "Willow River",
+"REGCAT": "5 Trout in Total of Any Length",
+"GEAR_RESTRICTIONS": "N/A",
+"SEASON_TXT": "First Saturday in April at 5:00 a.m. to Oct. 15.",
+"EARLY_SEASON_TXT": "First Saturday in January to First Saturday in April all trout shall be immediately released. Only artificial lures may be used.",
+"BAG_LMT": "5 trout in total of any length.",
+"SPECIALREG1": null
+},
+{
+"STREAM": "Willow River",
+"REGCAT": "Length, Bag and Possession Limits Vary by Water",
+"GEAR_RESTRICTIONS": "N/A",
+"SEASON_TXT": "First Saturday in April at 5:00 a.m. to Oct. 15.",
+"EARLY_SEASON_TXT": "First Saturday in January to First Saturday in April all trout shall be immediately released. Only artificial lures may be used.",
+"BAG_LMT": "1 trout over 14\".",
+"SPECIALREG1": null
+},
+{
+"STREAM": "North Fork Willow River",
+"REGCAT": "5 Trout in Total of Any Length",
+"GEAR_RESTRICTIONS": "N/A",
+"SEASON_TXT": "First Saturday in April at 5:00 a.m. to Oct. 15.",
+"EARLY_SEASON_TXT": "First Saturday in January to First Saturday in April all trout shall be immediately released. Only artificial lures may be used.",
+"BAG_LMT": "5 trout in total of any length.",
+"SPECIALREG1": null
+},
+{
+"STREAM": "Race Branch Willow River",
+"REGCAT": "Length, Bag and Possession Limits Vary by Water",
+"GEAR_RESTRICTIONS": "N/A",
+"SEASON_TXT": "First Saturday in April at 5:00 a.m. to Oct. 15.",
+"EARLY_SEASON_TXT": "First Saturday in January to First Saturday in April all trout shall be immediately released. Only artificial lures may be used.",
+"BAG_LMT": "1 trout over 14\".",
+"SPECIALREG1": null
+},
+{
+"STREAM": "Willow River",
+"REGCAT": "Length, Bag and Possession Limits Vary by Water",
+"GEAR_RESTRICTIONS": "N/A",
+"SEASON_TXT": "First Saturday in April at 5:00 a.m. to Oct. 15.",
+"EARLY_SEASON_TXT": "First Saturday in January to First Saturday in April all trout shall be immediately released. Only artificial lures may be used.",
+"BAG_LMT": "1 trout over 14\".",
+"SPECIALREG1": null
+}
+]
