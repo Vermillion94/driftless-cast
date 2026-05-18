@@ -66,7 +66,25 @@ def classify(
             severity="alert",
         )
 
-    # 2) STREAMER — high or rising-and-stained water but still wadeable; or
+    # 2) HEAT_STRESS — hot air, stressed water, midday hours. Tells the angler
+    # *not* to fish midday regardless of score, and steers them to dawn/dusk.
+    # `air_temp_f` was previously dead in this function; this is the regime
+    # behind the "0 action until 6pm" guidance the model used to miss.
+    local_hour = valid_at.hour
+    if (
+        air_temp_f is not None and air_temp_f >= 88
+        and water_temp_f is not None and water_temp_f >= 68
+        and 11 <= local_hour <= 17
+    ):
+        return Regime(
+            code="HEAT_STRESS",
+            label="Heat-stressed water",
+            detail=f"air {air_temp_f:.0f}°F, water {water_temp_f:.0f}°F — fish dawn/dusk only",
+            fly_hint="rest the river midday; evening sulphur/caddis hatch is the play",
+            severity="alert",
+        )
+
+    # 4) STREAMER — high or rising-and-stained water but still wadeable; or
     #    cold-water aggressive feeding window. This is the regime that recovers
     #    "Skip" days that are actually streamer-prime.
     if pct >= 0.78 or (preceding_24 >= 12.7 and pct >= 0.65):
@@ -86,7 +104,7 @@ def classify(
             severity="info",
         )
 
-    # 3) HATCH — meaningful active-species probability. Defer to the existing
+    # 5) HATCH — meaningful active-species probability. Defer to the existing
     #    fly recommender for the actual pattern; just flag the regime.
     if has_hatch and dry_score >= 0.30:
         top = max(active_species, key=lambda s: s.get("probability") or 0)
@@ -98,7 +116,7 @@ def classify(
             severity="info",
         )
 
-    # 4) TERRESTRIAL — summer afternoons, no aquatic hatch firing. The Driftless
+    # 6) TERRESTRIAL — summer afternoons, no aquatic hatch firing. The Driftless
     #    grasshopper bite is the most underrated fishery in the region.
     if month in {7, 8, 9} and (water_temp_f or 0) >= 58 and dry_score < 0.20:
         return Regime(
@@ -109,7 +127,7 @@ def classify(
             severity="info",
         )
 
-    # 5) MIDGE — winter / very cold water. Trout still feed, just on bugs you
+    # 7) MIDGE — winter / very cold water. Trout still feed, just on bugs you
     #    can't see. Without this regime the model says "Skip" all winter.
     if water_temp_f is not None and water_temp_f < 50 and dry_score < 0.15 and not has_hatch:
         return Regime(
@@ -120,7 +138,7 @@ def classify(
             severity="info",
         )
 
-    # 6) SCUD — spring-creek default when nothing else applies. Driftless
+    # 8) SCUD — spring-creek default when nothing else applies. Driftless
     #    limestoners run scud-rich year-round; this is a real regime, not a
     #    fallback.
     if spring_influenced and not has_hatch and nymph_score < 0.55:
@@ -132,7 +150,7 @@ def classify(
             severity="info",
         )
 
-    # 7) NORMAL nymphing day.
+    # 9) NORMAL nymphing day.
     return Regime(
         code="NORMAL",
         label="Nymph & swing",

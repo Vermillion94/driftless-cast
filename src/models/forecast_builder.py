@@ -27,6 +27,7 @@ import requests
 from src.db import get_connection
 from src.ingest import (
     discharge_percentile,
+    fetch_daily,
     fetch_daily_stats,
     fetch_forecast_series,
     fetch_gridpoint,
@@ -43,11 +44,11 @@ from src.models import anomaly as anomaly_mod
 from src.models import dd_pipeline
 from src.models import regime as regime_mod
 from src.models import temp_estimator
-from src.models.dry_score import hour_of_day_score
+from src.models.dry_score import hour_of_day_score, shift_window_for_air_temp
 from src.models.hatch_predictor import species_activity_probability, weather_match_score
 from src.models.fly_recommender import recommend_flies
 from src.models.nymph_score import compute_nymph_score
-from src.models.seasonal import seasonal_activity
+from src.models.seasonal import TERRESTRIAL_SPECIES, seasonal_activity
 from src.models.temp_estimator import estimate_water_series_f
 
 LOG = logging.getLogger(__name__)
@@ -135,6 +136,19 @@ def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[fl
             percentile = discharge_percentile(flow_cfs, stats)
         elif flow_cfs is not None:
             notes.append("no long-term percentile available for this gauge")
+        # Recent flow trend — used to drive flow_trend_score. Previously this
+        # was a hardcoded [] so the trend factor was always the 0.75 neutral
+        # default, making it dead signal. Last 4 days of daily values is
+        # enough to see rising vs falling without hammering USGS.
+        try:
+            start = datetime.combine(today - timedelta(days=4), datetime.min.time(), tzinfo=timezone.utc)
+            end = datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc)
+            dv_rows = fetch_daily(usgs_id, "00060", start_date=start, end_date=end)
+            recent = [float(r["value"]) for r in dv_rows if r.get("value") is not None]
+            if flow_cfs is not None:
+                recent.append(float(flow_cfs))
+        except requests.RequestException as exc:
+            LOG.info("USGS daily-flow history failed for %s: %s", usgs_id, exc)
     elif noaa_lid:
         source = "noaa"
         try:
@@ -321,6 +335,24 @@ TAU_FREESTONE_H = 30.0   # half-life ≈ 21 h
 TAU_SPRING_H    = 48.0   # half-life ≈ 33 h
 
 
+# Diurnal water-temperature swing — amplitude (°F) of the daily sinusoid that
+# rides on top of the Mohseni daily mean. Freestone streams in the Driftless
+# swing 4–8°F day-to-night on hot weeks; spring-fed limestoners barely budge
+# because groundwater dominates. These are conservative half-amplitudes (so
+# total peak-to-trough is 2× the number below). Phase: peak at 17:00 local
+# (≈3h lag from solar noon), trough at 05:00 — standard surface-water phase
+# lag, see docs/REFERENCES.md#mohseni_1998 for context on diurnal dynamics
+# that the 7-day rolling mean intentionally smooths over.
+DIURNAL_AMP_FREESTONE_F = 3.0
+DIURNAL_AMP_SPRING_F    = 1.0
+DIURNAL_PEAK_HOUR_LOCAL = 17
+
+# Terrestrials need warm air to be active food; on a 55°F July day there are
+# no beetles in the grass. Ramp 45°F → 65°F linearly, full credit above.
+TERRESTRIAL_AIR_FLOOR_F = 45.0
+TERRESTRIAL_AIR_FULL_F  = 65.0
+
+
 def _flow_percentile_for_hour(
     signals: ReachSignals,
     valid_at: datetime,
@@ -383,6 +415,49 @@ def _flow_percentile_for_hour(
         inches = preceding_mm / 25.4
         note = f"rain in preceding 24h (~{inches:.1f}\")"
     return adjusted, Q_proj, note
+
+
+def _diurnal_water_temp_f(daily_mean_f: float, local_hour: int, spring_influenced: bool) -> float:
+    """Add a diurnal sinusoid to the Mohseni daily mean so within-day variation
+    actually shows up in the score. Phase peaks at 17:00 local, troughs at 05:00.
+    Spring-fed reaches barely move (groundwater buffering); freestones swing.
+    """
+    import math
+    amplitude = DIURNAL_AMP_SPRING_F if spring_influenced else DIURNAL_AMP_FREESTONE_F
+    phase = (local_hour - DIURNAL_PEAK_HOUR_LOCAL) * 2.0 * math.pi / 24.0
+    return daily_mean_f + amplitude * math.cos(phase)
+
+
+def _terrestrial_air_factor(air_temp_f: Optional[float]) -> float:
+    """0 below 45°F, linear ramp to 1.0 at 65°F. Above 65°F: full credit."""
+    if air_temp_f is None:
+        return 1.0
+    if air_temp_f >= TERRESTRIAL_AIR_FULL_F:
+        return 1.0
+    if air_temp_f <= TERRESTRIAL_AIR_FLOOR_F:
+        return 0.0
+    span = TERRESTRIAL_AIR_FULL_F - TERRESTRIAL_AIR_FLOOR_F
+    return (air_temp_f - TERRESTRIAL_AIR_FLOOR_F) / span
+
+
+def _dry_warm_water_factor(water_temp_f: Optional[float]) -> float:
+    """Dry-fly score scales down as water warms past the C&R ethics threshold.
+
+    The nymph score already gets this dampening for free via the plateau curve
+    in nymph_score.temperature_score. Dry score had no such gate — a hatch
+    coded for 13:00 on a 72°F-water day still scored full credit. Wrong: fish
+    are stressed, takes are sluggish, and we don't want to send anglers out
+    at midday on 71°F water. Mirror the plateau slope (Wilkie 1996 threshold).
+    """
+    if water_temp_f is None:
+        return 1.0
+    if water_temp_f <= 64.0:
+        return 1.0
+    if water_temp_f <= 68.0:
+        return 1.0 - (water_temp_f - 64.0) * (0.5 / 4.0)
+    if water_temp_f <= 75.0:
+        return 0.5 - (water_temp_f - 68.0) * (0.5 / 7.0)
+    return 0.0
 
 
 def _build_water_temp_by_date(
@@ -556,22 +631,26 @@ def _score_hour(
 ) -> Dict[str, object]:
     valid_hour = valid_at.hour
     valid_date = valid_at.date()
-    # Prefer the per-day Mohseni projection (so warming trends propagate forward
-    # across the 7-day horizon). Fall back to the static signals.water_temp_c
-    # only when the per-day series is empty (no historical or forecast air to
-    # build it from).
+    # Per-day Mohseni projection gives the daily mean; add a diurnal sinusoid
+    # so 2pm and 7pm on the same hot day score differently. Without this, the
+    # whole hot day reads as one flat water temp — which is what produced the
+    # "model says good midday, fishing was dead until 6pm" miss.
     water_temp_f: Optional[float] = None
     if water_temp_f_by_date and valid_date in water_temp_f_by_date:
-        water_temp_f = water_temp_f_by_date[valid_date]
+        water_temp_f = _diurnal_water_temp_f(
+            water_temp_f_by_date[valid_date], valid_hour, signals.spring_influenced
+        )
     elif signals.water_temp_c is not None:
         water_temp_f = signals.water_temp_c * 9 / 5 + 32
 
+    terrestrial_air = _terrestrial_air_factor(air_temp_f)
+
     species_by_id = {str(sp["species_id"]): sp for sp in species_list}
     dd_by_base = signals.dd_by_base_c or {}
-    best_dry = 0.0
     active_species_payload: List[Dict[str, object]] = []
     for sp in species_list:
         sp_id = str(sp["species_id"])
+        is_terrestrial = sp_id in TERRESTRIAL_SPECIES
         # Seasonal (anomaly-shifted) — when does the Driftless calendar say to expect it?
         season = seasonal_activity(sp_id, valid_date, signals.hatch_shift_days)
         if season <= 0.05:
@@ -596,13 +675,15 @@ def _score_hour(
             cloud_cover if cloud_cover is not None else 0.5,
             wind_mph if wind_mph is not None else 10.0,
         )
-        window = hour_of_day_score(
-            valid_hour,
-            int(sp.get("emergence_hr_start") or 0),
-            int(sp.get("emergence_hr_end") or 23),
-        )
+        # Hot days push hatches into evening — slide the species window later
+        # based on the *hour's* air temp from the NWS hourly forecast.
+        sp_start = int(sp.get("emergence_hr_start") or 0)
+        sp_end = int(sp.get("emergence_hr_end") or 23)
+        shifted_start, shifted_end = shift_window_for_air_temp(sp_start, sp_end, air_temp_f)
+        window = hour_of_day_score(valid_hour, shifted_start, shifted_end)
         temp_gate = 0.0 if (water_temp_f is not None and water_temp_f < 45) else 1.0
-        score = max(0.0, min(1.0, season * dd_factor * weather * window * temp_gate))
+        air_gate = terrestrial_air if is_terrestrial else 1.0
+        score = max(0.0, min(1.0, season * dd_factor * weather * window * temp_gate * air_gate))
         if score > 0.0:
             active_species_payload.append({
                 "id": sp_id,
@@ -610,9 +691,24 @@ def _score_hour(
                 "scientific_name": sp.get("scientific_name"),
                 "probability": score,
                 "dd_progress": (dd_current / dd_mean) if dd_mean > 0 else None,
+                "is_terrestrial": is_terrestrial,
             })
-        if score > best_dry:
-            best_dry = score
+
+    # Aquatic priority: when a real aquatic hatch is firing, terrestrials are
+    # background noise (fish that are eating BWOs aren't switching to a stray
+    # beetle that drifts by). Halve terrestrial probabilities so they don't
+    # win the fly_recommender's "primary" slot during an active hatch.
+    aquatic_active = any(
+        not s.get("is_terrestrial") and (s.get("probability") or 0) >= 0.30
+        for s in active_species_payload
+    )
+    if aquatic_active:
+        for s in active_species_payload:
+            if s.get("is_terrestrial"):
+                s["probability"] = (s.get("probability") or 0.0) * 0.5
+        active_species_payload = [s for s in active_species_payload if (s.get("probability") or 0) > 0.05]
+
+    best_dry = max((s["probability"] for s in active_species_payload), default=0.0)
 
     percentile, projected_flow_cfs, precip_note = _flow_percentile_for_hour(signals, valid_at, now)
     nymph = compute_nymph_score(
@@ -651,6 +747,12 @@ def _score_hour(
     sun_factor = bright_sun_dry_penalty(sun_alt, cloud_cover)
     best_dry *= sun_factor
 
+    # Dry score didn't previously care about warm water — a hatch coded for
+    # 1pm on 71°F water still scored full credit. Mirror the nymph plateau
+    # slope so the dry score also falls past 68°F (Wilkie 1996 C&R threshold).
+    warm_water_factor = _dry_warm_water_factor(water_temp_f)
+    best_dry *= warm_water_factor
+
     # ── Barometric pressure trend factor on combined score (pre-front bump,
     # post-front slump). Whole bite is affected, not just surface.
     pressure_factor, pressure_note = _pressure_trend_factor(signals.pressure_pa_by_hour, valid_at)
@@ -672,11 +774,15 @@ def _score_hour(
         active_species=active_species_payload,
     )
 
-    # BLOWOUT overrides combined score — telling someone to "go" on a 6"-rain
-    # day is dangerous regardless of the model. Cap combined low; nymph/dry
+    # BLOWOUT / HEAT_STRESS override combined score — telling someone to "go"
+    # on a 6"-rain day is dangerous regardless of the model, and telling them
+    # to fish a 90°F / 72°F-water midday hour is bad for the trout regardless
+    # of how the underlying multipliers shook out. Cap combined low; nymph/dry
     # remain unmodified for transparency / debugging.
     if regime.code == "BLOWOUT":
         combined = min(combined, 0.10)
+    elif regime.code == "HEAT_STRESS":
+        combined = min(combined, 0.15)
 
     parts: List[str] = []
     # Use the per-hour percentile for the explanation so tomorrow's rain shows up.
