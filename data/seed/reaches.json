@@ -226,12 +226,12 @@
     "centroid_lon": -92.0049,
     "length_km": 8.0,
     "mean_gradient": 3.6,
-    "usgs_gauge_id": null,
+    "usgs_gauge_id": "05384500",
     "noaa_lid": "EBWM5",
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Whitewater River at Beaver; Whitewater State Park reach. Proxy: NOAA North Fork Whitewater near Elba, ~5 mi upstream (same drainage)."
+    "notes": "Whitewater River at Beaver; Whitewater State Park reach. Proxy: NOAA North Fork Whitewater near Elba, ~5 mi upstream (same drainage).; flow percentile via proxy gauge: Rush Creek near Rushford (40km, similar regional spring-creek class)"
   },
   {
     "reach_id": "whitewater-north-fork-elba",
@@ -244,12 +244,12 @@
     "centroid_lon": -92.066,
     "length_km": 7.2,
     "mean_gradient": 5.5,
-    "usgs_gauge_id": null,
+    "usgs_gauge_id": "05383950",
     "noaa_lid": "EBWM5",
-    "gauge_is_proxy": 0,
+    "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Wild brown stronghold; heavily spring-influenced. NOAA gauge is on this reach (USGS version was decommissioned in 1993)."
+    "notes": "Wild brown stronghold; heavily spring-influenced. NOAA gauge is on this reach (USGS version was decommissioned in 1993).; flow percentile via proxy gauge: Root R at Pilot Mound (34km, similar regional spring-creek class)"
   },
   {
     "reach_id": "whitewater-south-fork-altura",
@@ -262,12 +262,12 @@
     "centroid_lon": -91.9804,
     "length_km": 6.8,
     "mean_gradient": 5.2,
-    "usgs_gauge_id": null,
+    "usgs_gauge_id": "05384500",
     "noaa_lid": "WWPM5",
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Popular sight-fishing water near Altura. Proxy: NOAA Middle Fork Whitewater at Whitewater State Park Group Camp, ~4 mi S (sibling fork of same Whitewater drainage)."
+    "notes": "Popular sight-fishing water near Altura. Proxy: NOAA Middle Fork Whitewater at Whitewater State Park Group Camp, ~4 mi S (sibling fork of same Whitewater drainage).; flow percentile via proxy gauge: Rush Creek near Rushford (31km, similar regional spring-creek class)"
   },
   {
     "reach_id": "trout-run-creek-chatfield",
@@ -280,12 +280,12 @@
     "centroid_lon": -92.0605,
     "length_km": 7.0,
     "mean_gradient": 6.0,
-    "usgs_gauge_id": null,
+    "usgs_gauge_id": "05383950",
     "noaa_lid": "FLMM5",
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Spring creek with DNR easements; wild browns. Proxy: NOAA Middle Branch Root at Fillmore, ~10 mi SW (same Middle Branch Root drainage)."
+    "notes": "Spring creek with DNR easements; wild browns. Proxy: NOAA Middle Branch Root at Fillmore, ~10 mi SW (same Middle Branch Root drainage).; flow percentile via proxy gauge: Root R at Pilot Mound (12km, same Root River watershed)"
   },
   {
     "reach_id": "pine-creek-caledonia",
@@ -334,12 +334,12 @@
     "centroid_lon": -91.43,
     "length_km": 6.5,
     "mean_gradient": 4.2,
-    "usgs_gauge_id": null,
+    "usgs_gauge_id": "05385500",
     "noaa_lid": "DWCI4",
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "SE MN spring creek. Proxy: NOAA Waterloo Creek near Dorchester, ~8 mi S (small-stream proxy, similar class)."
+    "notes": "SE MN spring creek. Proxy: NOAA Waterloo Creek near Dorchester, ~8 mi S (small-stream proxy, similar class).; flow percentile via proxy gauge: South Fork Root near Houston (23km, spring-influenced regional proxy)"
   },
   {
     "reach_id": "garvin-brook-stockton",
@@ -352,12 +352,12 @@
     "centroid_lon": -91.75,
     "length_km": 6.2,
     "mean_gradient": 5.8,
-    "usgs_gauge_id": null,
+    "usgs_gauge_id": "05384500",
     "noaa_lid": "EBWM5",
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Tight spring creek south of Winona. Flow proxy: NOAA North Fork Whitewater near Elba (EBWM5) — same Winona County bluff country, same spring-fed hydrology. Switched from the formerly-used Trempealeau at Dodge (DDGW3) because Trempealeau is a freestone WI mainstem with very different recession behavior."
+    "notes": "Tight spring creek south of Winona. Flow proxy: NOAA North Fork Whitewater near Elba (EBWM5) — same Winona County bluff country, same spring-fed hydrology. Switched from the formerly-used Trempealeau at Dodge (DDGW3) because Trempealeau is a freestone WI mainstem with very different recession behavior.; flow percentile via proxy gauge: Rush Creek near Rushford (24km, similar small Mississippi-tributary spring creek)"
   },
   {
     "reach_id": "hay-creek-red-wing",
@@ -370,11 +370,11 @@
     "centroid_lon": -92.56,
     "length_km": 8.0,
     "mean_gradient": 4.5,
-    "usgs_gauge_id": null,
+    "usgs_gauge_id": "05342000",
     "noaa_lid": "FRCM5",
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Heavily-fished MN spring creek just south of Red Wing. Proxy: NOAA Wells Creek near Frontenac, ~11 mi NE (same Red Wing bluff-country drainage)."
+    "notes": "Heavily-fished MN spring creek just south of Red Wing. Proxy: NOAA Wells Creek near Frontenac, ~11 mi NE (same Red Wing bluff-country drainage).; flow percentile via proxy gauge: Kinnickinnic near River Falls (42km, nearest USGS spring-creek-class gauge)"
   }
 ]
