@@ -28,12 +28,17 @@ DRIFTLESS_PEAKS: Dict[str, Dict[str, object]] = {
     "trico":           {"peak": (8,  5), "sd_days": 22},
     "hex":             {"peak": (6, 30), "sd_days": 10},
     "bwo-fall":        {"peak": (10, 1), "sd_days": 28},
-    # Terrestrials (long season; activity = season window only, no DD gate)
-    "hopper":          {"peak": (8,  5), "sd_days": 35},
-    "ant":             {"peak": (7, 20), "sd_days": 45},
-    "beetle":          {"peak": (7,  1), "sd_days": 40},
-    "cricket":         {"peak": (8, 15), "sd_days": 35},
+    # Terrestrials. Previous sd_days of 35–45 let them rank above active
+    # aquatic hatches in May (validated against a real trip: model said
+    # beetles, river had BWOs/sulphurs). Tightened windows + air-temp gate
+    # in forecast_builder._score_hour are the joint fix.
+    "hopper":          {"peak": (8, 15), "sd_days": 22},
+    "ant":             {"peak": (7, 25), "sd_days": 22},
+    "beetle":          {"peak": (7, 15), "sd_days": 18},
+    "cricket":         {"peak": (8, 20), "sd_days": 20},
 }
+
+TERRESTRIAL_SPECIES = frozenset({"hopper", "ant", "beetle", "cricket"})
 
 
 def _doy(d: date) -> int:

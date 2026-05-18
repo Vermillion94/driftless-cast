@@ -4,11 +4,46 @@ from src.models.hatch_predictor import species_activity_probability, weather_mat
 
 
 def hour_of_day_score(hour: int, start: int, end: int) -> float:
+    """Trapezoid: full credit inside [start, end], ramp 2h either side, 0.3 floor.
+
+    Replaces the previous hard cliff. Real emergence isn't an on/off switch — a
+    sulphur hatch coded 13:00–17:00 still produces eats at 18:00 on a normal
+    day (and on a hot day moves there entirely; that shift is handled in the
+    caller via shift_window_for_air_temp). The 2h ramp + 0.3 floor lets the
+    score reflect "still fishable, just past peak" without exploding.
+    """
     if start is None or end is None:
         return 0.5
     if start <= hour <= end:
         return 1.0
-    return 0.3
+    if hour < start:
+        gap = start - hour
+    else:
+        gap = hour - end
+    if gap >= 2:
+        return 0.3
+    return 1.0 - 0.7 * (gap / 2.0)
+
+
+def shift_window_for_air_temp(start: int, end: int, air_temp_f: float | None) -> tuple[int, int]:
+    """Hot days push hatches into evening — slide the window later.
+
+    Driftless guide consensus: above ~80°F air, bugs delay emergence; above
+    ~88°F it's often a 2–3h shift entirely into the cool of evening. Pinning
+    a sulphur to 1pm on a 95°F day is the bug behind the user's "0 action
+    until 6pm" report.
+    """
+    if air_temp_f is None or air_temp_f < 80:
+        return start, end
+    if air_temp_f >= 92:
+        shift = 4
+    elif air_temp_f >= 88:
+        shift = 3
+    elif air_temp_f >= 84:
+        shift = 2
+    else:
+        shift = 1
+    return min(start + shift, 23), min(end + shift, 23)
 
 
 def compute_species_dry_score(

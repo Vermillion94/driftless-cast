@@ -1,6 +1,8 @@
 import logging
 import os
+import random
 import threading
+import time
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -52,10 +54,31 @@ def _build_forecast_background() -> None:
         LOG.exception("forecast build failed")
 
 
+# Forecast refresh cadence. NWS hourly forecast updates ~hourly; QPF and
+# Open-Meteo pressure similarly. 60 min is the natural sync interval. Jitter
+# stops multiple instances from stampeding USGS / NWS at exactly :00.
+REBUILD_INTERVAL_SECONDS = int(os.getenv("DC_REBUILD_INTERVAL_SECONDS", "3600"))
+REBUILD_JITTER_SECONDS = 120
+
+
+def _rebuild_loop() -> None:
+    """Periodic forecast rebuild. Without this, build_all only runs on app
+    startup — on Fly's `auto_stop_machines = stop` setup the forecast happens
+    to refresh on cold-starts, but during a continuously-active day it goes
+    stale for hours behind the upstream NWS data. The `/refresh` endpoint
+    used to be the only way to force this; now it's automatic.
+    """
+    while True:
+        sleep = REBUILD_INTERVAL_SECONDS + random.uniform(0, REBUILD_JITTER_SECONDS)
+        time.sleep(sleep)
+        _build_forecast_background()
+
+
 @app.on_event("startup")
 def _kick_initial_forecast() -> None:
     # Fire and forget — don't block startup on ~21 reaches × NWS latency.
     threading.Thread(target=_build_forecast_background, daemon=True).start()
+    threading.Thread(target=_rebuild_loop, daemon=True).start()
 
 
 def main() -> None:

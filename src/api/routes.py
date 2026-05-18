@@ -142,6 +142,22 @@ def get_reach_forecast(reach_id: str, hours: int = Query(168, ge=1, le=168)) -> 
     except (ValueError, TypeError):
         dnr_summary = None
 
+    # Staleness — `computed_at` is when the forecast was last built. The
+    # rebuild loop runs hourly; anything past 90min is genuinely stale (NWS
+    # has likely updated its hourly forecast in the meantime).
+    stale_minutes: Optional[int] = None
+    is_stale = False
+    if computed_at:
+        try:
+            built = datetime.fromisoformat(computed_at.replace("Z", "+00:00"))
+            if built.tzinfo is None:
+                built = built.replace(tzinfo=timezone.utc)
+            delta = datetime.now(timezone.utc) - built
+            stale_minutes = int(delta.total_seconds() // 60)
+            is_stale = stale_minutes > 90
+        except ValueError:
+            pass
+
     return {
         "reach_id": reach_id,
         "stream_name": reach.get("stream_name"),
@@ -151,6 +167,8 @@ def get_reach_forecast(reach_id: str, hours: int = Query(168, ge=1, le=168)) -> 
         "spring_influenced": bool(reach.get("spring_influenced")),
         "dnr_summary": dnr_summary,
         "computed_at": computed_at,
+        "stale_minutes": stale_minutes,
+        "is_stale": is_stale,
         "hours": hours_payload,
     }
 
