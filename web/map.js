@@ -377,6 +377,18 @@
     };
   }
 
+  // Salmonids feed predominantly at dawn and dusk through the day in
+  // spring/summer/autumn, with "little food from 10pm to 5am" (Hoar 1942,
+  // J. Fish. Res. Bd. Can.; Helfman 1979 for the broader light-coupling
+  // basis). Showing a 4am peak — technically valid because pre-dawn water
+  // is at its diurnal trough — is not actionable for a human angler.
+  // Constrain the displayed daily peak to local 5–22; the underlying hourly
+  // scores in `hours` are unchanged.
+  function isFishableHour(iso) {
+    const h = new Date(iso).getHours();
+    return h >= 5 && h <= 22;
+  }
+
   function groupByDay(hours) {
     const days = {};
     hours.forEach((h) => {
@@ -384,7 +396,13 @@
       (days[key] = days[key] || []).push(h);
     });
     return Object.entries(days).map(([label, hrs]) => {
-      const scores = hrs.map((h) => Math.max(h.nymph_score || 0, h.dry_score || 0));
+      // Restrict the peak picker to angler-fishable hours so the headline
+      // recommendation lands on a time a human can use. Fall back to all
+      // hours only if the day has fewer than 3 fishable hours (shouldn't
+      // happen — every day has 18 fishable hours in our window).
+      const fishable = hrs.filter((h) => isFishableHour(h.valid_at));
+      const pickFrom = fishable.length >= 3 ? fishable : hrs;
+      const scores = pickFrom.map((h) => Math.max(h.nymph_score || 0, h.dry_score || 0));
       // Day "peak" = best 3-hour window mean, not single-hour spike. Single-hour
       // spikes happen when chunky NWS cloud-cover input crosses our cloud-pref
       // saturation thresholds — they're real but not actionable for fishing.
@@ -399,23 +417,27 @@
         peakIdx = scores.indexOf(peak);
       }
       const weather = summarizeWeather(hrs);
-      return { label, hours: hrs, peak, peakHour: hrs[peakIdx] || hrs[0], weather };
+      return { label, hours: hrs, peak, peakHour: pickFrom[peakIdx] || pickFrom[0], weather };
     });
   }
 
   function findBestWindow(hours) {
     // Sliding 3-hour window. Score per hour = max(nymph, dry) (same convention
     // the day-strip uses for "peak"); window score = mean of those per-hour scores.
+    // Restricted to angler-fishable hours for the same reason as groupByDay —
+    // a "best window" centered on 3am isn't a useful recommendation.
     if (hours.length < 3) return null;
-    const combined = hours.map(h => Math.max(h.nymph_score || 0, h.dry_score || 0));
+    const fishable = hours.filter((h) => isFishableHour(h.valid_at));
+    const pickFrom = fishable.length >= 3 ? fishable : hours;
+    const combined = pickFrom.map(h => Math.max(h.nymph_score || 0, h.dry_score || 0));
     let bestMean = 0, bestStart = 0;
     for (let i = 0; i <= combined.length - 3; i++) {
       const m = (combined[i] + combined[i+1] + combined[i+2]) / 3;
       if (m > bestMean) { bestMean = m; bestStart = i; }
     }
     return {
-      start: hours[bestStart].valid_at,
-      end: hours[bestStart + 2].valid_at,
+      start: pickFrom[bestStart].valid_at,
+      end: pickFrom[bestStart + 2].valid_at,
       score: bestMean,
     };
   }

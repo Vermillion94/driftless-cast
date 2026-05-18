@@ -74,7 +74,13 @@ def compute(lat: float, lon: float, today: Optional[date] = None) -> Optional[An
 
 def shift_days(anomaly_f: float, spring_influenced: bool) -> float:
     sensitivity = SHIFT_DAYS_PER_F_SPRING if spring_influenced else SHIFT_DAYS_PER_F_FREESTONE
+    # Sign: warmer anomaly → earlier emergence (Harper & Peckarsky 2006 explicitly
+    # observed "mayflies emerged sooner in a warmed-water treatment"). Callers
+    # use this as `peak_doy + shift_days`, so a warm anomaly must produce a
+    # negative shift to pull peak_doy earlier in the year. This sign was
+    # inverted prior to 2026-05-18 — the explanation copy ("hatches early"
+    # for warm anomaly) was right but the math moved the peak the wrong way.
     # Cap at ±14 days — literature shifts beyond two weeks are unusual and
     # probably mean our baseline is off, not that hatches are actually that far shifted.
-    raw = anomaly_f * sensitivity
+    raw = -anomaly_f * sensitivity
     return max(-14.0, min(14.0, raw))
