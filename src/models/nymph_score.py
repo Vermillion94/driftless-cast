@@ -66,12 +66,37 @@ def flow_percentile_score(percentile: float) -> float:
 
 
 def flow_trend_score(recent_values: Iterable[float]) -> float:
+    """Soft graded curve over fractional flow change across the window.
+
+    Heuristic — guide-derived, weak peer-reviewed basis. The angler folklore
+    "fish bite on falling water, scatter on rising water" is widely shared but
+    controlled studies don't strongly back it for *feeding rate*:
+      - Korman et al. (2026, Pol. J. Ecol.): downramping had no detectable
+        short-term effect on brown-trout-fry drift feeding under adequate prey.
+      - Greenberg 1992 (Reg. Rivers): reduced discharge displaces fish to
+        less-shallow habitat with more competition, not direct feeding loss.
+      - Higgins-Auvil 2024 (STOTEN): hydropeaking induces lateral relocation
+        but fish resume feeding from the new position.
+    The direction (rising worse than falling) is consistent with habitat
+    displacement; the *magnitude* should be modest. We keep the influence to
+    the [0.70, 1.0] band rather than the previous binary [0.60, 1.0] cliff,
+    and label this clearly as a heuristic in code and REFERENCES.md.
+    """
     recent = list(recent_values)
     if len(recent) < 2:
         return 0.75
-    if recent[-1] < recent[0]:
+    delta = recent[-1] - recent[0]
+    ref = max(abs(recent[0]), 1.0)
+    pct_change = delta / ref
+    if pct_change <= -0.15:
         return 1.0
-    return 0.6
+    if pct_change <= 0.0:
+        # Linear ramp: 0% change → 0.85, -15% → 1.0.
+        return 0.85 + (-pct_change / 0.15) * 0.15
+    if pct_change <= 0.30:
+        # Linear ramp: 0% → 0.85, +30% → 0.70.
+        return 0.85 - (pct_change / 0.30) * 0.15
+    return 0.70
 
 
 def drift_window_bonus(valid_at: str) -> float:

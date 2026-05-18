@@ -158,6 +158,32 @@ University of Washington.
 - Reference textbook chapter on stream-temperature regimes and salmonid
   habitat. Cited as supporting context for the temperature-zone Gaussian.
 
+**`caissie_2006`**
+Caissie, D. (2006). The thermal regime of rivers: a review. *Freshwater
+Biology*, 51(8), 1389–1406.
+DOI: 10.1111/j.1365-2427.2006.01597.x.
+- Review of river thermal processes across diel, daily, and seasonal scales.
+  Reports typical diurnal water-temperature ranges of 1–10°C for temperate
+  streams (low end for groundwater-influenced reaches, high end for
+  unshaded freestones); peaks at 14:00–18:00 local with a 3–4 hour phase
+  lag from solar noon.
+- Direct reference for the diurnal-swing sinusoid in
+  `forecast_builder._diurnal_water_temp_f`. Our ±3°F freestone / ±1°F
+  spring-fed half-amplitudes (peak-to-trough 2×) sit at the conservative
+  low end of Caissie's reported ranges; 17:00 peak phase fits the upper
+  end of the empirical window for unshaded Driftless reaches.
+
+**`sinokrot_stefan_1993`**
+Sinokrot, B. A., & Stefan, H. G. (1993). Stream temperature dynamics:
+Measurements and modeling. *Water Resources Research*, 29(7), 2299–2312.
+DOI: 10.1029/93WR00540.
+- Hourly energy-balance model for stream temperature, formulated as an
+  unsteady advection–dispersion equation with explicit terms for air
+  temperature, solar radiation, humidity, cloud cover, wind, and bed
+  conduction. Documents the sinusoidal diurnal pattern that the
+  Mohseni 1998 7-day rolling mean intentionally averages over.
+- Secondary reference for the diurnal-swing sinusoid in `forecast_builder`.
+
 ---
 
 ## Aquatic-insect emergence and degree-day phenology
@@ -266,6 +292,21 @@ flavescens. *Journal of the Fisheries Research Board of Canada*, 36(2),
   Cited for the broader biological basis of dawn / dusk feeding peaks;
   no Driftless-trout-specific paper exists at this resolution.
 
+**`hoar_1942`**
+Hoar, W. S. (1942). Diurnal variations in feeding activity of young
+salmon and trout. *Journal of the Fisheries Research Board of Canada*,
+6a(1), 90–101. DOI: 10.1139/f42-011.
+- Salmonid-specific evidence (juvenile Atlantic salmon and brown/brook
+  trout) that feeding peaks fall at dawn and dusk in spring/summer/autumn,
+  with "little food from about 10 p.m. to about 5 a.m." Replicated by
+  multiple later studies on Atlantic salmon and rainbow trout
+  (crepuscular feeding pattern).
+- Direct basis for the 5–22 local "fishable hours" filter in the
+  frontend daily-peak picker (`web/map.js#isFishableHour`) — restricts
+  the displayed daily peak to hours when salmonids are documented to
+  feed, even when the underlying model scores a pre-dawn hour higher
+  for cool-water + low-sun reasons.
+
 **No formal reference for barometric pressure → trout feeding rate.**
 The peer-reviewed literature on barometric-pressure effects on
 *freshwater* trout feeding is thin and inconsistent — most controlled
@@ -274,6 +315,36 @@ studies focus on saltwater species. The pressure-trend multipliers in
 guide consensus (Charlie Meck, Ed Engle, Joe Humphreys). They are
 labeled as such in code and in `education.json#barometric_pressure`,
 not as literature-derived.
+
+**Flow trend (rising vs. falling discharge) → feeding rate is also a
+labeled heuristic, not a literature-derived multiplier.**
+The angler folklore — "fish feed on falling water, scatter on rising
+water" — is widely shared but the controlled peer-reviewed evidence is
+mixed. We surveyed:
+
+- Korman et al. (2026, *Polish Journal of Ecology*): a flume study of
+  brown trout fry under stable vs. downramping flow regimes found "no
+  detectable effect on total prey intake" under adequate prey
+  availability. The treatment did not disrupt short-term feeding.
+- Greenberg, L. A. (1992). The effect of discharge and predation on
+  habitat use by wild and hatchery brown trout. *Regulated Rivers:
+  Research & Management*, 7(2), 205–212. — reduced discharge displaced
+  fish to less-shallow habitat, increasing intraspecific overlap and
+  competition; the effect on use of habitat is mediated by predation
+  risk, not directly by feeding rate.
+- Higgins-Auvil, M., et al. (2024). Fine-scale movement response of
+  juvenile brown trout to hydropeaking. *Science of the Total
+  Environment*. — fish move laterally to refugia during hydropeaking
+  ramps but resume feeding from the new position; the kinetic effect
+  is on positioning, not on feeding cessation.
+
+Net read: rising-flow effects are mediated through habitat
+displacement (consistent with reduced feeding *opportunity*, not
+feeding *physiology*), and the effect magnitude in short-duration
+natural events is small. The `flow_trend_score` curve in
+`src/models/nymph_score.py` is therefore kept in a narrow band
+([0.70, 1.0]) and labeled as guide-derived heuristic with bounded
+influence on the score, not a peer-reviewed multiplier.
 
 ---
 

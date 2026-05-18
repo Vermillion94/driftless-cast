@@ -336,13 +336,19 @@ TAU_SPRING_H    = 48.0   # half-life ≈ 33 h
 
 
 # Diurnal water-temperature swing — amplitude (°F) of the daily sinusoid that
-# rides on top of the Mohseni daily mean. Freestone streams in the Driftless
-# swing 4–8°F day-to-night on hot weeks; spring-fed limestoners barely budge
-# because groundwater dominates. These are conservative half-amplitudes (so
-# total peak-to-trough is 2× the number below). Phase: peak at 17:00 local
-# (≈3h lag from solar noon), trough at 05:00 — standard surface-water phase
-# lag, see docs/REFERENCES.md#mohseni_1998 for context on diurnal dynamics
-# that the 7-day rolling mean intentionally smooths over.
+# rides on top of the Mohseni daily mean. Mohseni 1998 uses a 7-day rolling
+# mean and intentionally smooths over within-day variation, so we model the
+# diurnal cycle separately. Amplitudes and phase from:
+#   - Caissie 2006 (Freshwater Biology, 51, 1389–1406) — reports typical
+#     diurnal ranges of 1–10°C for temperate streams, with the low end for
+#     groundwater-influenced reaches and the high end for unshaded reaches;
+#     peaks at 14:00–18:00 local with a ~3–4h phase lag from solar noon.
+#   - Sinokrot & Stefan 1993 (WRR, 29(7), 2299–2312) — hourly energy-balance
+#     model confirming the sinusoidal diurnal pattern and phase-lag behavior.
+# Our ±3°F freestone / ±1°F spring-fed half-amplitudes (so total peak-to-trough
+# is 2× these) sit at the conservative low end of Caissie 2006's reported
+# ranges. 17:00 peak phase fits the upper end of the empirical 14:00–18:00
+# window for unshaded Driftless reaches.
 DIURNAL_AMP_FREESTONE_F = 3.0
 DIURNAL_AMP_SPRING_F    = 1.0
 DIURNAL_PEAK_HOUR_LOCAL = 17
@@ -754,10 +760,14 @@ def _score_hour(
     best_dry *= warm_water_factor
 
     # ── Barometric pressure trend factor on combined score (pre-front bump,
-    # post-front slump). Whole bite is affected, not just surface.
+    # post-front slump). Whole bite is affected, not just surface. Clamp the
+    # post-pressure values to [0, 1.0] — the pressure factor of 1.05 was
+    # pushing displayed scores above 100 ("GO 102/100") whenever the
+    # underlying nymph/dry hit the plateau. Score is a probability by
+    # definition; nothing past 1.0 is meaningful.
     pressure_factor, pressure_note = _pressure_trend_factor(signals.pressure_pa_by_hour, valid_at)
-    nymph_adj = nymph * pressure_factor
-    dry_adj = best_dry * pressure_factor
+    nymph_adj = max(0.0, min(1.0, nymph * pressure_factor))
+    dry_adj = max(0.0, min(1.0, best_dry * pressure_factor))
     combined = max(nymph_adj, dry_adj)
 
     # ── Regime classification — what *kind* of fishing day is this? Runs after
@@ -802,16 +812,24 @@ def _score_hour(
             f"past 2 wks {abs(signals.anomaly_f):.1f}°F {direction} than normal "
             f"(hatches ~{abs(signals.hatch_shift_days):.0f}d {'early' if signals.anomaly_f>0 else 'late'})"
         )
+    # Headline the top species only when its probability is high enough to
+    # represent a real hatch event, not just "the species is broadly in season".
+    # The previous unconditional headline produced lines like "tan-caddis in
+    # window (3%)" — technically true, misleading because the 98 score next to
+    # it was nymph-driven, not driven by 3% tan-caddis. 0.15 is a product
+    # threshold (no peer-reviewed value defines what "a hatch" is), but it's
+    # well above the 0.05 active-species floor and matches the threshold the
+    # regime classifier uses for HATCH regime activation (≥0.30).
+    SIGNIFICANT_HATCH_PROB = 0.15
+    top_species = None
     if active_species_payload:
-        top = sorted(active_species_payload, key=lambda s: s["probability"], reverse=True)[0]
-        prog = top.get("dd_progress")
-        if prog is not None:
-            prog_label = f" · DD {prog*100:.0f}% to peak"
-        else:
-            prog_label = ""
-        parts.append(f"{top['id']} in window ({top['probability']*100:.0f}%{prog_label})")
-    elif best_dry == 0.0 and nymph > 0.4:
-        parts.append("no dry-fly hatch in window — nymphing play")
+        top_species = sorted(active_species_payload, key=lambda s: s["probability"], reverse=True)[0]
+    if top_species and (top_species.get("probability") or 0) >= SIGNIFICANT_HATCH_PROB:
+        prog = top_species.get("dd_progress")
+        prog_label = f" · DD {prog*100:.0f}% to peak" if prog is not None else ""
+        parts.append(f"{top_species['id']} in window ({top_species['probability']*100:.0f}%{prog_label})")
+    elif nymph > 0.4:
+        parts.append("no significant hatch in window — nymphing play")
     if water_temp_f is not None and water_temp_f > 68:
         parts.append("WARNING: water stressful for trout — fish dawn/dusk only")
     explanation = "; ".join(parts)
