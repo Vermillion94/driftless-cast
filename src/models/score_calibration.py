@@ -59,11 +59,82 @@ def _regime_code(regime: Any) -> str | None:
     return None
 
 
+def _breakdown_value(score_breakdown: Any, key: str, default: float) -> float:
+    row = _loads_json(score_breakdown)
+    if isinstance(row, Mapping):
+        return _as_float(row.get(key), default)
+    return default
+
+
+def aggression_score(
+    nymph_score: Any,
+    dry_score: Any,
+    active_species: Any = None,
+    regime: Any = None,
+    score_breakdown: Any = None,
+) -> float:
+    """0..1 estimate of how *activated* fish are likely to be.
+
+    This is intentionally not the same as "can you catch fish?" Comfortable
+    water and normal flow create baseline opportunity. Aggression needs change
+    or vulnerability: hatch/surface readiness, falling pressure, favorable
+    drift/flow trend, and low-light/cloud protection.
+
+    Evidence strength varies by factor:
+      - surface signal: entomology + modelled hatch readiness
+      - flow trend: invertebrate drift / post-event stabilization literature
+      - light protection: well-supported fish-behavior mechanism, exact weight heuristic
+      - pressure: angler-consensus heuristic, weak trout-specific literature
+    """
+    nymph = max(0.0, min(1.0, _as_float(nymph_score)))
+    dry = max(0.0, min(1.0, _as_float(dry_score)))
+    surface = max(dry, _top_species_probability(active_species))
+
+    flow_trend = max(0.70, min(1.0, _breakdown_value(score_breakdown, "flow_trend", 0.85)))
+    flow_change = (flow_trend - 0.70) / 0.30
+
+    pressure = _breakdown_value(score_breakdown, "pressure_factor", 1.0)
+    if pressure >= 1.05:
+        pressure_change = 1.0
+    elif pressure >= 1.02:
+        pressure_change = 0.75
+    elif pressure >= 1.0:
+        pressure_change = 0.45
+    elif pressure >= 0.92:
+        pressure_change = 0.15
+    else:
+        pressure_change = 0.05
+
+    sun_factor = max(0.65, min(1.0, _breakdown_value(score_breakdown, "sun_factor", 1.0)))
+    light_protection = (sun_factor - 0.65) / 0.35
+
+    # Surface activity should dominate aggression. Nymphing can be productive
+    # on low aggression days, but "hot" usually needs bugs/risers or a strong
+    # change signal.
+    surface_component = min(1.0, surface / 0.35)
+    score = (
+        0.45 * surface_component
+        + 0.20 * flow_change
+        + 0.20 * pressure_change
+        + 0.15 * light_protection
+    )
+    score *= 0.60 + 0.40 * nymph
+
+    code = _regime_code(regime)
+    if code == "BLOWOUT":
+        score = min(score, 0.10)
+    elif code == "HEAT_STRESS":
+        score = min(score, 0.15)
+
+    return max(0.0, min(1.0, score))
+
+
 def headline_score(
     nymph_score: Any,
     dry_score: Any,
     active_species: Any = None,
     regime: Any = None,
+    score_breakdown: Any = None,
 ) -> float:
     """Calibrated 0..1 score shown to anglers.
 
@@ -80,6 +151,7 @@ def headline_score(
     score = max(nymph_display, dry_display)
 
     surface_signal = max(dry, top_hatch)
+    aggression = aggression_score(nymph, dry, active_species, regime, score_breakdown)
     if surface_signal >= 0.15:
         # Rise activity is the scarce signal users are paying to find. A weak
         # hatch should not make a day "electric", but once surface probability
@@ -87,6 +159,11 @@ def headline_score(
         # separate an otherwise flat nymph plateau. This is a product
         # calibration heuristic; the surface signal itself is the entomology.
         score += 0.12 * min(nymph, surface_signal)
+
+    if aggression >= 0.70:
+        # A short window with change stacked in its favor should stand out
+        # from a flat "comfortable nymphing" plateau.
+        score += 0.06 * (aggression - 0.70) / 0.30
 
     # A nymph-only plateau can be a good day, but it should not look like a
     # boiling-rises day unless the surface model agrees.
@@ -107,6 +184,7 @@ def headline_breakdown(
     dry_score: Any,
     active_species: Any = None,
     regime: Any = None,
+    score_breakdown: Any = None,
 ) -> dict[str, Any]:
     """Human/audit-facing details for the headline score."""
     nymph = max(0.0, min(1.0, _as_float(nymph_score)))
@@ -114,7 +192,8 @@ def headline_breakdown(
     top_hatch = _top_species_probability(active_species)
     nymph_display = _compress_high_end(nymph, 0.84)
     dry_display = _compress_high_end(dry, 0.93)
-    score = headline_score(nymph, dry, active_species, regime)
+    score = headline_score(nymph, dry, active_species, regime, score_breakdown)
+    aggression = aggression_score(nymph, dry, active_species, regime, score_breakdown)
     source = "nymph"
     if dry_display > nymph_display:
         source = "dry"
@@ -133,6 +212,13 @@ def headline_breakdown(
         "dry_display": dry_display,
         "top_hatch_probability": top_hatch,
         "surface_signal": surface_signal,
+        "aggression": aggression,
+        "aggression_factors": {
+            "surface": surface_signal,
+            "flow_change": round((max(0.70, min(1.0, _breakdown_value(score_breakdown, "flow_trend", 0.85))) - 0.70) / 0.30, 3),
+            "pressure_factor": _breakdown_value(score_breakdown, "pressure_factor", 1.0),
+            "light_protection": round((max(0.65, min(1.0, _breakdown_value(score_breakdown, "sun_factor", 1.0))) - 0.65) / 0.35, 3),
+        },
         "alignment_bonus_possible": surface_signal >= 0.15,
         "evidence": [
             "water_temp_zone",

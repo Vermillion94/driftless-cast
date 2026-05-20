@@ -1,7 +1,7 @@
 from src.models.degree_days import daily_degree_day, accumulate_degree_days
 from src.models.nymph_score import compute_nymph_score
 from src.models.dry_score import compute_dry_score
-from src.models.score_calibration import headline_breakdown, headline_score
+from src.models.score_calibration import aggression_score, headline_breakdown, headline_score
 
 
 def test_daily_degree_day():
@@ -55,6 +55,20 @@ def test_headline_score_separates_meaningful_surface_signal():
     assert better < 0.90
 
 
+def test_aggression_score_rewards_change_stacked_window():
+    active = [{"id": "hendrickson", "probability": 0.30}]
+    flat = aggression_score(
+        1.0, 0.05, [], {"code": "NYMPH"},
+        {"flow_trend": 0.85, "pressure_factor": 1.0, "sun_factor": 0.75},
+    )
+    hot = aggression_score(
+        1.0, 0.28, active, {"code": "HATCH"},
+        {"flow_trend": 1.0, "pressure_factor": 1.05, "sun_factor": 1.0},
+    )
+    assert hot > flat
+    assert hot >= 0.75
+
+
 def test_headline_score_preserves_hard_regime_caps():
     assert headline_score(1.0, 1.0, [], {"code": "BLOWOUT"}) == 0.10
     assert headline_score(1.0, 1.0, [], {"code": "HEAT_STRESS"}) == 0.15
@@ -65,4 +79,5 @@ def test_headline_breakdown_explains_nymph_cap():
     assert breakdown["source"] == "nymph_capped"
     assert breakdown["score"] == headline_score(1.0, 0.05, [], {"code": "NYMPH"})
     assert breakdown["surface_signal"] == 0.05
+    assert "aggression" in breakdown
     assert "water_temp_zone" in breakdown["evidence"]

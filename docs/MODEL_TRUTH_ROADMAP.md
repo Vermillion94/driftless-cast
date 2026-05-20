@@ -40,10 +40,11 @@ Heuristics are allowed, but they must be labeled and testable.
 
 ## Near-Term Model Work
 
-1. Replace "one score" thinking with separate display dimensions:
+1. Keep splitting "one score" into explicit dimensions:
    headline, nymph, surface, aggression, and confidence.
-2. Add an aggression model that rewards changing conditions, not merely
-   comfortable conditions.
+2. Validate the first aggression model against local reports; it currently
+   rewards changing conditions, not merely comfortable conditions, but its
+   weights are heuristic.
 3. Fit per-gauge recession constants from USGS history using Brutsaert-Nieber
    lower-envelope methods instead of class priors.
 4. Backfill a manually labeled trip/outfitter report dataset for the Driftless:
