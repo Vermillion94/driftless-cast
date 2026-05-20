@@ -47,7 +47,7 @@ def test_dry_score_with_species():
 
 def test_headline_score_compresses_nymph_only_plateau():
     score = headline_score(1.0, 0.05, [], {"code": "NYMPH"})
-    assert score < 0.85
+    assert score < 0.82
 
 
 def test_headline_score_rewards_aligned_hatch_window():
@@ -62,6 +62,19 @@ def test_headline_score_separates_meaningful_surface_signal():
     better = headline_score(1.0, 0.16, active, {"code": "HATCH"})
     assert better > weak
     assert better < 0.90
+
+
+def test_nymph_only_cap_keeps_some_aggression_contrast():
+    soft = headline_score(
+        1.0, 0.05, [], {"code": "NYMPH"},
+        {"flow_trend": 0.80, "pressure_factor": 1.0, "sun_factor": 0.70},
+    )
+    changing = headline_score(
+        1.0, 0.05, [], {"code": "NYMPH"},
+        {"flow_trend": 1.0, "pressure_factor": 1.05, "sun_factor": 1.0},
+    )
+    assert changing > soft
+    assert changing <= 0.82
 
 
 def test_aggression_score_rewards_change_stacked_window():
