@@ -418,6 +418,15 @@ Current production performance (180-day window, 9 own-gauge reaches):
 - MAPE @ 168h: 24.9%
 - Mohseni (Eau Galle sentinel, n=178): RMSE 3.30°F, bias −1.95°F
 
+**`src/scripts/fit_recession.py`** — per-gauge tau fitting CLI. Replays the
+last 730 days of above-median USGS daily-flow events, searches tau values for
+the exponential recession model, and writes
+`data/calibration/recession_fit.json`. A fit reaches production only when it
+has at least 90 samples, improves weighted +24/+72/+168h MAPE by at least 3%
+over the freestone/spring prior, and does not hit the edge of the search grid.
+This keeps shaky or unbounded fits as diagnostics instead of silently changing
+forecasts.
+
 **`tests/test_acceptance.py`** — synthetic acceptance suite. 29 pinned
 assertions about model components. Test names like
 `test_temperature_51_was_the_bug_fix` lock specific historical regressions
@@ -435,10 +444,10 @@ gathering-data placeholder explaining why we can't score the model yet.
 These are the model components that currently use literature priors or
 heuristics and would benefit from per-watershed empirical calibration:
 
-1. **Per-gauge recession time constant.** We use class-level priors
-   (freestone vs. spring-fed). The right next step is a per-gauge fit
-   from USGS daily-values history using the Brutsaert–Nieber method
-   ([brutsaert_nieber_1977](#brutsaert_nieber_1977)).
+1. **Event-level recession separation.** First-pass per-gauge tau fitting is
+   in production for gauges that beat the class prior. The next step is
+   lower-envelope/event separation using continuous hydrographs where data
+   density supports it ([brutsaert_nieber_1977](#brutsaert_nieber_1977)).
 2. **Per-reach Mohseni coefficients.** Currently class-level (two classes).
    With reach-specific paired air/water datasets we could fit per reach.
 3. **Per-species DD thresholds.** Hex is well-calibrated (n=287);

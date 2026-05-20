@@ -1,0 +1,208 @@
+{
+  "generated_at": "2026-05-20T21:11:24+00:00",
+  "method": "grid search over exponential event-flow recession toward USGS day-of-year p50",
+  "days": 730,
+  "lead_weights": {
+    "24": 0.55,
+    "72": 0.35,
+    "168": 0.1
+  },
+  "min_n": 90,
+  "min_improvement_pct": 3.0,
+  "fits": {
+    "kickapoo-ontario": {
+      "gauge_id": "05407468",
+      "spring_influenced": false,
+      "tau_hours": 18.0,
+      "n": 941,
+      "weighted_mape_pct": 17.24,
+      "prior_tau_hours": 30.0,
+      "prior_weighted_mape_pct": 18.0,
+      "improvement_pct": 4.18,
+      "used": true,
+      "reason": "beats_prior"
+    },
+    "kickapoo-la-farge": {
+      "gauge_id": "05408000",
+      "spring_influenced": false,
+      "tau_hours": 106.0,
+      "n": 1822,
+      "weighted_mape_pct": 16.36,
+      "prior_tau_hours": 30.0,
+      "prior_weighted_mape_pct": 20.86,
+      "improvement_pct": 21.57,
+      "used": true,
+      "reason": "beats_prior"
+    },
+    "upper-iowa-dorchester": {
+      "gauge_id": "05388250",
+      "spring_influenced": false,
+      "tau_hours": 158.0,
+      "n": 1497,
+      "weighted_mape_pct": 13.84,
+      "prior_tau_hours": 30.0,
+      "prior_weighted_mape_pct": 25.54,
+      "improvement_pct": 45.82,
+      "used": true,
+      "reason": "beats_prior"
+    },
+    "yellow-ion": {
+      "gauge_id": "05389000",
+      "spring_influenced": true,
+      "tau_hours": 120.0,
+      "n": 1068,
+      "weighted_mape_pct": 13.75,
+      "prior_tau_hours": 48.0,
+      "prior_weighted_mape_pct": 17.66,
+      "improvement_pct": 22.12,
+      "used": true,
+      "reason": "beats_prior"
+    },
+    "root-lanesboro": {
+      "gauge_id": "05383950",
+      "spring_influenced": true,
+      "tau_hours": 82.0,
+      "n": 943,
+      "weighted_mape_pct": 14.18,
+      "prior_tau_hours": 48.0,
+      "prior_weighted_mape_pct": 15.98,
+      "improvement_pct": 11.29,
+      "used": true,
+      "reason": "beats_prior"
+    },
+    "root-houston": {
+      "gauge_id": "05385000",
+      "spring_influenced": false,
+      "tau_hours": 200.0,
+      "n": 1705,
+      "weighted_mape_pct": 10.02,
+      "prior_tau_hours": 30.0,
+      "prior_weighted_mape_pct": 21.67,
+      "improvement_pct": 53.73,
+      "used": true,
+      "reason": "beats_prior"
+    }
+  },
+  "diagnostics": {
+    "kinnickinnic-river-falls": {
+      "gauge_id": "05342000",
+      "spring_influenced": true,
+      "tau_hours": 66.0,
+      "n": 1446,
+      "weighted_mape_pct": 9.18,
+      "prior_tau_hours": 48.0,
+      "prior_weighted_mape_pct": 9.36,
+      "improvement_pct": 1.86,
+      "used": false,
+      "reason": "improvement_1.9_pct_below_gate"
+    },
+    "apple-somerset": {
+      "gauge_id": "05341498",
+      "spring_influenced": false,
+      "tau_hours": 240.0,
+      "n": 840,
+      "weighted_mape_pct": 6.86,
+      "prior_tau_hours": 30.0,
+      "prior_weighted_mape_pct": 10.01,
+      "improvement_pct": 31.47,
+      "used": false,
+      "reason": "best_tau_hit_grid_boundary"
+    },
+    "kickapoo-ontario": {
+      "gauge_id": "05407468",
+      "spring_influenced": false,
+      "tau_hours": 18.0,
+      "n": 941,
+      "weighted_mape_pct": 17.24,
+      "prior_tau_hours": 30.0,
+      "prior_weighted_mape_pct": 18.0,
+      "improvement_pct": 4.18,
+      "used": true,
+      "reason": "beats_prior"
+    },
+    "kickapoo-la-farge": {
+      "gauge_id": "05408000",
+      "spring_influenced": false,
+      "tau_hours": 106.0,
+      "n": 1822,
+      "weighted_mape_pct": 16.36,
+      "prior_tau_hours": 30.0,
+      "prior_weighted_mape_pct": 20.86,
+      "improvement_pct": 21.57,
+      "used": true,
+      "reason": "beats_prior"
+    },
+    "upper-iowa-dorchester": {
+      "gauge_id": "05388250",
+      "spring_influenced": false,
+      "tau_hours": 158.0,
+      "n": 1497,
+      "weighted_mape_pct": 13.84,
+      "prior_tau_hours": 30.0,
+      "prior_weighted_mape_pct": 25.54,
+      "improvement_pct": 45.82,
+      "used": true,
+      "reason": "beats_prior"
+    },
+    "yellow-ion": {
+      "gauge_id": "05389000",
+      "spring_influenced": true,
+      "tau_hours": 120.0,
+      "n": 1068,
+      "weighted_mape_pct": 13.75,
+      "prior_tau_hours": 48.0,
+      "prior_weighted_mape_pct": 17.66,
+      "improvement_pct": 22.12,
+      "used": true,
+      "reason": "beats_prior"
+    },
+    "root-lanesboro": {
+      "gauge_id": "05383950",
+      "spring_influenced": true,
+      "tau_hours": 82.0,
+      "n": 943,
+      "weighted_mape_pct": 14.18,
+      "prior_tau_hours": 48.0,
+      "prior_weighted_mape_pct": 15.98,
+      "improvement_pct": 11.29,
+      "used": true,
+      "reason": "beats_prior"
+    },
+    "root-houston": {
+      "gauge_id": "05385000",
+      "spring_influenced": false,
+      "tau_hours": 200.0,
+      "n": 1705,
+      "weighted_mape_pct": 10.02,
+      "prior_tau_hours": 30.0,
+      "prior_weighted_mape_pct": 21.67,
+      "improvement_pct": 53.73,
+      "used": true,
+      "reason": "beats_prior"
+    },
+    "south-fork-root-houston": {
+      "gauge_id": "05385500",
+      "spring_influenced": true,
+      "tau_hours": 240.0,
+      "n": 1651,
+      "weighted_mape_pct": 6.81,
+      "prior_tau_hours": 48.0,
+      "prior_weighted_mape_pct": 11.78,
+      "improvement_pct": 42.19,
+      "used": false,
+      "reason": "best_tau_hit_grid_boundary"
+    },
+    "rush-creek-rushford": {
+      "gauge_id": "05384500",
+      "spring_influenced": true,
+      "tau_hours": 48.0,
+      "n": 0,
+      "weighted_mape_pct": null,
+      "prior_tau_hours": 48.0,
+      "prior_weighted_mape_pct": null,
+      "improvement_pct": 0.0,
+      "used": false,
+      "reason": "no_samples"
+    }
+  }
+}
