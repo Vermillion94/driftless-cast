@@ -41,6 +41,11 @@ def _compress_high_end(score: float, ceiling: float) -> float:
     return knee + (s - knee) * ((ceiling - knee) / (1.0 - knee))
 
 
+def _nymph_only_ceiling(aggression: float) -> float:
+    """Dynamic top-end cap for hours without meaningful surface signal."""
+    return 0.76 + 0.06 * max(0.0, min(1.0, aggression))
+
+
 def _top_species_probability(active_species: Any) -> float:
     rows = _loads_json(active_species) or []
     if not isinstance(rows, Iterable):
@@ -241,9 +246,10 @@ def headline_score(
         score += 0.06 * (aggression - 0.70) / 0.30
 
     # A nymph-only plateau can be a good day, but it should not look like a
-    # boiling-rises day unless the surface model agrees.
+    # boiling-rises day unless the surface model agrees. The cap is dynamic so
+    # good but soft nymphing does not tie with a change-stacked nymph window.
     if surface_signal < 0.15:
-        score = min(score, 0.82)
+        score = min(score, _nymph_only_ceiling(aggression))
 
     code = _regime_code(regime)
     if code == "BLOWOUT":
@@ -273,7 +279,7 @@ def headline_breakdown(
     if dry_display > nymph_display:
         source = "dry"
     surface_signal = max(dry, top_hatch)
-    if surface_signal < 0.15 and score <= 0.82:
+    if surface_signal < 0.15 and score <= _nymph_only_ceiling(aggression):
         source = "nymph_capped"
     code = _regime_code(regime)
     if code in {"BLOWOUT", "HEAT_STRESS"}:
