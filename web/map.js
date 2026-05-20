@@ -1309,10 +1309,16 @@
       const isBoost = value > 1.0;
       const isDamp  = value < 1.0;
       const cls = isBoost ? "sb-mult-up" : isDamp ? "sb-mult-down" : "sb-mult-neutral";
+      const pct = Math.max(0, Math.min(1, value / 1.05)) * 100;
+      const marker = Math.max(0, Math.min(100, (1.0 / 1.05) * 100));
+      const color = isBoost ? "#1f8a55" : isDamp ? "#d95f45" : "#94a3b8";
       return `
         <div class="sb-row sb-row-mult">
           <span class="sb-label">${label} ${helpTopic ? helpButton(helpTopic) : ""}</span>
-          <span class="sb-bar"></span>
+          <span class="sb-bar sb-mult-bar">
+            <span class="sb-mult-neutral-line" style="left:${marker.toFixed(1)}%"></span>
+            <span class="sb-fill" style="width:${pct.toFixed(0)}%;background:${color}"></span>
+          </span>
           <span class="sb-val ${cls}">×${value.toFixed(2)}</span>
         </div>
       `;
@@ -1344,6 +1350,9 @@
     const source = model.source || "";
     if (source === "nymph_capped") {
       return "Headline is capped because subsurface conditions are strong but hatch/surface probability is weak.";
+    }
+    if (model.alignment_bonus_possible) {
+      return "Headline is lifted because subsurface conditions and a meaningful surface/hatch signal overlap.";
     }
     if (source === "dry") {
       return "Headline is led by surface activity because the hatch model is stronger than the nymph model.";

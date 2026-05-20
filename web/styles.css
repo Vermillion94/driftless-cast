@@ -592,6 +592,16 @@ html, body {
   color: #374151;
 }
 .sb-row-mult .sb-val { color: #4b5563; }
+.sb-mult-bar { overflow: visible; }
+.sb-mult-neutral-line {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: #374151;
+  border-radius: 2px;
+  z-index: 2;
+}
 .sb-mult-up   { color: #1f5d3b !important; }
 .sb-mult-down { color: #87271a !important; }
 .sb-mult-neutral { color: #6b7280 !important; }

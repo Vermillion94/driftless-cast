@@ -79,12 +79,18 @@ def headline_score(
     dry_display = _compress_high_end(dry, 0.93)
     score = max(nymph_display, dry_display)
 
-    if dry >= 0.30 or top_hatch >= 0.30:
-        score += 0.08 * min(nymph, max(dry, top_hatch))
+    surface_signal = max(dry, top_hatch)
+    if surface_signal >= 0.15:
+        # Rise activity is the scarce signal users are paying to find. A weak
+        # hatch should not make a day "electric", but once surface probability
+        # clears the significance threshold used in forecast_builder, let it
+        # separate an otherwise flat nymph plateau. This is a product
+        # calibration heuristic; the surface signal itself is the entomology.
+        score += 0.12 * min(nymph, surface_signal)
 
     # A nymph-only plateau can be a good day, but it should not look like a
     # boiling-rises day unless the surface model agrees.
-    if dry < 0.15 and top_hatch < 0.15:
+    if surface_signal < 0.15:
         score = min(score, 0.82)
 
     code = _regime_code(regime)
@@ -112,7 +118,8 @@ def headline_breakdown(
     source = "nymph"
     if dry_display > nymph_display:
         source = "dry"
-    if dry < 0.15 and top_hatch < 0.15 and score <= 0.82:
+    surface_signal = max(dry, top_hatch)
+    if surface_signal < 0.15 and score <= 0.82:
         source = "nymph_capped"
     code = _regime_code(regime)
     if code in {"BLOWOUT", "HEAT_STRESS"}:
@@ -125,7 +132,8 @@ def headline_breakdown(
         "nymph_display": nymph_display,
         "dry_display": dry_display,
         "top_hatch_probability": top_hatch,
-        "alignment_bonus_possible": dry >= 0.30 or top_hatch >= 0.30,
+        "surface_signal": surface_signal,
+        "alignment_bonus_possible": surface_signal >= 0.15,
         "evidence": [
             "water_temp_zone",
             "flow_percentile",
