@@ -50,7 +50,12 @@ from typing import Dict, List, Optional, Tuple
 from src.db import load_reaches
 from src.ingest.openmeteo import fetch_archive_daily_mean_f
 from src.ingest.usgs import fetch_daily, fetch_daily_stats, fetch_latest_iv
-from src.models.forecast_builder import TAU_FREESTONE_H, TAU_SPRING_H
+from src.models.recession import (
+    TAU_FREESTONE_H,
+    TAU_SPRING_H,
+    calibrated_tau_hours,
+    project_flow,
+)
 from src.models.temp_estimator import params_for_reach, mohseni, rolling_mean
 
 LOG = logging.getLogger(__name__)
@@ -124,12 +129,14 @@ def _flow_recession_predict(
     q_med: float,
     spring_influenced: bool,
     hours_ahead: float,
+    reach_id: str = "",
+    gauge_id: Optional[str] = None,
 ) -> float:
     """Mirror the prediction logic in forecast_builder._flow_percentile_for_hour.
     Kept independent here so the backtest fails loudly if the production formula
     drifts away from the validated one without an intentional update."""
-    tau = TAU_SPRING_H if spring_influenced else TAU_FREESTONE_H
-    return q_med + (q_now - q_med) * math.exp(-hours_ahead / tau)
+    tau, _source, _fit = calibrated_tau_hours(reach_id, gauge_id, spring_influenced)
+    return project_flow(q_now, q_med, tau, hours_ahead)
 
 
 def _percentile_from_stats(q: float, stats: Optional[Dict[str, float]]) -> Optional[float]:
@@ -210,7 +217,7 @@ def backtest_flow(reach: Dict, days: int) -> Tuple[List[FlowEvalRow], FlowSummar
             if target_date not in by_date:
                 continue
             q_actual = by_date[target_date]
-            q_pred = _flow_recession_predict(q_now, q_med, spring, lead_h)
+            q_pred = _flow_recession_predict(q_now, q_med, spring, lead_h, reach["reach_id"], gauge_id)
             stats_target = stats_for(target_date)
             pct_actual = _percentile_from_stats(q_actual, stats_target)
             pct_predicted = _percentile_from_stats(q_pred, stats_target)

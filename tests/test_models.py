@@ -7,6 +7,10 @@ from src.models.score_calibration import (
     headline_breakdown,
     headline_score,
 )
+from src.models.recession import (
+    class_prior_tau_hours,
+    project_flow,
+)
 
 
 def test_daily_degree_day():
@@ -92,6 +96,16 @@ def test_confidence_score_prefers_measured_local_short_lead():
     assert high["score"] > low["score"]
     assert high["score"] > 0.90
     assert low["score"] < 0.75
+
+
+def test_recession_projects_toward_median():
+    q = project_flow(100.0, 50.0, 24.0, 24.0)
+    assert 50.0 < q < 100.0
+    assert round(project_flow(50.0, 100.0, 24.0, 24.0), 2) == round(100.0 - (q - 50.0), 2)
+
+
+def test_recession_priors_keep_spring_reaches_slower():
+    assert class_prior_tau_hours(True) > class_prior_tau_hours(False)
 
 
 def test_headline_score_preserves_hard_regime_caps():

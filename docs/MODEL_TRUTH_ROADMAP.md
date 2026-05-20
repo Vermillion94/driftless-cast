@@ -45,8 +45,10 @@ Heuristics are allowed, but they must be labeled and testable.
 2. Validate the first aggression and confidence models against local reports; aggression currently
    rewards changing conditions, not merely comfortable conditions, but its
    weights are heuristic, while confidence is an input-quality score.
-3. Fit per-gauge recession constants from USGS history using Brutsaert-Nieber
-   lower-envelope methods instead of class priors.
+3. Improve recession calibration beyond the first production fit: current
+   per-gauge tau values are empirical daily-flow fits, gated against class
+   priors. Next step is event-level hydrograph separation / lower-envelope
+   analysis where continuous data supports it.
 4. Backfill a manually labeled trip/outfitter report dataset for the Driftless:
    date, stream/area, rise intensity, aggression, method, bugs, rough success.
 5. Run calibration checks by season and regime so "May sulphur window" errors

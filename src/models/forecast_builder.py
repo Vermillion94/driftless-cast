@@ -20,7 +20,7 @@ import logging
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import requests
 
@@ -48,6 +48,10 @@ from src.models.dry_score import hour_of_day_score, shift_window_for_air_temp
 from src.models.hatch_predictor import species_activity_probability, weather_match_score
 from src.models.fly_recommender import recommend_flies
 from src.models.nymph_score import compute_nymph_score
+from src.models.recession import (
+    calibrated_tau_hours,
+    project_flow,
+)
 from src.models.seasonal import TERRESTRIAL_SPECIES, seasonal_activity
 from src.models.temp_estimator import estimate_water_series_f
 
@@ -75,6 +79,7 @@ class ReachSignals:
     lat: float
     lon: float
     spring_influenced: bool
+    usgs_gauge_id: Optional[str]
     gauge_source: Optional[str]       # "usgs" | "noaa" | None
     gauge_is_proxy: bool
     current_flow_cfs: Optional[float]
@@ -236,6 +241,7 @@ def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[fl
         lat=lat,
         lon=lon,
         spring_influenced=spring_influenced,
+        usgs_gauge_id=str(usgs_id) if usgs_id else None,
         gauge_source=source,
         gauge_is_proxy=bool(reach.get("gauge_is_proxy")),
         current_flow_cfs=flow_cfs,
@@ -327,12 +333,10 @@ def _pressure_trend_factor(pressure_map: Optional[Dict[str, float]], valid_at: d
 #     groundwater contribution dampens the storm response — high baseflow
 #     fraction documented in docs/REFERENCES.md#gebert_2011 and
 #     #juckem_2008.
-# τ values below are conservative regional priors. The Pilgrim & Cordery
-# (1992) range of 11–53 days applies to *baseflow* (slow tail), not the
-# event-flow recession we model here, which is hours-to-a-few-days for
-# small Driftless watersheds.
-TAU_FREESTONE_H = 30.0   # half-life ≈ 21 h
-TAU_SPRING_H    = 48.0   # half-life ≈ 33 h
+# Default priors are τ=30h freestone and τ=48h spring-fed. They live in
+# src.models.recession so production, fitting, and backtests cannot quietly
+# drift apart. The Pilgrim & Cordery (1992) range of 11–53 days applies to
+# *baseflow* (slow tail), not the event-flow recession we model here.
 
 
 # Diurnal water-temperature swing — amplitude (°F) of the daily sinusoid that
@@ -363,7 +367,7 @@ def _flow_percentile_for_hour(
     signals: ReachSignals,
     valid_at: datetime,
     now: datetime,
-) -> Tuple[float, Optional[float], Optional[str]]:
+) -> Tuple[float, Optional[float], Optional[str], Optional[float], str]:
     """Per-hour flow percentile with explanatory note.
 
     Priority:
@@ -384,7 +388,7 @@ def _flow_percentile_for_hour(
     # 1) NOAA NWPS streamflow forecast — preferred when gauge has one.
     fc_flow = (signals.forecast_flow_by_hour or {}).get(hour_iso)
     if fc_flow is not None and signals.flow_stats:
-        return discharge_percentile(fc_flow, signals.flow_stats), float(fc_flow), None
+        return discharge_percentile(fc_flow, signals.flow_stats), float(fc_flow), None, None, "noaa_forecast"
 
     # 2a) Exponential recession of *flow* (not percentile — the percentile
     # mapping is non-linear, so decaying in flow space and re-percentile-izing
@@ -394,33 +398,40 @@ def _flow_percentile_for_hour(
     Q_med = (signals.flow_stats or {}).get("p50") if signals.flow_stats else None
     base_pct: float = baseline_pct
     Q_proj: Optional[float] = Q_now  # default to current obs when we can't recess
+    tau_used: Optional[float] = None
+    tau_source = "none"
     if Q_now is not None and Q_med is not None and signals.flow_stats:
         hours_ahead = max(0.0, (valid_at - now).total_seconds() / 3600.0)
-        tau = TAU_SPRING_H if signals.spring_influenced else TAU_FREESTONE_H
+        tau, tau_source, _fit_meta = calibrated_tau_hours(
+            signals.reach_id,
+            signals.usgs_gauge_id,
+            signals.spring_influenced,
+        )
+        tau_used = tau
         # Decay deviation from median toward zero. Works in both directions:
         # current flow above median decays down toward median; current flow
         # below median rises up toward median (drought relief is symmetric in
         # this simple form — that's a known limitation, see honest_limits).
-        Q_proj = Q_med + (Q_now - Q_med) * (2.718281828 ** (-hours_ahead / tau))
+        Q_proj = project_flow(Q_now, Q_med, tau, hours_ahead)
         base_pct = discharge_percentile(Q_proj, signals.flow_stats)
 
     # 2b) Precip bump on top of the recessed baseline. Driftless streams flash
     # fast: 12.7 mm (0.5") in the preceding 24h already moves the needle.
     if not qpf_map:
-        return base_pct, Q_proj, None
+        return base_pct, Q_proj, None, tau_used, tau_source
     preceding_mm = 0.0
     for h in range(1, 25):
         prior = (valid_at - timedelta(hours=h)).astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0).isoformat()
         preceding_mm += qpf_map.get(prior, 0.0)
     if preceding_mm < 3.0:
-        return base_pct, Q_proj, None
+        return base_pct, Q_proj, None, tau_used, tau_source
     bump = min(0.45, (preceding_mm - 3.0) / 70.0)
     adjusted = min(0.98, base_pct + bump)
     note = None
     if preceding_mm >= 12.7:  # ≥ 0.5"
         inches = preceding_mm / 25.4
         note = f"rain in preceding 24h (~{inches:.1f}\")"
-    return adjusted, Q_proj, note
+    return adjusted, Q_proj, note, tau_used, tau_source
 
 
 def _diurnal_water_temp_f(daily_mean_f: float, local_hour: int, spring_influenced: bool) -> float:
@@ -716,7 +727,7 @@ def _score_hour(
 
     best_dry = max((s["probability"] for s in active_species_payload), default=0.0)
 
-    percentile, projected_flow_cfs, precip_note = _flow_percentile_for_hour(signals, valid_at, now)
+    percentile, projected_flow_cfs, precip_note, tau_hours, tau_source = _flow_percentile_for_hour(signals, valid_at, now)
     nymph = compute_nymph_score(
         temp_f=water_temp_f,
         flow_percentile=percentile,
@@ -875,6 +886,8 @@ def _score_hour(
             "sun_factor":      round(sun_factor, 3),
             "top_species":     breakdown_top_species,
             "percentile_used": round(percentile, 3) if percentile is not None else None,
+            "flow_tau_hours":  round(tau_hours, 1) if tau_hours is not None else None,
+            "flow_tau_source": tau_source,
         }),
     }
 

@@ -1344,6 +1344,7 @@
       ${bar("Flow trend", sb.flow_trend, "flow_trend")}
       ${multiplier("Pressure trend", sb.pressure_factor, "barometric_pressure")}
       ${multiplier("Sun angle (dry only)", sb.sun_factor, "sun_angle")}
+      ${renderFlowTauNote(sb)}
       ${model && model.aggression_factors ? renderAggressionFactors(model.aggression_factors) : ""}
       ${confidence ? renderConfidenceNote(confidence) : ""}
       ${topLine}
@@ -1375,6 +1376,12 @@
     const light = factors.light_protection != null ? Math.round(factors.light_protection * 100) : null;
     const pressure = factors.pressure_factor != null ? `×${Number(factors.pressure_factor).toFixed(2)}` : null;
     return `<div class="sb-top-species">Aggression inputs: surface ${Math.round((factors.surface || 0) * 100)}% · flow change ${flow}% · pressure ${pressure} · light protection ${light}%</div>`;
+  }
+
+  function renderFlowTauNote(sb) {
+    if (!sb || sb.flow_tau_hours == null) return "";
+    const source = sb.flow_tau_source === "per_gauge_fit" ? "per-gauge fit" : "regional prior";
+    return `<div class="sb-top-species">Flow recession: τ ${Number(sb.flow_tau_hours).toFixed(0)}h · ${source}</div>`;
   }
 
   function renderConfidenceNote(confidence) {
