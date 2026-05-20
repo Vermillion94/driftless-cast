@@ -126,6 +126,65 @@
     return d.toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" });
   }
 
+  function relativeAge(minutes) {
+    if (minutes == null || minutes < 0) return "unknown";
+    if (minutes < 2) return "just now";
+    if (minutes < 60) return `${minutes} min ago`;
+    const hours = Math.round(minutes / 60);
+    if (hours < 36) return `${hours}h ago`;
+    return `${Math.round(hours / 24)}d ago`;
+  }
+
+  function geoLatLngs(geom) {
+    if (!geom || !geom.coordinates) return null;
+    if (geom.type === "LineString") {
+      return geom.coordinates.map(([lon, lat]) => [lat, lon]);
+    }
+    if (geom.type === "MultiLineString") {
+      return geom.coordinates
+        .map((segment) => segment.map(([lon, lat]) => [lat, lon]))
+        .filter((segment) => segment.length >= 2);
+    }
+    return null;
+  }
+
+  async function loadPlanningSummary() {
+    const el = document.getElementById("planning-summary");
+    if (!el) return;
+    try {
+      const [statusResp, windowsResp] = await Promise.all([
+        fetch(`${API_BASE}/status`),
+        fetch(`${API_BASE}/best-windows?hours=48&limit=4`),
+      ]);
+      const status = statusResp.ok ? await statusResp.json() : {};
+      const windows = windowsResp.ok ? await windowsResp.json() : [];
+      const top = windows[0] || null;
+      const isFresh = status.is_stale === false;
+      const statusClass = isFresh ? "fresh" : "stale";
+      const updated = relativeAge(status.stale_minutes);
+      const topScore = top ? applyResidual(top.reach_id, top.score) : null;
+      const topHtml = top
+        ? `<button type="button" class="summary-pick" data-reach="${top.reach_id}">
+             <span class="summary-label">Best next 48h</span>
+             <strong>${top.stream_name}</strong>
+             <span>${top.segment_name || top.state || ""} · ${timeLocal(top.valid_at)} · ${Math.round(topScore * 100)}/100</span>
+           </button>`
+        : `<div class="summary-pick summary-pick-empty"><span class="summary-label">Best next 48h</span><strong>Forecast warming up</strong><span>No ranked windows yet.</span></div>`;
+      el.innerHTML = `
+        <div class="freshness freshness-${statusClass}">
+          <span class="freshness-dot"></span>
+          <span>${isFresh ? "Fresh forecast" : "Stale forecast"}</span>
+          <span class="freshness-age">updated ${updated}</span>
+        </div>
+        ${topHtml}
+      `;
+      const btn = el.querySelector(".summary-pick[data-reach]");
+      if (btn) btn.addEventListener("click", () => showReachDetail(btn.dataset.reach));
+    } catch (err) {
+      el.innerHTML = `<p class="error">Forecast status unavailable: ${err.message}</p>`;
+    }
+  }
+
   function applyResidual(reachId, score) {
     // Layer the catch-log residual on top of the physical score for display
     // only. Original score is preserved in the API response — anglers can opt
@@ -192,10 +251,10 @@
           try { geom = JSON.parse(reach.geometry_geojson); } catch {}
         }
         let primaryLayer;
-        if (geom && geom.coordinates && geom.coordinates.length >= 2) {
+        const latlngs = geoLatLngs(geom);
+        if (latlngs && latlngs.length >= 1) {
           // Render the reach as a polyline. Keep it as a separate layer (not
           // L.geoJSON) so we can update its style cheaply when the scrubber moves.
-          const latlngs = geom.coordinates.map(([lon, lat]) => [lat, lon]);
           primaryLayer = L.polyline(latlngs, styleForReach(reach));
           // Halo line behind it, fixed white, so the colored line reads on
           // any basemap (USGS topo green hillshade was washing out yellows).
@@ -1411,6 +1470,7 @@
   // Residuals first so the very first paint of /reaches uses the calibrated
   // score; the call is cheap (one row per reach with >=3 reports).
   loadResiduals().then(() => {
+    loadPlanningSummary();
     loadReaches();
     loadBestWindows();
     loadScrubGrid();
@@ -1420,6 +1480,7 @@
   routeFromHash();
   setInterval(() => {
     loadResiduals();
+    loadPlanningSummary();
     loadReaches();
     loadBestWindows();
     loadScrubGrid();

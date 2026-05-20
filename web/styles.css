@@ -50,6 +50,58 @@ html, body {
 
 #summary { margin: 2px 0 0; font-size: 0.85rem; }
 
+/* Planning summary */
+.planning-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.freshness {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.78rem;
+  color: #52606d;
+}
+.freshness-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2f855a;
+  box-shadow: 0 0 0 3px rgba(47,133,90,0.10);
+}
+.freshness-stale .freshness-dot {
+  background: #c05621;
+  box-shadow: 0 0 0 3px rgba(192,86,33,0.12);
+}
+.freshness-age { color: #7b8794; margin-left: auto; }
+.summary-pick {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2px;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid #dbe4ed;
+  border-left: 4px solid #2a9d8f;
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+  color: #1f2933;
+  font: inherit;
+}
+.summary-pick:hover { border-color: #8ab9c2; background: #fbfdfe; }
+.summary-pick strong { font-size: 1rem; line-height: 1.2; }
+.summary-pick span:last-child { color: #52606d; font-size: 0.8rem; }
+.summary-label {
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+.summary-pick-empty { cursor: default; border-left-color: #9aa5b1; }
+
 /* Best windows list */
 #windows-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
 #windows-list li { margin: 0; }

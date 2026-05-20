@@ -12,6 +12,7 @@ from src.db import (
     get_connection,
     get_reach,
     get_reach_predictions,
+    forecast_status,
     insert_catch_log,
     list_catch_logs,
     list_reach_summaries,
@@ -177,6 +178,12 @@ def get_reach_forecast(reach_id: str, hours: int = Query(168, ge=1, le=168)) -> 
 def get_scores_grid(hours: int = Query(168, ge=1, le=168)) -> dict:
     """Reach × hour score matrix for the map time scrubber."""
     return scores_grid(hours)
+
+
+@router.get("/status")
+def get_status() -> dict:
+    """Forecast freshness and coverage for UI trust checks."""
+    return forecast_status()
 
 
 @router.get("/best-windows")
@@ -360,8 +367,8 @@ def get_residuals() -> dict:
 
 @router.post("/refresh")
 def refresh_forecast() -> dict:
-    # Manual kick for the forecast pipeline. APScheduler hookup pending
-    # (plan step 12); this exists so a curl can rebuild after a code change.
+    # Manual/scheduled kick for the forecast pipeline. GitHub Actions pings
+    # this hourly so Fly auto-stop cannot leave the public forecast stale.
     from src.models.forecast_builder import build_all
     counts = build_all()
     total = sum(counts.values())

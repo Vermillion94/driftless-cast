@@ -196,6 +196,44 @@ def scores_grid(hours: int) -> Dict[str, Any]:
     return {"hours": hour_set, "scores": scores}
 
 
+def forecast_status(stale_after_minutes: int = 90) -> Dict[str, Any]:
+    """Freshness summary for the currently cached forecast rows."""
+    conn = get_connection()
+    row = conn.execute(
+        """
+        SELECT
+            COUNT(*) AS row_count,
+            COUNT(DISTINCT reach_id) AS reach_count,
+            MIN(computed_at) AS oldest_computed_at,
+            MAX(computed_at) AS newest_computed_at,
+            MIN(valid_at) AS first_valid_at,
+            MAX(valid_at) AS last_valid_at
+        FROM prediction
+        """
+    ).fetchone()
+    conn.close()
+    payload = dict(row) if row else {}
+    newest = payload.get("newest_computed_at")
+    stale_minutes: Optional[int] = None
+    is_stale = True
+    if newest:
+        from datetime import datetime, timezone
+
+        try:
+            dt = datetime.fromisoformat(str(newest).replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+            stale_minutes = int((datetime.now(timezone.utc) - dt).total_seconds() // 60)
+            is_stale = stale_minutes > stale_after_minutes
+        except ValueError:
+            stale_minutes = None
+            is_stale = True
+    payload["stale_minutes"] = stale_minutes
+    payload["stale_after_minutes"] = stale_after_minutes
+    payload["is_stale"] = is_stale
+    return payload
+
+
 def insert_catch_log(entry: Dict[str, Any]) -> int:
     """Save a user-reported trip. Returns the new row id.
 

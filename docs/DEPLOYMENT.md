@@ -155,30 +155,17 @@ in the browser, since API and UI share an origin.
 
 ## Periodic forecast rebuild
 
-Currently the forecast is rebuilt **on process start** and on demand via
-`POST /refresh`. There is **no scheduled rebuild** wired up yet (APScheduler
-is in the dependencies but no job is registered). For a hosted instance you
-have two reasonable options:
+The app rebuilds forecasts on process start and then hourly while the process
+is awake. Fly's `auto_stop_machines = "stop"` can still put the app to sleep
+between visitors, so `.github/workflows/refresh-forecast.yml` also pings
+`POST /refresh` hourly. That external kick wakes the machine and prevents the
+public forecast from silently drifting stale.
 
-1. **External cron-like trigger.** Easiest. From any machine:
-   ```bash
-   curl -X POST https://<your-app>.fly.dev/refresh
-   ```
-   Run that hourly (or every 3h) via GitHub Actions, a cron job on a Pi, or
-   Fly Cron Scheduling.
+Manual refresh still works:
 
-2. **In-process scheduler.** Add to `src/api/main.py`:
-   ```python
-   from apscheduler.schedulers.background import BackgroundScheduler
-   scheduler = BackgroundScheduler(timezone="UTC")
-   scheduler.add_job(_build_forecast_background, "interval", hours=3)
-   scheduler.start()
-   ```
-   Pros: self-contained. Cons: doubles process complexity; if the app sleeps
-   (Fly auto-stop) the scheduler doesn't fire until first user request anyway.
-
-External trigger is simpler. Pick that unless you specifically want
-self-scheduling.
+```bash
+curl -X POST https://<your-app>.fly.dev/refresh
+```
 
 ---
 
