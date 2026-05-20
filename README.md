@@ -11,7 +11,7 @@ Live at **<https://driftless-cast.fly.dev/>**.
 
 For each of 21 trout streams, every hour out to 7 days, computes:
 
-- **Combined score** (0–1) shown as Go / Fair / Skip on the map
+- **Headline score** (0–1) shown as Go / Fair / Skip on the map
 - **Nymph and dry-fly scores** as separate components, with full audit-trail multipliers
 - **Active hatches** (BWO, Hendrickson, Sulphur, Caddis, Hex, Trico, Iso, terrestrials, early-black stones)
 - **Recommended flies** keyed to the dominant species and time of day
@@ -36,7 +36,10 @@ All public, no-key APIs:
 
 **Dry** (surface): `max over species of (seasonal × DD-readiness × weather-match × emergence-hour-window)`. Then multiplied by pressure and a sun-angle penalty for clear-water shyness.
 
-**Combined** = max(nymph, dry). Capped at 0.10 in BLOWOUT regime.
+**Headline** = a calibrated display score derived from nymph, dry, active
+hatch probability, and hard safety regimes. A nymph-only 1.0 is compressed
+below "drop everything" territory; true hatch/surface alignment can rank
+higher. BLOWOUT and HEAT_STRESS regimes cap the headline score.
 
 The full math is documented in `data/seed/education.json` (rendered as the in-app Learn tab) and every reference traces to `docs/REFERENCES.md`.
 

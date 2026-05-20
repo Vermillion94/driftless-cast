@@ -1,6 +1,7 @@
 from src.models.degree_days import daily_degree_day, accumulate_degree_days
 from src.models.nymph_score import compute_nymph_score
 from src.models.dry_score import compute_dry_score
+from src.models.score_calibration import headline_breakdown, headline_score
 
 
 def test_daily_degree_day():
@@ -33,3 +34,26 @@ def test_dry_score_with_species():
     result = compute_dry_score(260, species_list, 0.2, 5.0, 55.0, 13)
     assert result["dry_score"] >= 0.0
     assert isinstance(result["active_species"], list)
+
+
+def test_headline_score_compresses_nymph_only_plateau():
+    score = headline_score(1.0, 0.05, [], {"code": "NYMPH"})
+    assert score < 0.85
+
+
+def test_headline_score_rewards_aligned_hatch_window():
+    active = [{"id": "sulphur", "probability": 0.55}]
+    score = headline_score(0.90, 0.70, active, {"code": "HATCH"})
+    assert score > headline_score(0.90, 0.05, [], {"code": "NYMPH"})
+
+
+def test_headline_score_preserves_hard_regime_caps():
+    assert headline_score(1.0, 1.0, [], {"code": "BLOWOUT"}) == 0.10
+    assert headline_score(1.0, 1.0, [], {"code": "HEAT_STRESS"}) == 0.15
+
+
+def test_headline_breakdown_explains_nymph_cap():
+    breakdown = headline_breakdown(1.0, 0.05, [], {"code": "NYMPH"})
+    assert breakdown["source"] == "nymph_capped"
+    assert breakdown["score"] == headline_score(1.0, 0.05, [], {"code": "NYMPH"})
+    assert "water_temp_zone" in breakdown["evidence"]
