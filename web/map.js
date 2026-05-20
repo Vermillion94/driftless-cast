@@ -75,6 +75,12 @@
     return "Skip";
   }
 
+  function hourScore(hour) {
+    if (!hour) return 0;
+    if (hour.combined_score != null) return hour.combined_score;
+    return Math.max(hour.nymph_score || 0, hour.dry_score || 0);
+  }
+
   function initMap() {
     map = L.map("map", { zoomControl: true }).setView([43.9, -91.7], 8);
     const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -461,7 +467,7 @@
       // happen — every day has 18 fishable hours in our window).
       const fishable = hrs.filter((h) => isFishableHour(h.valid_at));
       const pickFrom = fishable.length >= 3 ? fishable : hrs;
-      const scores = pickFrom.map((h) => Math.max(h.nymph_score || 0, h.dry_score || 0));
+      const scores = pickFrom.map(hourScore);
       // Day "peak" = best 3-hour window mean, not single-hour spike. Single-hour
       // spikes happen when chunky NWS cloud-cover input crosses our cloud-pref
       // saturation thresholds — they're real but not actionable for fishing.
@@ -481,14 +487,14 @@
   }
 
   function findBestWindow(hours) {
-    // Sliding 3-hour window. Score per hour = max(nymph, dry) (same convention
-    // the day-strip uses for "peak"); window score = mean of those per-hour scores.
+    // Sliding 3-hour window. Score per hour = API headline score; window
+    // score = mean of those per-hour scores.
     // Restricted to angler-fishable hours for the same reason as groupByDay —
     // a "best window" centered on 3am isn't a useful recommendation.
     if (hours.length < 3) return null;
     const fishable = hours.filter((h) => isFishableHour(h.valid_at));
     const pickFrom = fishable.length >= 3 ? fishable : hours;
-    const combined = pickFrom.map(h => Math.max(h.nymph_score || 0, h.dry_score || 0));
+    const combined = pickFrom.map(hourScore);
     let bestMean = 0, bestStart = 0;
     for (let i = 0; i <= combined.length - 3; i++) {
       const m = (combined[i] + combined[i+1] + combined[i+2]) / 3;
@@ -526,7 +532,7 @@
       return `<text x="${x}" y="9" font-size="7" fill="#6b7280">${label}</text>`;
     }).join("");
     const bars = hours.map((hr, i) => {
-      const s = Math.max(hr.nymph_score || 0, hr.dry_score || 0);
+      const s = hourScore(hr);
       const x = pad + i * barWidth;
       const barH = s * (h - 2 * pad - 10);
       return `<rect class="spark-bar" data-i="${i}" x="${x}" y="${h - pad - barH}" width="${Math.max(barWidth - 0.2, 0.5)}" height="${barH}" fill="${scoreColor(s)}" />`;
@@ -553,7 +559,7 @@
     function show(i) {
       if (i < 0 || i >= hours.length) return;
       const hr = hours[i];
-      const s = Math.max(hr.nymph_score || 0, hr.dry_score || 0);
+      const s = hourScore(hr);
       const dt = new Date(hr.valid_at);
       const when = dt.toLocaleString(undefined, {
         weekday: "short", month: "numeric", day: "numeric",
@@ -657,7 +663,7 @@
         return;
       }
       const now = hours[0];
-      const nowScore = Math.max(now.nymph_score || 0, now.dry_score || 0);
+      const nowScore = hourScore(now);
       const topActive = (now.active_species || [])
         .slice().sort((a, b) => (b.probability || 0) - (a.probability || 0));
       const activeHTML = topActive.length
@@ -1275,12 +1281,15 @@
   // ── Score breakdown — show every multiplier so the score is auditable ─────
   function renderScoreBreakdown(hour) {
     const sb = hour.score_breakdown;
+    const model = hour.score_model;
     const nymph = hour.nymph_score || 0;
     const dry   = hour.dry_score   || 0;
+    const headline = hourScore(hour);
     if (!sb) {
       // Older predictions before the breakdown column was added — show
       // just the totals.
       return `
+        <div class="score-row"><span>Headline ${helpButton("score_overview")}</span><span>${Math.round(headline * 100)}</span></div>
         <div class="score-row"><span>Nymph ${helpButton("flow_percentile")}</span><span>${Math.round(nymph * 100)}</span></div>
         <div class="score-row"><span>Dry ${helpButton("weather_match")}</span><span>${Math.round(dry * 100)}</span></div>
       `;
@@ -1317,8 +1326,9 @@
       <div class="sb-totals">
         <div class="sb-total"><span class="sb-total-label">Nymph</span><span class="sb-total-num">${Math.round(nymph * 100)}</span></div>
         <div class="sb-total"><span class="sb-total-label">Dry</span><span class="sb-total-num">${Math.round(dry * 100)}</span></div>
-        <div class="sb-total"><span class="sb-total-label">Combined</span><span class="sb-total-num">${Math.round(Math.max(nymph, dry) * 100)}</span></div>
+        <div class="sb-total"><span class="sb-total-label">Headline</span><span class="sb-total-num">${Math.round(headline * 100)}</span></div>
       </div>
+      ${model ? `<p class="sb-model-note">${renderHeadlineModelNote(model)}</p>` : ""}
       <h4 class="sb-section-h">Component multipliers (1.0 = full credit)</h4>
       ${bar("Water temp", sb.temperature, "water_temp_zone")}
       ${bar("Flow percentile", sb.flow_percentile, "flow_percentile")}
@@ -1326,8 +1336,21 @@
       ${multiplier("Pressure trend", sb.pressure_factor, "barometric_pressure")}
       ${multiplier("Sun angle (dry only)", sb.sun_factor, "sun_angle")}
       ${topLine}
-      <p class="sb-note">Score = product of factors above (clamped 0–1). Click any ${helpButton("score_overview").replace(/<\/?button[^>]*>/g, '?')} to see how a component is computed.</p>
+      <p class="sb-note">Nymph and dry are physical component scores. Headline is calibrated from those components so nymph-only plateaus do not read like boiling-rises days. Click any ${helpButton("score_overview").replace(/<\/?button[^>]*>/g, '?')} to see how a component is computed.</p>
     `;
+  }
+
+  function renderHeadlineModelNote(model) {
+    const source = model.source || "";
+    if (source === "nymph_capped") {
+      return "Headline is capped because subsurface conditions are strong but hatch/surface probability is weak.";
+    }
+    if (source === "dry") {
+      return "Headline is led by surface activity because the hatch model is stronger than the nymph model.";
+    }
+    if (source === "blowout") return "Headline is capped by blowout conditions.";
+    if (source === "heat_stress") return "Headline is capped by trout heat-stress conditions.";
+    return "Headline is led by subsurface conditions, then compressed at the top end for calibration.";
   }
 
   function barometricChip(deltaMb) {

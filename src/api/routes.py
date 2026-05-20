@@ -22,6 +22,7 @@ from src.db import (
     top_windows,
 )
 from src.ingest import fetch_latest_iv, fetch_latest_nwps
+from src.models.score_calibration import headline_breakdown, headline_score
 
 LOG = logging.getLogger(__name__)
 router = APIRouter()
@@ -115,11 +116,15 @@ def get_reach_forecast(reach_id: str, hours: int = Query(168, ge=1, le=168)) -> 
             score_breakdown = json.loads(r.get("score_breakdown") or "null")
         except ValueError:
             score_breakdown = None
+        score_model = headline_breakdown(
+            r.get("nymph_score"), r.get("dry_score"), active, regime
+        )
         hours_payload.append({
             "valid_at": r["valid_at"],
             "nymph_score": r.get("nymph_score"),
             "dry_score": r.get("dry_score"),
-            "combined_score": max(r.get("nymph_score") or 0.0, r.get("dry_score") or 0.0),
+            "combined_score": score_model["score"],
+            "score_model": score_model,
             "active_species": active,
             "flies": flies,
             "explanation": r.get("explanation"),
@@ -194,7 +199,12 @@ def get_best_windows(hours: int = Query(72, ge=1, le=168), limit: int = Query(10
     seen: Dict[str, dict] = {}
     for r in rows:
         key = r["reach_id"]
-        score = max(r.get("nymph_score") or 0.0, r.get("dry_score") or 0.0)
+        score = r.get("combined_score")
+        if score is None:
+            score = headline_score(
+                r.get("nymph_score"), r.get("dry_score"),
+                r.get("active_species"), r.get("regime")
+            )
         existing = seen.get(key)
         if existing is None or score > existing["score"]:
             seen[key] = {
