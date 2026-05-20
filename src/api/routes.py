@@ -117,7 +117,7 @@ def get_reach_forecast(reach_id: str, hours: int = Query(168, ge=1, le=168)) -> 
         except ValueError:
             score_breakdown = None
         score_model = headline_breakdown(
-            r.get("nymph_score"), r.get("dry_score"), active, regime
+            r.get("nymph_score"), r.get("dry_score"), active, regime, score_breakdown
         )
         hours_payload.append({
             "valid_at": r["valid_at"],
@@ -203,10 +203,14 @@ def get_best_windows(hours: int = Query(72, ge=1, le=168), limit: int = Query(10
         if score is None:
             score = headline_score(
                 r.get("nymph_score"), r.get("dry_score"),
-                r.get("active_species"), r.get("regime")
+                r.get("active_species"), r.get("regime"), r.get("score_breakdown")
             )
         existing = seen.get(key)
         if existing is None or score > existing["score"]:
+            score_model = headline_breakdown(
+                r.get("nymph_score"), r.get("dry_score"), r.get("active_species"),
+                r.get("regime"), r.get("score_breakdown")
+            )
             seen[key] = {
                 "reach_id": key,
                 "stream_name": r.get("stream_name"),
@@ -216,6 +220,7 @@ def get_best_windows(hours: int = Query(72, ge=1, le=168), limit: int = Query(10
                 "score": score,
                 "nymph_score": r.get("nymph_score"),
                 "dry_score": r.get("dry_score"),
+                "aggression_score": score_model.get("aggression"),
                 "explanation": r.get("explanation"),
             }
     ordered = sorted(seen.values(), key=lambda x: x["score"], reverse=True)[:limit]

@@ -114,7 +114,7 @@ def list_reach_summaries() -> List[Dict[str, Any]]:
             r.reach_id, r.stream_name, r.segment_name, r.state, r.trout_class,
             r.centroid_lat, r.centroid_lon, r.usgs_gauge_id, r.noaa_lid, r.gauge_is_proxy,
             r.geometry_geojson, r.spring_influenced,
-            p.nymph_score, p.dry_score, p.active_species, p.regime,
+            p.nymph_score, p.dry_score, p.active_species, p.regime, p.score_breakdown,
             p.valid_at AS prediction_valid_at
         FROM reach r
         LEFT JOIN (
@@ -137,8 +137,9 @@ def list_reach_summaries() -> List[Dict[str, Any]]:
         dry = d.pop("dry_score", None)
         active_species = d.pop("active_species", None)
         regime = d.pop("regime", None)
+        score_breakdown = d.pop("score_breakdown", None)
         if nymph is not None or dry is not None:
-            d["combined_score"] = headline_score(nymph, dry, active_species, regime)
+            d["combined_score"] = headline_score(nymph, dry, active_species, regime, score_breakdown)
         else:
             d["combined_score"] = None
         summaries.append(d)
@@ -175,7 +176,7 @@ def scores_grid(hours: int) -> Dict[str, Any]:
     conn = get_connection()
     rows = conn.execute(
         """
-        SELECT reach_id, valid_at, nymph_score, dry_score, active_species, regime
+        SELECT reach_id, valid_at, nymph_score, dry_score, active_species, regime, score_breakdown
         FROM prediction
         WHERE valid_at >= datetime('now', '-1 hour')
           AND valid_at <= datetime('now', '+' || ? || ' hours')
@@ -193,7 +194,7 @@ def scores_grid(hours: int) -> Dict[str, Any]:
             seen[v] = len(hour_set)
             hour_set.append(v)
         by_reach.setdefault(r["reach_id"], {})[v] = headline_score(
-            r["nymph_score"], r["dry_score"], r["active_species"], r["regime"]
+            r["nymph_score"], r["dry_score"], r["active_species"], r["regime"], r["score_breakdown"]
         )
     scores: Dict[str, List[Optional[float]]] = {}
     for reach_id, m in by_reach.items():
@@ -251,7 +252,7 @@ def insert_catch_log(entry: Dict[str, Any]) -> int:
     # back to the latest prediction if no exact-hour row matches.
     snap = conn.execute(
         """
-        SELECT nymph_score, dry_score, active_species, regime
+        SELECT nymph_score, dry_score, active_species, regime, score_breakdown
         FROM prediction
         WHERE reach_id = ?
         ORDER BY ABS(strftime('%s', valid_at) - strftime('%s', ?)) ASC
@@ -263,7 +264,8 @@ def insert_catch_log(entry: Dict[str, Any]) -> int:
         entry = {
             **entry,
             "predicted_score": headline_score(
-                snap["nymph_score"], snap["dry_score"], snap["active_species"], snap["regime"]
+                snap["nymph_score"], snap["dry_score"], snap["active_species"],
+                snap["regime"], snap["score_breakdown"]
             ),
             "predicted_regime": snap["regime"],
         }
@@ -427,7 +429,7 @@ def top_windows(hours: int, limit: int = 10) -> List[Dict[str, Any]]:
         """
         SELECT p.reach_id, r.stream_name, r.segment_name, r.state,
                p.valid_at, p.nymph_score, p.dry_score, p.active_species,
-               p.regime, p.explanation
+               p.regime, p.score_breakdown, p.explanation
         FROM prediction p
         JOIN reach r ON r.reach_id = p.reach_id
         WHERE p.valid_at >= datetime('now', '-1 hour')
@@ -440,7 +442,8 @@ def top_windows(hours: int, limit: int = 10) -> List[Dict[str, Any]]:
     for row in rows:
         d = dict(row)
         d["combined_score"] = headline_score(
-            d.get("nymph_score"), d.get("dry_score"), d.get("active_species"), d.get("regime")
+            d.get("nymph_score"), d.get("dry_score"), d.get("active_species"),
+            d.get("regime"), d.get("score_breakdown")
         )
         existing = best_by_reach.get(d["reach_id"])
         if existing is None or d["combined_score"] > existing["combined_score"]:

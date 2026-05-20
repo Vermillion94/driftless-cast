@@ -350,7 +350,7 @@
               <span class="score-pill" style="background:${color}">${verdict}</span>
               <span class="window-main">
                 <span class="window-name">${w.stream_name}</span>
-                <span class="window-sub">${w.segment_name || ""} · ${timeLocal(w.valid_at)}</span>
+                <span class="window-sub">${w.segment_name || ""} · ${timeLocal(w.valid_at)}${w.aggression_score != null ? ` · aggression ${Math.round(w.aggression_score * 100)}` : ""}</span>
               </span>
               <span class="window-score">${(score * 100).toFixed(0)}</span>
             </button>
@@ -1332,6 +1332,7 @@
       <div class="sb-totals">
         <div class="sb-total"><span class="sb-total-label">Nymph</span><span class="sb-total-num">${Math.round(nymph * 100)}</span></div>
         <div class="sb-total"><span class="sb-total-label">Dry</span><span class="sb-total-num">${Math.round(dry * 100)}</span></div>
+        ${model && model.aggression != null ? `<div class="sb-total"><span class="sb-total-label">Aggression</span><span class="sb-total-num">${Math.round(model.aggression * 100)}</span></div>` : ""}
         <div class="sb-total"><span class="sb-total-label">Headline</span><span class="sb-total-num">${Math.round(headline * 100)}</span></div>
       </div>
       ${model ? `<p class="sb-model-note">${renderHeadlineModelNote(model)}</p>` : ""}
@@ -1341,6 +1342,7 @@
       ${bar("Flow trend", sb.flow_trend, "flow_trend")}
       ${multiplier("Pressure trend", sb.pressure_factor, "barometric_pressure")}
       ${multiplier("Sun angle (dry only)", sb.sun_factor, "sun_angle")}
+      ${model && model.aggression_factors ? renderAggressionFactors(model.aggression_factors) : ""}
       ${topLine}
       <p class="sb-note">Nymph and dry are physical component scores. Headline is calibrated from those components so nymph-only plateaus do not read like boiling-rises days. Click any ${helpButton("score_overview").replace(/<\/?button[^>]*>/g, '?')} to see how a component is computed.</p>
     `;
@@ -1351,6 +1353,9 @@
     if (source === "nymph_capped") {
       return "Headline is capped because subsurface conditions are strong but hatch/surface probability is weak.";
     }
+    if (model.aggression != null && model.aggression >= 0.70) {
+      return "Headline is lifted because hatch/surface, flow, pressure, and light conditions point to a more aggressive window.";
+    }
     if (model.alignment_bonus_possible) {
       return "Headline is lifted because subsurface conditions and a meaningful surface/hatch signal overlap.";
     }
@@ -1360,6 +1365,13 @@
     if (source === "blowout") return "Headline is capped by blowout conditions.";
     if (source === "heat_stress") return "Headline is capped by trout heat-stress conditions.";
     return "Headline is led by subsurface conditions, then compressed at the top end for calibration.";
+  }
+
+  function renderAggressionFactors(factors) {
+    const flow = factors.flow_change != null ? Math.round(factors.flow_change * 100) : null;
+    const light = factors.light_protection != null ? Math.round(factors.light_protection * 100) : null;
+    const pressure = factors.pressure_factor != null ? `×${Number(factors.pressure_factor).toFixed(2)}` : null;
+    return `<div class="sb-top-species">Aggression inputs: surface ${Math.round((factors.surface || 0) * 100)}% · flow change ${flow}% · pressure ${pressure} · light protection ${light}%</div>`;
   }
 
   function barometricChip(deltaMb) {
