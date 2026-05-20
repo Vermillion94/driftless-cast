@@ -1282,6 +1282,7 @@
   function renderScoreBreakdown(hour) {
     const sb = hour.score_breakdown;
     const model = hour.score_model;
+    const confidence = hour.confidence_model;
     const nymph = hour.nymph_score || 0;
     const dry   = hour.dry_score   || 0;
     const headline = hourScore(hour);
@@ -1333,6 +1334,7 @@
         <div class="sb-total"><span class="sb-total-label">Nymph</span><span class="sb-total-num">${Math.round(nymph * 100)}</span></div>
         <div class="sb-total"><span class="sb-total-label">Dry</span><span class="sb-total-num">${Math.round(dry * 100)}</span></div>
         ${model && model.aggression != null ? `<div class="sb-total"><span class="sb-total-label">Aggression</span><span class="sb-total-num">${Math.round(model.aggression * 100)}</span></div>` : ""}
+        ${confidence && confidence.score != null ? `<div class="sb-total"><span class="sb-total-label">Confidence</span><span class="sb-total-num">${Math.round(confidence.score * 100)}</span></div>` : ""}
         <div class="sb-total"><span class="sb-total-label">Headline</span><span class="sb-total-num">${Math.round(headline * 100)}</span></div>
       </div>
       ${model ? `<p class="sb-model-note">${renderHeadlineModelNote(model)}</p>` : ""}
@@ -1343,6 +1345,7 @@
       ${multiplier("Pressure trend", sb.pressure_factor, "barometric_pressure")}
       ${multiplier("Sun angle (dry only)", sb.sun_factor, "sun_angle")}
       ${model && model.aggression_factors ? renderAggressionFactors(model.aggression_factors) : ""}
+      ${confidence ? renderConfidenceNote(confidence) : ""}
       ${topLine}
       <p class="sb-note">Nymph and dry are physical component scores. Headline is calibrated from those components so nymph-only plateaus do not read like boiling-rises days. Click any ${helpButton("score_overview").replace(/<\/?button[^>]*>/g, '?')} to see how a component is computed.</p>
     `;
@@ -1372,6 +1375,12 @@
     const light = factors.light_protection != null ? Math.round(factors.light_protection * 100) : null;
     const pressure = factors.pressure_factor != null ? `×${Number(factors.pressure_factor).toFixed(2)}` : null;
     return `<div class="sb-top-species">Aggression inputs: surface ${Math.round((factors.surface || 0) * 100)}% · flow change ${flow}% · pressure ${pressure} · light protection ${light}%</div>`;
+  }
+
+  function renderConfidenceNote(confidence) {
+    const lead = confidence.lead_hours != null ? ` · ${Math.round(confidence.lead_hours)}h lead` : "";
+    const notes = (confidence.notes || []).join(" · ");
+    return `<div class="sb-top-species">Confidence inputs: ${notes}${lead}</div>`;
   }
 
   function barometricChip(deltaMb) {

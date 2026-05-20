@@ -22,7 +22,7 @@ from src.db import (
     top_windows,
 )
 from src.ingest import fetch_latest_iv, fetch_latest_nwps
-from src.models.score_calibration import headline_breakdown, headline_score
+from src.models.score_calibration import confidence_score, headline_breakdown, headline_score
 
 LOG = logging.getLogger(__name__)
 router = APIRouter()
@@ -119,12 +119,17 @@ def get_reach_forecast(reach_id: str, hours: int = Query(168, ge=1, le=168)) -> 
         score_model = headline_breakdown(
             r.get("nymph_score"), r.get("dry_score"), active, regime, score_breakdown
         )
+        confidence_model = confidence_score(
+            r.get("valid_at"), r.get("computed_at"), r.get("water_temp_source"),
+            reach.get("gauge_is_proxy"), score_breakdown
+        )
         hours_payload.append({
             "valid_at": r["valid_at"],
             "nymph_score": r.get("nymph_score"),
             "dry_score": r.get("dry_score"),
             "combined_score": score_model["score"],
             "score_model": score_model,
+            "confidence_model": confidence_model,
             "active_species": active,
             "flies": flies,
             "explanation": r.get("explanation"),
