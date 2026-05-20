@@ -47,6 +47,14 @@ def test_headline_score_rewards_aligned_hatch_window():
     assert score > headline_score(0.90, 0.05, [], {"code": "NYMPH"})
 
 
+def test_headline_score_separates_meaningful_surface_signal():
+    weak = headline_score(1.0, 0.05, [], {"code": "NYMPH"})
+    active = [{"id": "grannom-caddis", "probability": 0.20}]
+    better = headline_score(1.0, 0.16, active, {"code": "HATCH"})
+    assert better > weak
+    assert better < 0.90
+
+
 def test_headline_score_preserves_hard_regime_caps():
     assert headline_score(1.0, 1.0, [], {"code": "BLOWOUT"}) == 0.10
     assert headline_score(1.0, 1.0, [], {"code": "HEAT_STRESS"}) == 0.15
@@ -56,4 +64,5 @@ def test_headline_breakdown_explains_nymph_cap():
     breakdown = headline_breakdown(1.0, 0.05, [], {"code": "NYMPH"})
     assert breakdown["source"] == "nymph_capped"
     assert breakdown["score"] == headline_score(1.0, 0.05, [], {"code": "NYMPH"})
+    assert breakdown["surface_signal"] == 0.05
     assert "water_temp_zone" in breakdown["evidence"]
