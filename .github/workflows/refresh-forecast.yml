@@ -1,0 +1,21 @@
+# Keep the public forecast fresh even when Fly auto-stop lets the app sleep
+# between visitors. The endpoint is intentionally no-key: all inputs are public
+# data, and the job is idempotent apart from refreshing cached SQLite rows.
+name: Refresh forecast
+
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Kick Driftless Cast forecast rebuild
+        run: |
+          curl --fail --show-error --silent \
+            --max-time 540 \
+            -X POST \
+            https://driftless-cast.fly.dev/refresh
