@@ -1,7 +1,12 @@
 from src.models.degree_days import daily_degree_day, accumulate_degree_days
 from src.models.nymph_score import compute_nymph_score
 from src.models.dry_score import compute_dry_score
-from src.models.score_calibration import aggression_score, headline_breakdown, headline_score
+from src.models.score_calibration import (
+    aggression_score,
+    confidence_score,
+    headline_breakdown,
+    headline_score,
+)
 
 
 def test_daily_degree_day():
@@ -67,6 +72,26 @@ def test_aggression_score_rewards_change_stacked_window():
     )
     assert hot > flat
     assert hot >= 0.75
+
+
+def test_confidence_score_prefers_measured_local_short_lead():
+    high = confidence_score(
+        "2026-05-20T18:00:00+00:00",
+        "2026-05-20T12:00:00+00:00",
+        "gauge",
+        False,
+        {"percentile_used": 0.45, "pressure_factor": 1.0},
+    )
+    low = confidence_score(
+        "2026-05-27T18:00:00+00:00",
+        "2026-05-20T12:00:00+00:00",
+        "estimate",
+        True,
+        {"pressure_factor": 1.0},
+    )
+    assert high["score"] > low["score"]
+    assert high["score"] > 0.90
+    assert low["score"] < 0.75
 
 
 def test_headline_score_preserves_hard_regime_caps():

@@ -12,6 +12,7 @@ multiple signals line up.
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from typing import Any, Iterable, Mapping
 
 
@@ -127,6 +128,80 @@ def aggression_score(
         score = min(score, 0.15)
 
     return max(0.0, min(1.0, score))
+
+
+def _hours_between(start_iso: Any, end_iso: Any) -> float | None:
+    if not start_iso or not end_iso:
+        return None
+    try:
+        start = datetime.fromisoformat(str(start_iso).replace("Z", "+00:00"))
+        end = datetime.fromisoformat(str(end_iso).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if start.tzinfo is None:
+        start = start.replace(tzinfo=timezone.utc)
+    if end.tzinfo is None:
+        end = end.replace(tzinfo=timezone.utc)
+    return max(0.0, (end - start).total_seconds() / 3600.0)
+
+
+def confidence_score(
+    valid_at: Any,
+    computed_at: Any,
+    water_temp_source: Any,
+    gauge_is_proxy: Any = False,
+    score_breakdown: Any = None,
+) -> dict[str, Any]:
+    """How much trust to put in this hour's score inputs.
+
+    Confidence is not fishing quality. It reports input quality: measured vs
+    estimated water temp, real vs proxy flow context, forecast lead time, and
+    whether auxiliary forecast signals are present.
+    """
+    source = str(water_temp_source or "").lower()
+    if source == "gauge":
+        temp = 1.0
+        temp_label = "measured water temp"
+    elif source == "estimate":
+        temp = 0.72
+        temp_label = "estimated water temp"
+    else:
+        temp = 0.35
+        temp_label = "no water-temp signal"
+
+    percentile = _breakdown_value(score_breakdown, "percentile_used", -1.0)
+    flow = 1.0 if percentile >= 0 else 0.55
+    if bool(gauge_is_proxy):
+        flow *= 0.75
+        flow_label = "proxy gauge flow context"
+    else:
+        flow_label = "local gauge flow context" if percentile >= 0 else "limited flow context"
+
+    pressure_factor = _breakdown_value(score_breakdown, "pressure_factor", -1.0)
+    pressure = 1.0 if pressure_factor >= 0 else 0.70
+
+    lead_h = _hours_between(computed_at, valid_at)
+    if lead_h is None:
+        lead = 0.65
+    elif lead_h <= 24:
+        lead = 1.0
+    elif lead_h <= 72:
+        lead = 0.85
+    elif lead_h <= 120:
+        lead = 0.68
+    else:
+        lead = 0.52
+
+    score = 0.35 * temp + 0.30 * flow + 0.20 * lead + 0.15 * pressure
+    return {
+        "score": max(0.0, min(1.0, score)),
+        "temperature": temp,
+        "flow": flow,
+        "lead_time": lead,
+        "pressure": pressure,
+        "lead_hours": round(lead_h, 1) if lead_h is not None else None,
+        "notes": [temp_label, flow_label],
+    }
 
 
 def headline_score(
