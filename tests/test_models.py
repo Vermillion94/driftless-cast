@@ -186,6 +186,37 @@ def test_fused_noaa_usgs_flow_uses_relative_local_change():
     assert 0.75 < pct < 0.90
 
 
+def test_proxy_reach_displays_local_noaa_flow_when_no_forecast():
+    now = datetime(2026, 5, 20, 12, tzinfo=timezone.utc)
+    signals = ReachSignals(
+        reach_id="trout-run-creek-chatfield",
+        stream_name="Trout Run",
+        lat=44.0,
+        lon=-92.0,
+        spring_influenced=True,
+        usgs_gauge_id="05383950",
+        gauge_source="usgs",
+        gauge_is_proxy=True,
+        current_flow_cfs=450.0,
+        local_flow_cfs=110.0,
+        local_flow_source="noaa",
+        water_temp_c=None,
+        water_temp_source=None,
+        flow_percentile=0.5,
+        flow_stats={"p10": 250.0, "p25": 350.0, "p50": 450.0, "p75": 600.0, "p90": 800.0},
+        recent_flows=[],
+        confidence_notes=[],
+        forecast_flow_by_hour=None,
+    )
+    pct, displayed_flow, _note, tau, source = _flow_percentile_for_hour(
+        signals, now + timedelta(hours=24), now
+    )
+    assert displayed_flow == 110.0
+    assert tau is not None
+    assert source in {"class_prior", "per_gauge_fit"}
+    assert 0.25 < pct < 0.75
+
+
 def test_headline_score_preserves_hard_regime_caps():
     assert headline_score(1.0, 1.0, [], {"code": "BLOWOUT"}) == 0.10
     assert headline_score(1.0, 1.0, [], {"code": "HEAT_STRESS"}) == 0.15
