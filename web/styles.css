@@ -261,6 +261,13 @@ html, body {
   line-height: 1.2;
   white-space: nowrap;
 }
+.why-later {
+  margin: 8px 0 0;
+  color: #374151;
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+.why-later strong { color: #264653; }
 
 .day-list {
   display: flex;
