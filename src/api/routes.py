@@ -212,17 +212,20 @@ def get_best_windows(hours: int = Query(72, ge=1, le=168), limit: int = Query(10
     seen: Dict[str, dict] = {}
     for r in rows:
         key = r["reach_id"]
+        active = _loads_json(r.get("active_species"), [])
+        regime = _loads_json(r.get("regime"), None)
+        score_breakdown = _loads_json(r.get("score_breakdown"), None)
         score = r.get("combined_score")
         if score is None:
             score = headline_score(
                 r.get("nymph_score"), r.get("dry_score"),
-                r.get("active_species"), r.get("regime"), r.get("score_breakdown")
+                active, regime, score_breakdown
             )
         confidence = r.get("confidence_score")
         if confidence is None:
             confidence = confidence_score(
                 r.get("valid_at"), r.get("computed_at"), r.get("water_temp_source"),
-                r.get("gauge_is_proxy"), r.get("score_breakdown"), r.get("proxy_distance_km")
+                r.get("gauge_is_proxy"), score_breakdown, r.get("proxy_distance_km")
             )["score"]
         rank_score = r.get("rank_score")
         if rank_score is None:
@@ -230,8 +233,7 @@ def get_best_windows(hours: int = Query(72, ge=1, le=168), limit: int = Query(10
         existing = seen.get(key)
         if existing is None or rank_score > existing["rank_score"]:
             score_model = headline_breakdown(
-                r.get("nymph_score"), r.get("dry_score"), r.get("active_species"),
-                r.get("regime"), r.get("score_breakdown")
+                r.get("nymph_score"), r.get("dry_score"), active, regime, score_breakdown
             )
             seen[key] = {
                 "reach_id": key,
@@ -247,11 +249,48 @@ def get_best_windows(hours: int = Query(72, ge=1, le=168), limit: int = Query(10
                 "nymph_score": r.get("nymph_score"),
                 "dry_score": r.get("dry_score"),
                 "aggression_score": score_model.get("aggression"),
-                "regime": r.get("regime"),
+                "regime": regime,
+                "reason": _best_window_reason(r, score_model, score_breakdown, regime),
                 "explanation": r.get("explanation"),
             }
     ordered = sorted(seen.values(), key=lambda x: x["rank_score"], reverse=True)
     return _diversify_windows_by_time(ordered, limit)
+
+
+def _loads_json(value, default):
+    if isinstance(value, str):
+        try:
+            return json.loads(value)
+        except ValueError:
+            return default
+    return value if value is not None else default
+
+
+def _best_window_reason(row: dict, score_model: dict, score_breakdown, regime) -> List[str]:
+    sb = score_breakdown if isinstance(score_breakdown, dict) else {}
+    regime_row = regime if isinstance(regime, dict) else {}
+    reasons: List[str] = []
+    if regime_row.get("code") and regime_row.get("code") != "NORMAL":
+        reasons.append(str(regime_row.get("label") or regime_row.get("code")).lower())
+    surface = score_model.get("surface_signal") or 0.0
+    if surface >= 0.15:
+        reasons.append("surface signal")
+    elif (row.get("nymph_score") or 0.0) >= 0.45:
+        reasons.append("nymphing play")
+    if (sb.get("diel_activity") or 0.0) >= 0.96:
+        reasons.append("low light")
+    if (sb.get("pressure_factor") or 1.0) >= 1.02:
+        reasons.append("falling barometer")
+    if (sb.get("sun_factor") or 1.0) < 0.90:
+        reasons.append("bright-sun drag")
+    if (row.get("dry_score") or 0.0) >= 0.30:
+        reasons.append("dry-fly window")
+
+    deduped: List[str] = []
+    for reason in reasons:
+        if reason not in deduped:
+            deduped.append(reason)
+    return deduped[:3]
 
 
 def _window_hour_key(row: dict) -> str:
