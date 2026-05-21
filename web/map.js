@@ -647,6 +647,92 @@
     return `${sDay} ${sTime}–${eTime}`;
   }
 
+  function windowHours(hours, window_) {
+    if (!window_) return [];
+    const start = new Date(window_.start).getTime();
+    const end = new Date(window_.end).getTime();
+    return hours.filter((h) => {
+      const t = new Date(h.valid_at).getTime();
+      return t >= start && t <= end;
+    });
+  }
+
+  function peakHourForWindow(hours, window_) {
+    const hrs = windowHours(hours, window_);
+    return hrs.reduce((best, h) => hourScore(h) > hourScore(best) ? h : best, hrs[0] || null);
+  }
+
+  function fishingMode(hour) {
+    if (!hour) return "Forecast";
+    const model = hour.score_model || {};
+    const surface = Math.max(hour.dry_score || 0, model.top_hatch_probability || 0);
+    const regime = hour.regime || {};
+    if (regime.code === "STREAMER") return "Streamer";
+    if (surface >= 0.15) return "Dry-fly watch";
+    if ((hour.nymph_score || 0) >= 0.45) return "Nymphing play";
+    return "Scouting window";
+  }
+
+  function scoreDriverChips(hour) {
+    if (!hour) return "";
+    const sb = hour.score_breakdown || {};
+    const model = hour.score_model || {};
+    const chips = [];
+    if (hour.water_temp_f != null) {
+      const t = Math.round(hour.water_temp_f);
+      if (t >= 52 && t <= 64) chips.push(`ideal water ${t}°`);
+      else if (t >= 65 && t <= 68) chips.push(`warm water ${t}°`);
+      else chips.push(`water ${t}°`);
+    }
+    if (sb.flow_percentile != null) {
+      if (sb.flow_percentile >= 0.85) chips.push("strong flow band");
+      else if (sb.flow_percentile < 0.55) chips.push("flow penalty");
+    }
+    if (sb.diel_activity != null) {
+      if (sb.diel_activity >= 0.96) chips.push("low-light window");
+      else if (sb.diel_activity <= 0.86) chips.push("midday/overnight drag");
+    }
+    if (sb.pressure_factor != null) {
+      if (sb.pressure_factor >= 1.02) chips.push("falling barometer");
+      else if (sb.pressure_factor <= 0.92) chips.push("rising barometer");
+    }
+    if (sb.sun_factor != null && sb.sun_factor < 0.90) chips.push("bright-sun drag");
+    if (model.surface_signal >= 0.15) chips.push("surface signal");
+    return chips.slice(0, 4).map((c) => `<span class="driver-chip">${c}</span>`).join("");
+  }
+
+  function renderFishingPlan(hours, now, bestWindow) {
+    if (!now) return "";
+    const nowScore = hourScore(now);
+    const bestHour = peakHourForWindow(hours, bestWindow) || now;
+    const bestScore = bestWindow ? bestWindow.score : hourScore(bestHour);
+    const bestRange = bestWindow ? formatWindowRange(bestWindow.start, bestWindow.end) : timeLocal(bestHour.valid_at);
+    const delta = bestScore - nowScore;
+    const deltaText = delta >= 0.04
+      ? `+${Math.round(delta * 100)} vs now`
+      : delta <= -0.04
+        ? `${Math.round(delta * 100)} vs now`
+        : "similar to now";
+    const bestWhy = scoreDriverChips(bestHour);
+    const nowWhy = scoreDriverChips(now);
+    return `
+      <div class="plan-panel">
+        <div class="plan-card">
+          <span class="plan-label">Right now</span>
+          <strong>${Math.round(nowScore * 100)}</strong>
+          <span>${scoreLabel(nowScore)} · ${fishingMode(now)}</span>
+          <div class="driver-chips">${nowWhy}</div>
+        </div>
+        <div class="plan-card plan-card-best">
+          <span class="plan-label">Best next window</span>
+          <strong>${bestRange}</strong>
+          <span>${Math.round(bestScore * 100)}/100 · ${deltaText}</span>
+          <div class="driver-chips">${bestWhy}</div>
+        </div>
+      </div>
+    `;
+  }
+
   async function showReachDetail(reachId, opts = {}) {
     currentDetailReachId = reachId;
     setView("detail", { silent: true });
@@ -715,6 +801,7 @@
       const bestWindowHTML = bestWindow && bestWindow.score > nowScore + 0.1
         ? `<p class="best-window">Best ahead: <strong>${formatWindowRange(bestWindow.start, bestWindow.end)}</strong> · ${Math.round(bestWindow.score * 100)}/100</p>`
         : "";
+      const planHTML = renderFishingPlan(hours, now, bestWindow);
 
       body.innerHTML = `
         <h2>${fc.stream_name}</h2>
@@ -731,6 +818,7 @@
           <p class="explanation">${now.explanation || ""}</p>
           ${bestWindowHTML}
         </div>
+        ${planHTML}
         <section class="section">
           <h3>7-day outlook</h3>
           ${renderDayStrip(days)}
