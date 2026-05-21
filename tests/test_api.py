@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 from src.api.main import app
-from src.api.routes import _diversify_windows_by_time
+from src.api.routes import _best_window_reason, _diversify_windows_by_time
 
 
 def test_reaches_endpoint():
@@ -31,3 +31,14 @@ def test_best_windows_diversifies_repeated_hours():
     assert sum(1 for row in picked if row["valid_at"] == "2026-05-21T20:00:00-05:00") == 4
     assert any(row["reach_id"] == "morning" for row in picked)
     assert any(row["reach_id"] == "evening" for row in picked)
+
+
+def test_best_window_reason_surfaces_actionable_drivers():
+    row = {"nymph_score": 0.82, "dry_score": 0.10}
+    model = {"surface_signal": 0.05}
+    breakdown = {"diel_activity": 1.0, "pressure_factor": 1.05, "sun_factor": 0.98}
+    regime = {"code": "NYMPH", "label": "Nymph"}
+
+    reason = _best_window_reason(row, model, breakdown, regime)
+
+    assert reason == ["nymph", "nymphing play", "low light"]

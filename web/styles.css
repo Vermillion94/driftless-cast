@@ -128,6 +128,11 @@ html, body {
 .window-main { display: flex; flex-direction: column; flex: 1; min-width: 0; }
 .window-name { font-weight: 600; font-size: 0.92rem; }
 .window-sub { color: #6b7280; font-size: 0.78rem; }
+.window-reason {
+  color: #2a6b5e;
+  font-size: 0.74rem;
+  margin-top: 2px;
+}
 .window-score { font-variant-numeric: tabular-nums; font-weight: 600; color: #374151; }
 
 /* Score pill */

@@ -352,6 +352,9 @@
         const proxyText = w.gauge_is_proxy
           ? ` · proxy ${w.proxy_distance_km != null ? `~${Math.round(w.proxy_distance_km)} km` : "gauge"}`
           : "";
+        const reason = Array.isArray(w.reason) && w.reason.length
+          ? `<span class="window-reason">${w.reason.map(escapeHtml).join(" · ")}</span>`
+          : "";
         return `
           <li data-reach="${w.reach_id}">
             <button type="button" class="window-row">
@@ -359,6 +362,7 @@
               <span class="window-main">
                 <span class="window-name">${w.stream_name}</span>
                 <span class="window-sub">${w.segment_name || ""} · ${timeLocal(w.valid_at)}${w.aggression_score != null ? ` · aggression ${Math.round(w.aggression_score * 100)}` : ""}${w.confidence_score != null ? ` · confidence ${Math.round(w.confidence_score * 100)}` : ""}${proxyText}</span>
+                ${reason}
               </span>
               <span class="window-score">${(score * 100).toFixed(0)}</span>
             </button>
