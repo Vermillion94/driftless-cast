@@ -439,23 +439,29 @@ def _flow_percentile_for_hour(
         Q_proj = project_flow(Q_now, Q_med, tau, hours_ahead)
         base_pct = discharge_percentile(Q_proj, signals.flow_stats)
 
+    display_flow = Q_proj
+    if signals.gauge_is_proxy and signals.local_flow_cfs is not None:
+        # Score remains based on the proxy gauge's percentile climatology, but
+        # the flow value shown to anglers should be the nearby/local gauge.
+        display_flow = signals.local_flow_cfs
+
     # 2b) Precip bump on top of the recessed baseline. Driftless streams flash
     # fast: 12.7 mm (0.5") in the preceding 24h already moves the needle.
     if not qpf_map:
-        return base_pct, Q_proj, None, tau_used, tau_source
+        return base_pct, display_flow, None, tau_used, tau_source
     preceding_mm = 0.0
     for h in range(1, 25):
         prior = (valid_at - timedelta(hours=h)).astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0).isoformat()
         preceding_mm += qpf_map.get(prior, 0.0)
     if preceding_mm < 3.0:
-        return base_pct, Q_proj, None, tau_used, tau_source
+        return base_pct, display_flow, None, tau_used, tau_source
     bump = min(0.45, (preceding_mm - 3.0) / 70.0)
     adjusted = min(0.98, base_pct + bump)
     note = None
     if preceding_mm >= 12.7:  # ≥ 0.5"
         inches = preceding_mm / 25.4
         note = f"rain in preceding 24h (~{inches:.1f}\")"
-    return adjusted, Q_proj, note, tau_used, tau_source
+    return adjusted, display_flow, note, tau_used, tau_source
 
 
 def _diurnal_water_temp_f(daily_mean_f: float, local_hour: int, spring_influenced: bool) -> float:
@@ -912,6 +918,10 @@ def _score_hour(
             "percentile_used": round(percentile, 3) if percentile is not None else None,
             "flow_tau_hours":  round(tau_hours, 1) if tau_hours is not None else None,
             "flow_tau_source": tau_source,
+            "flow_display_source": "local_noaa_current" if (
+                signals.gauge_is_proxy and signals.local_flow_cfs is not None
+                and projected_flow_cfs == signals.local_flow_cfs
+            ) else "model_projection",
         }),
     }
 

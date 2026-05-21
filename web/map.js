@@ -1391,6 +1391,9 @@
     if (sb.flow_tau_source === "noaa_usgs_fused") {
       return `<div class="sb-top-species">Flow projection: local NOAA trend + USGS proxy percentile</div>`;
     }
+    if (sb.flow_display_source === "local_noaa_current") {
+      return `<div class="sb-top-species">Flow context: local NOAA flow shown · USGS proxy percentile scored</div>`;
+    }
     if (sb.flow_tau_source === "noaa_forecast") {
       return `<div class="sb-top-species">Flow projection: NOAA streamflow forecast</div>`;
     }
