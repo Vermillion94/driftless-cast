@@ -349,13 +349,16 @@
         const score = w.score;
         const verdict = scoreLabel(score);
         const color = scoreColor(score);
+        const proxyText = w.gauge_is_proxy
+          ? ` · proxy ${w.proxy_distance_km != null ? `~${Math.round(w.proxy_distance_km)} km` : "gauge"}`
+          : "";
         return `
           <li data-reach="${w.reach_id}">
             <button type="button" class="window-row">
               <span class="score-pill" style="background:${color}">${verdict}</span>
               <span class="window-main">
                 <span class="window-name">${w.stream_name}</span>
-                <span class="window-sub">${w.segment_name || ""} · ${timeLocal(w.valid_at)}${w.aggression_score != null ? ` · aggression ${Math.round(w.aggression_score * 100)}` : ""}${w.confidence_score != null ? ` · confidence ${Math.round(w.confidence_score * 100)}` : ""}${w.gauge_is_proxy ? " · proxy gauge" : ""}</span>
+                <span class="window-sub">${w.segment_name || ""} · ${timeLocal(w.valid_at)}${w.aggression_score != null ? ` · aggression ${Math.round(w.aggression_score * 100)}` : ""}${w.confidence_score != null ? ` · confidence ${Math.round(w.confidence_score * 100)}` : ""}${proxyText}</span>
               </span>
               <span class="window-score">${(score * 100).toFixed(0)}</span>
             </button>

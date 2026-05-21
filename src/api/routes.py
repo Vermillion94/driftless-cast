@@ -80,6 +80,7 @@ def get_reach_conditions(reach_id: str) -> dict:
         "gauge_name": _GAUGE_NAMES.get(gauge_id) if gauge_id else _GAUGE_NAMES.get(noaa_lid) if noaa_lid else None,
         "gauge_source": "noaa" if noaa_lid else ("usgs" if gauge_id else None),
         "gauge_is_proxy": bool(reach.get("gauge_is_proxy")),
+        "proxy_distance_km": reach.get("proxy_distance_km"),
         "readings": None,
         "readings_error": None,
     }
@@ -126,7 +127,7 @@ def get_reach_forecast(reach_id: str, hours: int = Query(168, ge=1, le=168)) -> 
         )
         confidence_model = confidence_score(
             r.get("valid_at"), r.get("computed_at"), r.get("water_temp_source"),
-            reach.get("gauge_is_proxy"), score_breakdown
+            reach.get("gauge_is_proxy"), score_breakdown, reach.get("proxy_distance_km")
         )
         hours_payload.append({
             "valid_at": r["valid_at"],
@@ -181,6 +182,8 @@ def get_reach_forecast(reach_id: str, hours: int = Query(168, ge=1, le=168)) -> 
         "state": reach.get("state"),
         "trout_class": reach.get("trout_class"),
         "spring_influenced": bool(reach.get("spring_influenced")),
+        "gauge_is_proxy": bool(reach.get("gauge_is_proxy")),
+        "proxy_distance_km": reach.get("proxy_distance_km"),
         "dnr_summary": dnr_summary,
         "computed_at": computed_at,
         "stale_minutes": stale_minutes,
@@ -219,7 +222,7 @@ def get_best_windows(hours: int = Query(72, ge=1, le=168), limit: int = Query(10
         if confidence is None:
             confidence = confidence_score(
                 r.get("valid_at"), r.get("computed_at"), r.get("water_temp_source"),
-                r.get("gauge_is_proxy"), r.get("score_breakdown")
+                r.get("gauge_is_proxy"), r.get("score_breakdown"), r.get("proxy_distance_km")
             )["score"]
         rank_score = r.get("rank_score")
         if rank_score is None:
@@ -240,6 +243,7 @@ def get_best_windows(hours: int = Query(72, ge=1, le=168), limit: int = Query(10
                 "rank_score": rank_score,
                 "confidence_score": confidence,
                 "gauge_is_proxy": bool(r.get("gauge_is_proxy")),
+                "proxy_distance_km": r.get("proxy_distance_km"),
                 "nymph_score": r.get("nymph_score"),
                 "dry_score": r.get("dry_score"),
                 "aggression_score": score_model.get("aggression"),

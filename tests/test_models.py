@@ -112,6 +112,27 @@ def test_confidence_score_prefers_measured_local_short_lead():
     assert low["score"] < 0.75
 
 
+def test_confidence_score_uses_proxy_distance():
+    near = confidence_score(
+        "2026-05-20T18:00:00+00:00",
+        "2026-05-20T12:00:00+00:00",
+        "estimate",
+        True,
+        {"percentile_used": 0.45, "pressure_factor": 1.0},
+        12.0,
+    )
+    far = confidence_score(
+        "2026-05-20T18:00:00+00:00",
+        "2026-05-20T12:00:00+00:00",
+        "estimate",
+        True,
+        {"percentile_used": 0.45, "pressure_factor": 1.0},
+        42.0,
+    )
+    assert near["score"] > far["score"]
+    assert "~12 km" in near["notes"][1]
+
+
 def test_recommendation_rank_score_penalizes_uncertainty_without_changing_quality():
     strong_low_conf = recommendation_rank_score(0.82, 0.60)
     slightly_lower_high_conf = recommendation_rank_score(0.81, 0.95)
