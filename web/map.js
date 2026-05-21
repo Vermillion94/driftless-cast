@@ -1334,9 +1334,7 @@
     }
 
     const top = sb.top_species;
-    const topLine = top
-      ? `<div class="sb-top-species">${top.common_name || top.id} · ${Math.round((top.probability || 0) * 100)}%</div>`
-      : "";
+    const topLine = renderTopSpeciesDetails(top);
     return `
       <div class="sb-totals">
         <div class="sb-total"><span class="sb-total-label">Nymph</span><span class="sb-total-num">${Math.round(nymph * 100)}</span></div>
@@ -1359,6 +1357,25 @@
       ${topLine}
       <p class="sb-note">Nymph and dry are physical component scores. Headline is calibrated from those components so nymph-only plateaus do not read like boiling-rises days. Click any ${helpButton("score_overview").replace(/<\/?button[^>]*>/g, '?')} to see how a component is computed.</p>
     `;
+  }
+
+  function renderTopSpeciesDetails(top) {
+    if (!top) return "";
+    const name = escapeHtml(top.common_name || top.id || "Top hatch");
+    const probability = Math.round((top.probability || 0) * 100);
+    const factors = [
+      ["season", top.seasonal_score],
+      ["DD", top.degree_day_score],
+      ["weather", top.weather_score],
+      ["timing", top.timing_score],
+    ].filter(([, value]) => value != null);
+    const factorText = factors.length
+      ? ` · ${factors.map(([label, value]) => `${label} ${Math.round(Number(value) * 100)}%`).join(" × ")}`
+      : "";
+    const windowText = Array.isArray(top.emergence_window) && top.emergence_window.length === 2
+      ? ` · window ${top.emergence_window[0]}:00-${top.emergence_window[1]}:00`
+      : "";
+    return `<div class="sb-top-species">Top hatch: ${name} · ${probability}%${factorText}${windowText}</div>`;
   }
 
   function renderHeadlineModelNote(model) {
