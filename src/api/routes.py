@@ -22,7 +22,12 @@ from src.db import (
     top_windows,
 )
 from src.ingest import fetch_latest_iv, fetch_latest_nwps
-from src.models.score_calibration import confidence_score, headline_breakdown, headline_score
+from src.models.score_calibration import (
+    confidence_score,
+    headline_breakdown,
+    headline_score,
+    recommendation_rank_score,
+)
 
 LOG = logging.getLogger(__name__)
 router = APIRouter()
@@ -210,8 +215,17 @@ def get_best_windows(hours: int = Query(72, ge=1, le=168), limit: int = Query(10
                 r.get("nymph_score"), r.get("dry_score"),
                 r.get("active_species"), r.get("regime"), r.get("score_breakdown")
             )
+        confidence = r.get("confidence_score")
+        if confidence is None:
+            confidence = confidence_score(
+                r.get("valid_at"), r.get("computed_at"), r.get("water_temp_source"),
+                r.get("gauge_is_proxy"), r.get("score_breakdown")
+            )["score"]
+        rank_score = r.get("rank_score")
+        if rank_score is None:
+            rank_score = recommendation_rank_score(score, confidence)
         existing = seen.get(key)
-        if existing is None or score > existing["score"]:
+        if existing is None or rank_score > existing["rank_score"]:
             score_model = headline_breakdown(
                 r.get("nymph_score"), r.get("dry_score"), r.get("active_species"),
                 r.get("regime"), r.get("score_breakdown")
@@ -223,12 +237,15 @@ def get_best_windows(hours: int = Query(72, ge=1, le=168), limit: int = Query(10
                 "state": r.get("state"),
                 "valid_at": r["valid_at"],
                 "score": score,
+                "rank_score": rank_score,
+                "confidence_score": confidence,
+                "gauge_is_proxy": bool(r.get("gauge_is_proxy")),
                 "nymph_score": r.get("nymph_score"),
                 "dry_score": r.get("dry_score"),
                 "aggression_score": score_model.get("aggression"),
                 "explanation": r.get("explanation"),
             }
-    ordered = sorted(seen.values(), key=lambda x: x["score"], reverse=True)[:limit]
+    ordered = sorted(seen.values(), key=lambda x: x["rank_score"], reverse=True)[:limit]
     return ordered
 
 

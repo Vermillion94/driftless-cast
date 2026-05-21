@@ -6,6 +6,7 @@ from src.models.score_calibration import (
     confidence_score,
     headline_breakdown,
     headline_score,
+    recommendation_rank_score,
 )
 from src.models.recession import (
     class_prior_tau_hours,
@@ -109,6 +110,13 @@ def test_confidence_score_prefers_measured_local_short_lead():
     assert high["score"] > low["score"]
     assert high["score"] > 0.90
     assert low["score"] < 0.75
+
+
+def test_recommendation_rank_score_penalizes_uncertainty_without_changing_quality():
+    strong_low_conf = recommendation_rank_score(0.82, 0.60)
+    slightly_lower_high_conf = recommendation_rank_score(0.81, 0.95)
+    assert slightly_lower_high_conf > strong_low_conf
+    assert recommendation_rank_score(0.90, 0.60) > recommendation_rank_score(0.81, 0.95)
 
 
 def test_recession_projects_toward_median():
