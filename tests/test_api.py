@@ -91,6 +91,8 @@ def test_hatch_windows_endpoint_surfaces_species(monkeypatch):
         "surface_signal": 0.46,
         "surface_rank_score": 0.39,
         "confidence_score": 0.90,
+        "water_temp_f": 62.0,
+        "fish_stress": 0,
         "explanation": "surface signal building",
     }])
     client = TestClient(app)
@@ -100,4 +102,5 @@ def test_hatch_windows_endpoint_surfaces_species(monkeypatch):
     assert response.status_code == 200
     payload = response.json()
     assert payload[0]["top_species"]["common_name"] == "Sulphur"
+    assert payload[0]["fish_stress"] is False
     assert payload[0]["reason"] == ["surface signal", "Sulphur", "bright-sun drag"]

@@ -439,11 +439,12 @@ def top_windows(hours: int, limit: int = 10) -> List[Dict[str, Any]]:
                r.gauge_is_proxy, r.proxy_distance_km,
                p.valid_at, p.computed_at, p.nymph_score, p.dry_score,
                p.active_species, p.regime, p.score_breakdown, p.explanation,
-               p.water_temp_source
+               p.water_temp_source, p.water_temp_f, p.fish_stress
         FROM prediction p
         JOIN reach r ON r.reach_id = p.reach_id
         WHERE p.valid_at >= datetime('now', '-1 hour')
           AND p.valid_at <= datetime('now', '+' || ? || ' hours')
+          AND COALESCE(p.fish_stress, 0) = 0
         """,
         (hours,),
     ).fetchall()

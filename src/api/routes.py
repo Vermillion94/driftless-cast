@@ -289,6 +289,8 @@ def get_hatch_windows(
             "surface_signal": r.get("surface_signal"),
             "surface_rank_score": r.get("surface_rank_score"),
             "confidence_score": r.get("confidence_score"),
+            "water_temp_f": r.get("water_temp_f"),
+            "fish_stress": bool(r.get("fish_stress")),
             "top_species": top_species,
             "reason": reason[:3],
             "regime": regime,
