@@ -54,6 +54,7 @@ from src.models.recession import (
 )
 from src.models.seasonal import TERRESTRIAL_SPECIES, seasonal_activity
 from src.models.temp_estimator import estimate_water_series_f
+from src.models import thermal_profile
 
 LOG = logging.getLogger(__name__)
 
@@ -99,6 +100,7 @@ class ReachSignals:
     anomaly_f: Optional[float] = None
     hatch_shift_days: float = 0.0
     dd_by_base_c: Optional[Dict[float, float]] = None
+    thermal_profile: thermal_profile.ThermalProfile = thermal_profile.DEFAULT_PROFILE
 
 
 def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[float]) -> ReachSignals:
@@ -113,6 +115,7 @@ def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[fl
     recent: List[float] = []
     source: Optional[str] = None
     spring_influenced = bool(reach.get("spring_influenced"))
+    reach_thermal_profile = thermal_profile.from_reach(reach)
     lat = float(reach["centroid_lat"])
     lon = float(reach["centroid_lon"])
     reach_id = str(reach["reach_id"])
@@ -227,6 +230,7 @@ def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[fl
             reach_id=reach_id, lat=lat, lon=lon,
             spring_influenced=spring_influenced,
             species_base_temps_c=species_base_temps_c,
+            thermal_profile=reach_thermal_profile,
         )
     except Exception:
         LOG.exception("dd pipeline failed for %s", reach_id)
@@ -241,6 +245,7 @@ def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[fl
             air_daily_f = [t for _d, t in rows]
             t_f = temp_estimator.estimate_current_water_f(air_daily_f, spring_influenced)
             if t_f is not None:
+                t_f = thermal_profile.apply_profile(t_f, reach_thermal_profile)
                 water_temp_c = (t_f - 32.0) * 5.0 / 9.0
                 water_temp_source = "estimate"
                 notes.append("water temp estimated from air temp (Mohseni)")
@@ -271,6 +276,7 @@ def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[fl
         anomaly_f=anomaly.anomaly_f if anomaly else None,
         hatch_shift_days=shift,
         dd_by_base_c=dd_by_base,
+        thermal_profile=reach_thermal_profile,
     )
 
 
@@ -464,13 +470,18 @@ def _flow_percentile_for_hour(
     return adjusted, display_flow, note, tau_used, tau_source
 
 
-def _diurnal_water_temp_f(daily_mean_f: float, local_hour: int, spring_influenced: bool) -> float:
+def _diurnal_water_temp_f(
+    daily_mean_f: float,
+    local_hour: int,
+    spring_influenced: bool,
+    amp_factor: float = 1.0,
+) -> float:
     """Add a diurnal sinusoid to the Mohseni daily mean so within-day variation
     actually shows up in the score. Phase peaks at 17:00 local, troughs at 05:00.
     Spring-fed reaches barely move (groundwater buffering); freestones swing.
     """
     import math
-    amplitude = DIURNAL_AMP_SPRING_F if spring_influenced else DIURNAL_AMP_FREESTONE_F
+    amplitude = (DIURNAL_AMP_SPRING_F if spring_influenced else DIURNAL_AMP_FREESTONE_F) * amp_factor
     phase = (local_hour - DIURNAL_PEAK_HOUR_LOCAL) * 2.0 * math.pi / 24.0
     return daily_mean_f + amplitude * math.cos(phase)
 
@@ -577,6 +588,7 @@ def _build_water_temp_by_date(
         d += timedelta(days=1)
 
     water_series = estimate_water_series_f(air_series, signals.spring_influenced)
+    water_series = thermal_profile.apply_profile_series(water_series, signals.thermal_profile)
     return dict(zip(contiguous, water_series))
 
 
@@ -685,7 +697,10 @@ def _score_hour(
     water_temp_f: Optional[float] = None
     if water_temp_f_by_date and valid_date in water_temp_f_by_date:
         water_temp_f = _diurnal_water_temp_f(
-            water_temp_f_by_date[valid_date], valid_hour, signals.spring_influenced
+            water_temp_f_by_date[valid_date],
+            valid_hour,
+            signals.spring_influenced,
+            signals.thermal_profile.diurnal_amp_factor,
         )
     elif signals.water_temp_c is not None:
         water_temp_f = signals.water_temp_c * 9 / 5 + 32
@@ -922,6 +937,8 @@ def _score_hour(
                 signals.gauge_is_proxy and signals.local_flow_cfs is not None
                 and projected_flow_cfs == signals.local_flow_cfs
             ) else "model_projection",
+            "thermal_profile": signals.thermal_profile.label,
+            "thermal_spring_strength": round(signals.thermal_profile.spring_strength, 3),
         }),
     }
 

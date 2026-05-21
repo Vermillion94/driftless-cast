@@ -20,6 +20,7 @@ import requests
 from src.db import get_connection
 from src.ingest import fetch_archive_daily_mean_f
 from src.models.temp_estimator import estimate_water_series_f, rolling_mean
+from src.models.thermal_profile import DEFAULT_PROFILE, ThermalProfile, apply_profile_series
 
 LOG = logging.getLogger(__name__)
 
@@ -57,6 +58,7 @@ def build_for_reach(
     spring_influenced: bool,
     species_base_temps_c: List[float],
     today: Optional[date] = None,
+    thermal_profile: ThermalProfile = DEFAULT_PROFILE,
 ) -> Dict[float, float]:
     """Refresh dd_accumulation rows for `reach_id` and return current-day DD by base."""
     today = today or datetime.now(timezone.utc).date()
@@ -77,6 +79,7 @@ def build_for_reach(
     dates = [d for d, _t in rows]
     air_f = [t for _d, t in rows]
     water_f = estimate_water_series_f(air_f, spring_influenced)
+    water_f = apply_profile_series(water_f, thermal_profile)
     water_c = _f_to_c_series(water_f)
 
     per_base: Dict[float, List[float]] = {}
