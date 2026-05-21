@@ -192,9 +192,15 @@ def test_emergence_window_inside_full_credit():
 
 
 def test_emergence_window_outside_partial_credit():
-    """Outside the window: still 0.3 — fish can rise to a stray dun."""
-    assert hour_of_day_score(8, 12, 15) == 0.3
-    assert hour_of_day_score(20, 12, 15) == 0.3
+    """Far outside the window: only background adult presence, not a hatch."""
+    assert hour_of_day_score(8, 12, 15) == 0.05
+    assert hour_of_day_score(20, 12, 15) == 0.05
+
+
+def test_emergence_window_shoulder_is_short():
+    """The 2h shoulder preserves near-miss eats without flattening all day."""
+    assert 0.50 < hour_of_day_score(11, 12, 15) < 1.0
+    assert 0.50 < hour_of_day_score(16, 12, 15) < 1.0
 
 
 # ─── Regime classifier ─────────────────────────────────────────────────────
