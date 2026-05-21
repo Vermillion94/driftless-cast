@@ -38,14 +38,13 @@ def _build_forecast_background() -> None:
         # an already-initialized DB before the forecast build hits them.
         from src.db import initialize_database, load_reaches
         initialize_database()
-        # Auto-seed the reach table on first boot. On a hosted instance with
-        # a fresh persistent volume this is the only way the DB ever gets
-        # populated — without this `build_all` finds zero reaches and the
-        # API returns an empty `/reaches`.
+        # Re-seed reach metadata on boot. This is intentionally idempotent:
+        # it keeps gauge mappings, proxy distances, and notes in sync with
+        # data/seed/reaches.json on persistent Fly volumes.
+        from src.scripts.bootstrap_reaches import bootstrap_reaches
         if not load_reaches():
             LOG.info("empty reach table — seeding from data/seed/reaches.json")
-            from src.scripts.bootstrap_reaches import bootstrap_reaches
-            bootstrap_reaches()
+        bootstrap_reaches()
         from src.models.forecast_builder import build_all
         LOG.info("forecast build starting")
         counts = build_all()

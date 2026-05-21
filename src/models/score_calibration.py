@@ -156,6 +156,7 @@ def confidence_score(
     water_temp_source: Any,
     gauge_is_proxy: Any = False,
     score_breakdown: Any = None,
+    proxy_distance_km: Any = None,
 ) -> dict[str, Any]:
     """How much trust to put in this hour's score inputs.
 
@@ -177,8 +178,21 @@ def confidence_score(
     percentile = _breakdown_value(score_breakdown, "percentile_used", -1.0)
     flow = 1.0 if percentile >= 0 else 0.55
     if bool(gauge_is_proxy):
-        flow *= 0.75
-        flow_label = "proxy gauge flow context"
+        distance = _as_float(proxy_distance_km, -1.0)
+        if distance >= 0:
+            if distance <= 15:
+                proxy_factor = 0.90
+            elif distance <= 30:
+                proxy_factor = 0.82
+            elif distance <= 45:
+                proxy_factor = 0.74
+            else:
+                proxy_factor = 0.65
+            flow_label = f"proxy gauge flow context (~{distance:.0f} km)"
+        else:
+            proxy_factor = 0.75
+            flow_label = "proxy gauge flow context"
+        flow *= proxy_factor
     else:
         flow_label = "local gauge flow context" if percentile >= 0 else "limited flow context"
 

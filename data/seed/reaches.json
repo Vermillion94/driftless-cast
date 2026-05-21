@@ -15,7 +15,8 @@
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Class I wild brown trout; Kiap-TU-Wish restoration reaches. Rush's own USGS gauge 05355325 is inactive (verified 2026-04) and has no published daily statistics. Flow proxy: Kinnickinnic at River Falls (USGS 05342000) — chosen over the geographically-closer Eau Galle (05370000) because Kinni is a same-class spring-influenced limestone creek with similar drainage area (165 vs ~140 sqmi); Eau Galle is freestone with a much flashier flow distribution and would over-read storm percentiles for Rush. The structural water-temp guard still forces Mohseni for thermal regime."
+    "notes": "Class I wild brown trout; Kiap-TU-Wish restoration reaches. Rush's own USGS gauge 05355325 is inactive (verified 2026-04) and has no published daily statistics. Flow proxy: Kinnickinnic at River Falls (USGS 05342000) — chosen over the geographically-closer Eau Galle (05370000) because Kinni is a same-class spring-influenced limestone creek with similar drainage area (165 vs ~140 sqmi); Eau Galle is freestone with a much flashier flow distribution and would over-read storm percentiles for Rush. The structural water-temp guard still forces Mohseni for thermal regime.",
+    "proxy_distance_km": 38.0
   },
   {
     "reach_id": "kinnickinnic-river-falls",
@@ -51,7 +52,8 @@
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 0,
-    "notes": "Willow River at Willow River State Park near Burkhardt. Proxy: Apple River at Somerset, ~9 mi N (same St. Croix drainage; Willow's own gauge was discontinued in Jan 2024)."
+    "notes": "Willow River at Willow River State Park near Burkhardt. Proxy: Apple River at Somerset, ~9 mi N (same St. Croix drainage; Willow's own gauge was discontinued in Jan 2024).",
+    "proxy_distance_km": 14.0
   },
   {
     "reach_id": "apple-somerset",
@@ -231,7 +233,8 @@
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Whitewater River at Beaver; Whitewater State Park reach. Proxy: NOAA North Fork Whitewater near Elba, ~5 mi upstream (same drainage).; flow percentile via proxy gauge: Rush Creek near Rushford (40km, similar regional spring-creek class)"
+    "notes": "Whitewater River at Beaver; Whitewater State Park reach. Proxy: NOAA North Fork Whitewater near Elba, ~5 mi upstream (same drainage).; flow percentile via proxy gauge: Rush Creek near Rushford (40km, similar regional spring-creek class)",
+    "proxy_distance_km": 40.0
   },
   {
     "reach_id": "whitewater-north-fork-elba",
@@ -249,7 +252,8 @@
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Wild brown stronghold; heavily spring-influenced. NOAA gauge is on this reach (USGS version was decommissioned in 1993).; flow percentile via proxy gauge: Root R at Pilot Mound (34km, similar regional spring-creek class)"
+    "notes": "Wild brown stronghold; heavily spring-influenced. NOAA gauge is on this reach (USGS version was decommissioned in 1993).; flow percentile via proxy gauge: Root R at Pilot Mound (34km, similar regional spring-creek class)",
+    "proxy_distance_km": 34.0
   },
   {
     "reach_id": "whitewater-south-fork-altura",
@@ -267,7 +271,8 @@
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Popular sight-fishing water near Altura. Proxy: NOAA Middle Fork Whitewater at Whitewater State Park Group Camp, ~4 mi S (sibling fork of same Whitewater drainage).; flow percentile via proxy gauge: Rush Creek near Rushford (31km, similar regional spring-creek class)"
+    "notes": "Popular sight-fishing water near Altura. Proxy: NOAA Middle Fork Whitewater at Whitewater State Park Group Camp, ~4 mi S (sibling fork of same Whitewater drainage).; flow percentile via proxy gauge: Rush Creek near Rushford (31km, similar regional spring-creek class)",
+    "proxy_distance_km": 31.0
   },
   {
     "reach_id": "trout-run-creek-chatfield",
@@ -285,7 +290,8 @@
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Spring creek with DNR easements; wild browns. Proxy: NOAA Middle Branch Root at Fillmore, ~10 mi SW (same Middle Branch Root drainage).; flow percentile via proxy gauge: Root R at Pilot Mound (12km, same Root River watershed)"
+    "notes": "Spring creek with DNR easements; wild browns. Proxy: NOAA Middle Branch Root at Fillmore, ~10 mi SW (same Middle Branch Root drainage).; flow percentile via proxy gauge: Root R at Pilot Mound (12km, same Root River watershed)",
+    "proxy_distance_km": 12.0
   },
   {
     "reach_id": "pine-creek-caledonia",
@@ -303,7 +309,8 @@
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Houston County spring creek; Class I throughout. Pine Cr is a small Mississippi-tributary spring creek with no gauge of its own. Flow proxy: South Fork Root River near Houston (USGS 05385500) — chosen over the (formerly used) lower-Root-mainstem 05385000 because S Fk Root is spring-influenced and similar small-creek hydrology. ~12 mi N, same Houston County bluff country."
+    "notes": "Houston County spring creek; Class I throughout. Pine Cr is a small Mississippi-tributary spring creek with no gauge of its own. Flow proxy: South Fork Root River near Houston (USGS 05385500) — chosen over the (formerly used) lower-Root-mainstem 05385000 because S Fk Root is spring-influenced and similar small-creek hydrology. ~12 mi N, same Houston County bluff country.",
+    "proxy_distance_km": 19.0
   },
   {
     "reach_id": "beaver-creek-caledonia",
@@ -321,7 +328,8 @@
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Beaver Creek Valley State Park reach. Flow proxy: South Fork Root River near Houston (USGS 05385500) — spring-influenced, ~12 mi N. Switched from the formerly-used lower-Root-mainstem 05385000 because that gauge is freestone and over-reads storm percentiles for spring creeks like Beaver."
+    "notes": "Beaver Creek Valley State Park reach. Flow proxy: South Fork Root River near Houston (USGS 05385500) — spring-influenced, ~12 mi N. Switched from the formerly-used lower-Root-mainstem 05385000 because that gauge is freestone and over-reads storm percentiles for spring creeks like Beaver.",
+    "proxy_distance_km": 19.0
   },
   {
     "reach_id": "winnebago-creek-caledonia",
@@ -339,7 +347,8 @@
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "SE MN spring creek. Proxy: NOAA Waterloo Creek near Dorchester, ~8 mi S (small-stream proxy, similar class).; flow percentile via proxy gauge: South Fork Root near Houston (23km, spring-influenced regional proxy)"
+    "notes": "SE MN spring creek. Proxy: NOAA Waterloo Creek near Dorchester, ~8 mi S (small-stream proxy, similar class).; flow percentile via proxy gauge: South Fork Root near Houston (23km, spring-influenced regional proxy)",
+    "proxy_distance_km": 23.0
   },
   {
     "reach_id": "garvin-brook-stockton",
@@ -357,7 +366,8 @@
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Tight spring creek south of Winona. Flow proxy: NOAA North Fork Whitewater near Elba (EBWM5) — same Winona County bluff country, same spring-fed hydrology. Switched from the formerly-used Trempealeau at Dodge (DDGW3) because Trempealeau is a freestone WI mainstem with very different recession behavior.; flow percentile via proxy gauge: Rush Creek near Rushford (24km, similar small Mississippi-tributary spring creek)"
+    "notes": "Tight spring creek south of Winona. Flow proxy: NOAA North Fork Whitewater near Elba (EBWM5) — same Winona County bluff country, same spring-fed hydrology. Switched from the formerly-used Trempealeau at Dodge (DDGW3) because Trempealeau is a freestone WI mainstem with very different recession behavior.; flow percentile via proxy gauge: Rush Creek near Rushford (24km, similar small Mississippi-tributary spring creek)",
+    "proxy_distance_km": 24.0
   },
   {
     "reach_id": "hay-creek-red-wing",
@@ -375,6 +385,7 @@
     "gauge_is_proxy": 1,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Heavily-fished MN spring creek just south of Red Wing. Proxy: NOAA Wells Creek near Frontenac, ~11 mi NE (same Red Wing bluff-country drainage).; flow percentile via proxy gauge: Kinnickinnic near River Falls (42km, nearest USGS spring-creek-class gauge)"
+    "notes": "Heavily-fished MN spring creek just south of Red Wing. Proxy: NOAA Wells Creek near Frontenac, ~11 mi NE (same Red Wing bluff-country drainage).; flow percentile via proxy gauge: Kinnickinnic near River Falls (42km, nearest USGS spring-creek-class gauge)",
+    "proxy_distance_km": 42.0
   }
 ]

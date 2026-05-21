@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS reach (
     usgs_gauge_id    TEXT,
     noaa_lid         TEXT,
     gauge_is_proxy   INTEGER DEFAULT 0,
+    proxy_distance_km REAL,
     nws_gridpoint    TEXT,
     spring_influenced INTEGER DEFAULT 0,
     notes            TEXT,

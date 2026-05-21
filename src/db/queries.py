@@ -31,6 +31,7 @@ def initialize_database(db_path: Optional[Path] = None) -> None:
     _ensure_columns(conn, "reach", {
         "noaa_lid": "TEXT",
         "gauge_is_proxy": "INTEGER DEFAULT 0",
+        "proxy_distance_km": "REAL",
         "dnr_summary": "TEXT",
     })
     _ensure_columns(conn, "prediction", {
@@ -61,12 +62,12 @@ def _ensure_columns(conn: sqlite3.Connection, table: str, columns: Dict[str, str
 
 
 def upsert_reach(reach: Dict[str, Any]) -> None:
-    reach = {"gauge_is_proxy": 0, "noaa_lid": None, **reach}
+    reach = {"gauge_is_proxy": 0, "noaa_lid": None, "proxy_distance_km": None, **reach}
     conn = get_connection()
     conn.execute(
         """
-        INSERT INTO reach (reach_id, stream_name, segment_name, state, trout_class, geometry_geojson, centroid_lat, centroid_lon, length_km, mean_gradient, usgs_gauge_id, noaa_lid, gauge_is_proxy, nws_gridpoint, spring_influenced, notes)
-        VALUES (:reach_id, :stream_name, :segment_name, :state, :trout_class, :geometry_geojson, :centroid_lat, :centroid_lon, :length_km, :mean_gradient, :usgs_gauge_id, :noaa_lid, :gauge_is_proxy, :nws_gridpoint, :spring_influenced, :notes)
+        INSERT INTO reach (reach_id, stream_name, segment_name, state, trout_class, geometry_geojson, centroid_lat, centroid_lon, length_km, mean_gradient, usgs_gauge_id, noaa_lid, gauge_is_proxy, proxy_distance_km, nws_gridpoint, spring_influenced, notes)
+        VALUES (:reach_id, :stream_name, :segment_name, :state, :trout_class, :geometry_geojson, :centroid_lat, :centroid_lon, :length_km, :mean_gradient, :usgs_gauge_id, :noaa_lid, :gauge_is_proxy, :proxy_distance_km, :nws_gridpoint, :spring_influenced, :notes)
         ON CONFLICT(reach_id) DO UPDATE SET
             stream_name = excluded.stream_name,
             segment_name = excluded.segment_name,
@@ -80,6 +81,7 @@ def upsert_reach(reach: Dict[str, Any]) -> None:
             usgs_gauge_id = excluded.usgs_gauge_id,
             noaa_lid = excluded.noaa_lid,
             gauge_is_proxy = excluded.gauge_is_proxy,
+            proxy_distance_km = excluded.proxy_distance_km,
             nws_gridpoint = excluded.nws_gridpoint,
             spring_influenced = excluded.spring_influenced,
             notes = excluded.notes;
@@ -113,6 +115,7 @@ def list_reach_summaries() -> List[Dict[str, Any]]:
         SELECT
             r.reach_id, r.stream_name, r.segment_name, r.state, r.trout_class,
             r.centroid_lat, r.centroid_lon, r.usgs_gauge_id, r.noaa_lid, r.gauge_is_proxy,
+            r.proxy_distance_km,
             r.geometry_geojson, r.spring_influenced,
             p.nymph_score, p.dry_score, p.active_species, p.regime, p.score_breakdown,
             p.valid_at AS prediction_valid_at
@@ -428,7 +431,7 @@ def top_windows(hours: int, limit: int = 10) -> List[Dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT p.reach_id, r.stream_name, r.segment_name, r.state,
-               r.gauge_is_proxy,
+               r.gauge_is_proxy, r.proxy_distance_km,
                p.valid_at, p.computed_at, p.nymph_score, p.dry_score,
                p.active_species, p.regime, p.score_breakdown, p.explanation,
                p.water_temp_source
@@ -449,7 +452,7 @@ def top_windows(hours: int, limit: int = 10) -> List[Dict[str, Any]]:
         )
         conf = confidence_score(
             d.get("valid_at"), d.get("computed_at"), d.get("water_temp_source"),
-            d.get("gauge_is_proxy"), d.get("score_breakdown")
+            d.get("gauge_is_proxy"), d.get("score_breakdown"), d.get("proxy_distance_km")
         )
         d["confidence_score"] = conf["score"]
         d["rank_score"] = recommendation_rank_score(d["combined_score"], conf["score"])
