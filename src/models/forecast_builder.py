@@ -790,6 +790,7 @@ def _score_hour(
     # what it is. This is the audit trail — every component a user clicks
     # through to should trace back to one of these numbers.
     from src.models.nymph_score import (
+        diel_activity_factor as _diel_activity_factor,
         flow_percentile_score as _flow_pct_score,
         flow_trend_score as _flow_trend_score,
         temperature_score as _temp_score,
@@ -797,6 +798,7 @@ def _score_hour(
     breakdown_temp_score = _temp_score(water_temp_f) if water_temp_f is not None else 0.0
     breakdown_flow_pct_score = _flow_pct_score(percentile)
     breakdown_flow_trend_score = _flow_trend_score(signals.recent_flows)
+    breakdown_diel_score = _diel_activity_factor(valid_at.isoformat())
     breakdown_top_species = None
     if active_species_payload:
         top = max(active_species_payload, key=lambda s: s.get("probability") or 0)
@@ -937,6 +939,7 @@ def _score_hour(
             "temperature":     round(breakdown_temp_score, 3),
             "flow_percentile": round(breakdown_flow_pct_score, 3),
             "flow_trend":      round(breakdown_flow_trend_score, 3),
+            "diel_activity":   round(breakdown_diel_score, 3),
             "pressure_factor": round(pressure_factor, 3),
             "sun_factor":      round(sun_factor, 3),
             "top_species":     breakdown_top_species,
