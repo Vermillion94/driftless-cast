@@ -24,9 +24,11 @@ jobs:
           pip install --upgrade pip
           pip install poetry==1.8.3
           poetry config virtualenvs.create false
-          poetry install --without dev --no-root --no-interaction
+          poetry install --no-root --no-interaction
+      - name: Bootstrap seed database
+        run: python -m src.scripts.bootstrap_reaches
       - name: Run acceptance tests
-        run: python -m tests.test_acceptance
+        run: python -m pytest tests/test_acceptance.py tests/test_models.py tests/test_api.py -q
 
   backtest:
     name: Hindcast against USGS + Mohseni
