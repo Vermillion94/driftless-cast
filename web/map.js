@@ -701,6 +701,43 @@
     return chips.slice(0, 4).map((c) => `<span class="driver-chip">${c}</span>`).join("");
   }
 
+  function explainWhyLater(now, bestHour, bestScore) {
+    if (!now || !bestHour) return "";
+    const nowScore = hourScore(now);
+    const nowTime = new Date(now.valid_at).getTime();
+    const bestTime = new Date(bestHour.valid_at).getTime();
+    if (bestTime <= nowTime || bestScore < nowScore + 0.06) return "";
+
+    const n = now.score_breakdown || {};
+    const b = bestHour.score_breakdown || {};
+    const reasons = [];
+    if ((b.diel_activity || 0) >= (n.diel_activity || 0) + 0.06) {
+      reasons.push("the light/timing window improves");
+    }
+    if ((b.sun_factor || 1) >= (n.sun_factor || 1) + 0.08) {
+      reasons.push("bright sun eases");
+    }
+    if ((b.pressure_factor || 1) >= (n.pressure_factor || 1) + 0.02) {
+      reasons.push("barometer trend helps more");
+    }
+    if ((b.temperature || 0) >= (n.temperature || 0) + 0.08) {
+      reasons.push("water temperature moves into a better band");
+    }
+    if ((b.flow_percentile || 0) >= (n.flow_percentile || 0) + 0.08) {
+      reasons.push("flow percentile improves");
+    }
+    const nowSurface = Math.max(now.dry_score || 0, (now.score_model || {}).top_hatch_probability || 0);
+    const bestSurface = Math.max(bestHour.dry_score || 0, (bestHour.score_model || {}).top_hatch_probability || 0);
+    if (bestSurface >= nowSurface + 0.10) {
+      reasons.push("surface activity gets stronger");
+    }
+
+    const lead = reasons.length
+      ? reasons.slice(0, 2).join(" and ")
+      : "the later 3-hour average is stronger";
+    return `<p class="why-later"><strong>Why not now?</strong> ${lead}, so the better play is to wait for the window.</p>`;
+  }
+
   function renderFishingPlan(hours, now, bestWindow) {
     if (!now) return "";
     const nowScore = hourScore(now);
@@ -715,6 +752,7 @@
         : "similar to now";
     const bestWhy = scoreDriverChips(bestHour);
     const nowWhy = scoreDriverChips(now);
+    const whyLater = explainWhyLater(now, bestHour, bestScore);
     return `
       <div class="plan-panel">
         <div class="plan-card">
@@ -728,6 +766,7 @@
           <strong>${bestRange}</strong>
           <span>${Math.round(bestScore * 100)}/100 · ${deltaText}</span>
           <div class="driver-chips">${bestWhy}</div>
+          ${whyLater}
         </div>
       </div>
     `;
