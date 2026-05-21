@@ -377,6 +377,46 @@
     }
   }
 
+  async function loadHatchWatch() {
+    const listEl = document.getElementById("hatch-watch-list");
+    if (!listEl) return;
+    try {
+      const resp = await fetch(`${API_BASE}/hatch-windows?hours=168&limit=6&min_surface=0.25`);
+      const windows = resp.ok ? await resp.json() : [];
+      if (!windows.length) {
+        listEl.innerHTML = `<li class="muted">No strong surface signal in the 7-day forecast.</li>`;
+        return;
+      }
+      listEl.innerHTML = windows.map((w) => {
+        const score = applyResidual(w.reach_id, w.score);
+        const species = w.top_species || {};
+        const speciesLabel = species.common_name || species.id || "surface activity";
+        const surface = w.surface_signal != null ? `${Math.round(w.surface_signal * 100)}% surface` : "surface";
+        const confidence = w.confidence_score != null ? ` · confidence ${Math.round(w.confidence_score * 100)}` : "";
+        const reason = Array.isArray(w.reason) && w.reason.length
+          ? `<span class="window-reason">${w.reason.map(escapeHtml).join(" · ")}</span>`
+          : "";
+        return `
+          <li data-reach="${w.reach_id}">
+            <button type="button" class="window-row window-row-hatch">
+              <span class="score-pill surface-pill">${surface}</span>
+              <span class="window-main">
+                <span class="window-name">${escapeHtml(speciesLabel)} on ${escapeHtml(w.stream_name || "stream")}</span>
+                <span class="window-sub">${escapeHtml(w.segment_name || "")} · ${timeLocal(w.valid_at)} · overall ${Math.round(score * 100)}/100${confidence}</span>
+                ${reason}
+              </span>
+            </button>
+          </li>
+        `;
+      }).join("");
+      listEl.querySelectorAll("li[data-reach]").forEach((li) => {
+        li.querySelector("button").addEventListener("click", () => showReachDetail(li.dataset.reach));
+      });
+    } catch (err) {
+      listEl.innerHTML = `<li class="error">${err.message}</li>`;
+    }
+  }
+
   function renderFlies(flies, activeSpecies, allSpecies) {
     // Show full per-active-species pattern lists, grouped, plus the primary/dropper pick.
     const rows = [];
@@ -1717,6 +1757,7 @@
     loadPlanningSummary();
     loadReaches();
     loadBestWindows();
+    loadHatchWatch();
     loadScrubGrid();
   });
   // Hash routing — handle inbound link AND back/forward buttons.
@@ -1727,6 +1768,7 @@
     loadPlanningSummary();
     loadReaches();
     loadBestWindows();
+    loadHatchWatch();
     loadScrubGrid();
   }, REFRESH_MS);
 })();

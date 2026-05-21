@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 from src.api.main import app
-from src.api.routes import _best_window_reason, _diversify_windows_by_time
+from src.api import routes
+from src.api.routes import _best_window_reason, _diversify_windows_by_time, _top_active_species
 
 
 def test_reaches_endpoint():
@@ -63,3 +64,40 @@ def test_best_window_reason_prefers_spring_buffered_context():
     reason = _best_window_reason(row, model, breakdown, {"code": "NORMAL"})
 
     assert reason == ["nymphing play", "spring-buffered water", "low light"]
+
+
+def test_top_active_species_picks_highest_probability():
+    species = [
+        {"id": "bwo", "common_name": "BWO", "probability": 0.20},
+        {"id": "sulphur", "common_name": "Sulphur", "probability": 0.42},
+    ]
+
+    assert _top_active_species(species)["id"] == "sulphur"
+
+
+def test_hatch_windows_endpoint_surfaces_species(monkeypatch):
+    monkeypatch.setattr(routes, "hatch_windows", lambda hours, limit, min_surface: [{
+        "reach_id": "upper-iowa-decorah",
+        "stream_name": "Upper Iowa River",
+        "segment_name": "near Decorah",
+        "state": "IA",
+        "valid_at": "2026-05-26T16:00:00-05:00",
+        "nymph_score": 0.25,
+        "dry_score": 0.15,
+        "active_species": '[{"id":"sulphur","common_name":"Sulphur","probability":0.46}]',
+        "regime": '{"code":"NORMAL"}',
+        "score_breakdown": '{"sun_factor":0.88}',
+        "combined_score": 0.36,
+        "surface_signal": 0.46,
+        "surface_rank_score": 0.39,
+        "confidence_score": 0.90,
+        "explanation": "surface signal building",
+    }])
+    client = TestClient(app)
+
+    response = client.get("/hatch-windows?hours=168&limit=6&min_surface=0.25")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload[0]["top_species"]["common_name"] == "Sulphur"
+    assert payload[0]["reason"] == ["surface signal", "Sulphur", "bright-sun drag"]
