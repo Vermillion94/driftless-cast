@@ -207,6 +207,61 @@ html, body {
   padding: 4px 8px;
 }
 
+.plan-panel {
+  display: grid;
+  grid-template-columns: 1fr 1.25fr;
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+.plan-card {
+  border: 1px solid #e1e6ec;
+  border-radius: 6px;
+  background: #fff;
+  padding: 9px 10px;
+  min-width: 0;
+}
+.plan-card-best {
+  border-color: #b7ddd6;
+  background: #f4fbf8;
+}
+.plan-label {
+  display: block;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #6b7280;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.plan-card strong {
+  display: block;
+  color: #264653;
+  font-size: 0.98rem;
+  line-height: 1.2;
+}
+.plan-card span:not(.plan-label):not(.driver-chip) {
+  display: block;
+  color: #52606d;
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+.driver-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 7px;
+}
+.driver-chip {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: #edf2f7;
+  color: #374151;
+  font-size: 0.68rem;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
 .day-list {
   display: flex;
   flex-direction: column;
@@ -1023,6 +1078,7 @@ html, body {
   }
   body.sidebar-open .scrubber { bottom: calc(60vh + 12px); }
   body.sidebar-open.view-detail .scrubber { display: none; }
+  .plan-panel { grid-template-columns: 1fr; }
   /* Legend takes too much corner real estate on mobile — shrink it. */
   .score-legend { font-size: 0.72rem; padding: 6px 8px; min-width: 0; }
   .legend-foot { display: none; }
