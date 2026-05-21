@@ -338,8 +338,13 @@
       }
       // Apply per-reach residual on the displayed score and re-sort so the
       // ranked list agrees with the on-map colors.
-      windows = windows.map((w) => ({ ...w, score: applyResidual(w.reach_id, w.score) }))
-                       .sort((a, b) => b.score - a.score);
+      windows = windows
+        .map((w) => {
+          const score = applyResidual(w.reach_id, w.score);
+          const rank_score = w.rank_score != null ? applyResidual(w.reach_id, w.rank_score) : score;
+          return { ...w, score, rank_score };
+        })
+        .sort((a, b) => b.rank_score - a.rank_score);
       listEl.innerHTML = windows.map((w) => {
         const score = w.score;
         const verdict = scoreLabel(score);
@@ -350,7 +355,7 @@
               <span class="score-pill" style="background:${color}">${verdict}</span>
               <span class="window-main">
                 <span class="window-name">${w.stream_name}</span>
-                <span class="window-sub">${w.segment_name || ""} · ${timeLocal(w.valid_at)}${w.aggression_score != null ? ` · aggression ${Math.round(w.aggression_score * 100)}` : ""}</span>
+                <span class="window-sub">${w.segment_name || ""} · ${timeLocal(w.valid_at)}${w.aggression_score != null ? ` · aggression ${Math.round(w.aggression_score * 100)}` : ""}${w.confidence_score != null ? ` · confidence ${Math.round(w.confidence_score * 100)}` : ""}${w.gauge_is_proxy ? " · proxy gauge" : ""}</span>
               </span>
               <span class="window-score">${(score * 100).toFixed(0)}</span>
             </button>

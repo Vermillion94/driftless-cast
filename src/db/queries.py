@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.models.score_calibration import headline_score
+from src.models.score_calibration import confidence_score, headline_score, recommendation_rank_score
 
 # Default: project root next to source. In containers, set DC_DB_PATH to a
 # location backed by a persistent volume (e.g. /app/data/driftless_cast.db on
@@ -428,8 +428,10 @@ def top_windows(hours: int, limit: int = 10) -> List[Dict[str, Any]]:
     rows = conn.execute(
         """
         SELECT p.reach_id, r.stream_name, r.segment_name, r.state,
-               p.valid_at, p.nymph_score, p.dry_score, p.active_species,
-               p.regime, p.score_breakdown, p.explanation
+               r.gauge_is_proxy,
+               p.valid_at, p.computed_at, p.nymph_score, p.dry_score,
+               p.active_species, p.regime, p.score_breakdown, p.explanation,
+               p.water_temp_source
         FROM prediction p
         JOIN reach r ON r.reach_id = p.reach_id
         WHERE p.valid_at >= datetime('now', '-1 hour')
@@ -445,8 +447,14 @@ def top_windows(hours: int, limit: int = 10) -> List[Dict[str, Any]]:
             d.get("nymph_score"), d.get("dry_score"), d.get("active_species"),
             d.get("regime"), d.get("score_breakdown")
         )
+        conf = confidence_score(
+            d.get("valid_at"), d.get("computed_at"), d.get("water_temp_source"),
+            d.get("gauge_is_proxy"), d.get("score_breakdown")
+        )
+        d["confidence_score"] = conf["score"]
+        d["rank_score"] = recommendation_rank_score(d["combined_score"], conf["score"])
         existing = best_by_reach.get(d["reach_id"])
-        if existing is None or d["combined_score"] > existing["combined_score"]:
+        if existing is None or d["rank_score"] > existing["rank_score"]:
             best_by_reach[d["reach_id"]] = d
-    ranked = sorted(best_by_reach.values(), key=lambda r: r["combined_score"], reverse=True)
+    ranked = sorted(best_by_reach.values(), key=lambda r: r["rank_score"], reverse=True)
     return ranked[:limit]

@@ -209,6 +209,18 @@ def confidence_score(
     }
 
 
+def recommendation_rank_score(score: Any, confidence: Any) -> float:
+    """Quality score used for ordering recommendations, with uncertainty drag.
+
+    The displayed fishing-quality score remains separate. This rank score only
+    breaks recommendation ties and nudges shaky proxy/long-lead windows below
+    similarly good, better-instrumented windows.
+    """
+    quality = max(0.0, min(1.0, _as_float(score)))
+    conf = max(0.0, min(1.0, _as_float(confidence, 0.65)))
+    return quality * (0.82 + 0.18 * conf)
+
+
 def headline_score(
     nymph_score: Any,
     dry_score: Any,
