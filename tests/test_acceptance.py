@@ -24,6 +24,8 @@ from src.models.dry_score import compute_dry_score, hour_of_day_score
 from src.models.fly_recommender import recommend_flies
 from src.models.nymph_score import (
     compute_nymph_score,
+    diel_activity_factor,
+    drift_window_bonus,
     flow_percentile_score,
     flow_trend_score,
     temperature_score,
@@ -128,7 +130,7 @@ def test_nymph_score_obvious_go():
         dd_current=0.0,
         species_thresholds=[],
     )
-    assert 0.65 <= score <= 1.0, f"expected solid Go for ideal conditions, got {score:.3f}"
+    assert 0.60 <= score <= 1.0, f"expected solid Go for ideal conditions, got {score:.3f}"
 
 
 def test_nymph_score_obvious_skip():
@@ -161,6 +163,31 @@ def test_nymph_score_temperature_dominates():
         valid_at="2026-05-02T13:00:00Z", dd_current=0.0, species_thresholds=[],
     )
     assert perfect_flow < 0.20, f"sub-42°F must collapse score, got {perfect_flow:.3f}"
+
+
+def test_diel_activity_uses_driftless_local_time():
+    """UTC timestamps must convert to Driftless local time before dawn/evening
+    windows are applied. 00:00Z in May is 7pm CDT, not midnight fishing."""
+    assert diel_activity_factor("2026-05-21T00:00:00+00:00") == 1.0
+    assert drift_window_bonus("2026-05-21T00:00:00+00:00") == 0.08
+    assert diel_activity_factor("2026-05-21T18:00:00+00:00") == 0.86
+
+
+def test_nymph_score_has_within_day_shape_on_plateau():
+    """Identical temp/flow inputs should still show practical ebbs and flows:
+    evening low light beats bright midday, while both remain fishable when
+    water and flow are right."""
+    evening = compute_nymph_score(
+        temp_f=56.0, flow_percentile=0.45, recent_flows=[120.0, 100.0, 90.0],
+        valid_at="2026-05-21T00:00:00+00:00", dd_current=0.0, species_thresholds=[],
+    )
+    midday = compute_nymph_score(
+        temp_f=56.0, flow_percentile=0.45, recent_flows=[120.0, 100.0, 90.0],
+        valid_at="2026-05-21T18:00:00+00:00", dd_current=0.0, species_thresholds=[],
+    )
+    assert evening > midday
+    assert evening - midday >= 0.12
+    assert midday >= 0.60
 
 
 # ─── Cross-component symmetry ──────────────────────────────────────────────

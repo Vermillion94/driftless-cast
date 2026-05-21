@@ -1315,6 +1315,16 @@
       `;
     }
     function multiplier(label, value, helpTopic) {
+      if (value == null || Number.isNaN(Number(value))) {
+        return `
+          <div class="sb-row sb-row-mult">
+            <span class="sb-label">${label} ${helpTopic ? helpButton(helpTopic) : ""}</span>
+            <span class="sb-bar sb-mult-bar"><span class="sb-fill" style="width:0%;background:#94a3b8"></span></span>
+            <span class="sb-val sb-mult-neutral">n/a</span>
+          </div>
+        `;
+      }
+      value = Number(value);
       const isBoost = value > 1.0;
       const isDamp  = value < 1.0;
       const cls = isBoost ? "sb-mult-up" : isDamp ? "sb-mult-down" : "sb-mult-neutral";
@@ -1349,6 +1359,7 @@
       ${renderThermalProfileNote(sb)}
       ${bar("Flow percentile", sb.flow_percentile, "flow_percentile")}
       ${bar("Flow trend", sb.flow_trend, "flow_trend")}
+      ${bar("Diel activity", sb.diel_activity == null ? 1.0 : sb.diel_activity, "score_overview")}
       ${multiplier("Pressure trend", sb.pressure_factor, "barometric_pressure")}
       ${multiplier("Sun angle (dry only)", sb.sun_factor, "sun_angle")}
       ${renderFlowTauNote(sb)}

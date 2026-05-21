@@ -1,5 +1,9 @@
 from datetime import datetime, timedelta
 from typing import Dict, Iterable, List
+from zoneinfo import ZoneInfo
+
+
+DRIFTLESS_TZ = ZoneInfo("America/Chicago")
 
 
 def temperature_score(temp_f: float) -> float:
@@ -99,7 +103,52 @@ def flow_trend_score(recent_values: Iterable[float]) -> float:
     return 0.70
 
 
+def _local_hour(valid_at: str) -> int:
+    try:
+        dt = datetime.fromisoformat(valid_at.replace("Z", "+00:00"))
+    except ValueError:
+        return 12
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=DRIFTLESS_TZ)
+    return dt.astimezone(DRIFTLESS_TZ).hour
+
+
 def drift_window_bonus(valid_at: str) -> float:
+    hour = _local_hour(valid_at)
+    if hour in {6, 7, 19, 20}:
+        return 0.08
+    if hour in {5, 8, 18, 21}:
+        return 0.04
+    return 0.0
+
+
+def diel_activity_factor(valid_at: str) -> float:
+    """Local-time feeding rhythm for nymph/streamer opportunity.
+
+    Water temperature and flow remain the hard gates. This factor only breaks
+    the broad "comfortable water + normal flow" plateau into practical fishing
+    windows: low-light morning/evening periods get the best drift/cover
+    advantage, overnight is workable but less visually/presentation friendly,
+    and high midday light is slightly damped.
+
+    The mechanism is trout light sensitivity and crepuscular feeding behavior;
+    the exact magnitude is intentionally small because it is a behavioral
+    product calibration, not a lab-derived constant.
+    """
+    hour = _local_hour(valid_at)
+    if hour in {6, 7, 19, 20}:
+        return 1.00
+    if hour in {5, 8, 18, 21}:
+        return 0.96
+    if 11 <= hour <= 15:
+        return 0.86
+    if hour <= 3 or hour >= 23:
+        return 0.82
+    return 0.91
+
+
+def drift_window_bonus_utc_legacy(valid_at: str) -> float:
+    """Kept only as a readable comparison for old backtest notebooks."""
     try:
         dt = datetime.fromisoformat(valid_at.replace("Z", "+00:00"))
     except ValueError:
@@ -126,6 +175,7 @@ def compute_nymph_score(
     temp_score = temperature_score(temp_f)
     flow_score = flow_percentile_score(flow_percentile)
     trend_score = flow_trend_score(recent_flows)
+    diel = diel_activity_factor(valid_at)
     bonus = drift_window_bonus(valid_at) + prehatch_bonus(dd_current, species_thresholds)
-    score = temp_score * flow_score * trend_score + bonus
+    score = temp_score * flow_score * trend_score * diel + bonus
     return max(0.0, min(1.0, score))
