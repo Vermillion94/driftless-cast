@@ -206,7 +206,7 @@ def get_status() -> dict:
 
 @router.get("/best-windows")
 def get_best_windows(hours: int = Query(72, ge=1, le=168), limit: int = Query(10, ge=1, le=50)) -> List[dict]:
-    rows = top_windows(hours, limit)
+    rows = top_windows(hours, max(limit * 3, limit))
     # Collapse multi-hour clusters for the same reach into contiguous windows
     # so the list isn't 10 copies of the same river at different hours.
     seen: Dict[str, dict] = {}
@@ -247,10 +247,49 @@ def get_best_windows(hours: int = Query(72, ge=1, le=168), limit: int = Query(10
                 "nymph_score": r.get("nymph_score"),
                 "dry_score": r.get("dry_score"),
                 "aggression_score": score_model.get("aggression"),
+                "regime": r.get("regime"),
                 "explanation": r.get("explanation"),
             }
-    ordered = sorted(seen.values(), key=lambda x: x["rank_score"], reverse=True)[:limit]
-    return ordered
+    ordered = sorted(seen.values(), key=lambda x: x["rank_score"], reverse=True)
+    return _diversify_windows_by_time(ordered, limit)
+
+
+def _window_hour_key(row: dict) -> str:
+    valid_at = row.get("valid_at")
+    if not valid_at:
+        return ""
+    try:
+        dt = datetime.fromisoformat(str(valid_at).replace("Z", "+00:00"))
+    except ValueError:
+        return str(valid_at)[:13]
+    return dt.strftime("%Y-%m-%dT%H")
+
+
+def _diversify_windows_by_time(rows: List[dict], limit: int, max_per_hour: int = 4) -> List[dict]:
+    """Keep the recommendation list from becoming one regional timestamp.
+
+    When the whole Driftless region lines up, many reaches can legitimately
+    peak at the same hour. The first few are useful; the tenth copy is not.
+    Preserve rank order, cap exact-hour duplicates, then backfill if there
+    are not enough distinct time slots.
+    """
+    picked: List[dict] = []
+    skipped: List[dict] = []
+    counts: Dict[str, int] = {}
+    for row in rows:
+        key = _window_hour_key(row)
+        if counts.get(key, 0) < max_per_hour:
+            picked.append(row)
+            counts[key] = counts.get(key, 0) + 1
+        else:
+            skipped.append(row)
+        if len(picked) >= limit:
+            return picked
+    for row in skipped:
+        picked.append(row)
+        if len(picked) >= limit:
+            break
+    return picked
 
 
 @router.get("/calendar")
