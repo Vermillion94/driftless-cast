@@ -752,6 +752,11 @@ def _score_hour(
                 "common_name": sp.get("common_name"),
                 "scientific_name": sp.get("scientific_name"),
                 "probability": score,
+                "seasonal_score": season,
+                "degree_day_score": dd_factor,
+                "weather_score": weather,
+                "timing_score": window,
+                "emergence_window": [shifted_start, shifted_end],
                 "dd_progress": (dd_current / dd_mean) if dd_mean > 0 else None,
                 "is_terrestrial": is_terrestrial,
             })
@@ -799,6 +804,11 @@ def _score_hour(
             "id": top.get("id"),
             "common_name": top.get("common_name"),
             "probability": top.get("probability"),
+            "seasonal_score": top.get("seasonal_score"),
+            "degree_day_score": top.get("degree_day_score"),
+            "weather_score": top.get("weather_score"),
+            "timing_score": top.get("timing_score"),
+            "emergence_window": top.get("emergence_window"),
         }
 
     flies = recommend_flies(active_species_payload, species_by_id, valid_hour)

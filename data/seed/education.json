@@ -184,7 +184,8 @@
     "emergence_hour": {
       "title": "Emergence-hour windows",
       "body": [
-        "Each species' emergence concentrates in specific hours of the day. We carry a per-species [hour_start, hour_end] in our species list and use it as a multiplier in the dry-fly score (1.0 inside the window, 0.3 outside).",
+        "Each species' emergence concentrates in specific hours of the day. We carry a per-species [hour_start, hour_end] in our species list and use it as a multiplier in the dry-fly score: 1.0 inside the window, a 2-hour shoulder around it, and only 0.05 far outside it.",
+        "That low background matters. A stray adult can still be present outside the window, but the model should not treat that like a meaningful hatch or spinner fall. Surface feeding needs insects on the water and enough vulnerability time for trout to key on them.",
         "Sample windows used: Hendrickson 12–3pm, BWO-spring 11am–4pm, Sulphur 1–5pm, Mother's Day Caddis 11am–3pm (revised from 2–6pm after a validated angler report), Trico 9am–noon (spinner fall), Hex 7–10pm (the famous Hex emergence is dusk-into-dark).",
         "These windows are guide-consensus values, not from a single study. They reflect the typical Driftless / Upper Midwest pattern; emergences in cooler weather can be compressed and shift later in the day."
       ],

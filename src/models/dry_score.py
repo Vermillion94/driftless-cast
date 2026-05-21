@@ -4,14 +4,15 @@ from src.models.hatch_predictor import species_activity_probability, weather_mat
 
 
 def hour_of_day_score(hour: int, start: int, end: int) -> float:
-    """Trapezoid: full credit inside [start, end], ramp 2h either side, 0.3 floor.
+    """Trapezoid: full credit inside [start, end], ramp 2h either side.
 
-    Replaces the previous hard cliff. Real emergence isn't an on/off switch — a
-    sulphur hatch coded 13:00–17:00 still produces eats at 18:00 on a normal
-    day (and on a hot day moves there entirely; that shift is handled in the
-    caller via shift_window_for_air_temp). The 2h ramp + 0.3 floor lets the
-    score reflect "still fishable, just past peak" without exploding.
+    Real emergence is not an on/off switch, but surface feeding is a short
+    behavioral event. The previous 0.30 all-day floor made a species that was
+    seasonally plausible add a broad dry-fly signal even at dawn/midnight,
+    which flattened the forecast. Use a low 0.05 background for stray adults
+    and a 2h shoulder around the actual emergence/spinner window.
     """
+    BACKGROUND = 0.05
     if start is None or end is None:
         return 0.5
     if start <= hour <= end:
@@ -21,8 +22,8 @@ def hour_of_day_score(hour: int, start: int, end: int) -> float:
     else:
         gap = hour - end
     if gap >= 2:
-        return 0.3
-    return 1.0 - 0.7 * (gap / 2.0)
+        return BACKGROUND
+    return BACKGROUND + (1.0 - BACKGROUND) * (1.0 - gap / 2.0)
 
 
 def shift_window_for_air_temp(start: int, end: int, air_temp_f: float | None) -> tuple[int, int]:
