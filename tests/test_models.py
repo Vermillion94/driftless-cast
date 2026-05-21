@@ -20,7 +20,7 @@ from src.models.recession import (
 
 def test_daily_degree_day():
     temps = [10, 12, 14, 16]
-    assert daily_degree_day(temps, 5.0) == 5.5
+    assert daily_degree_day(temps, 5.0) == 8.0
 
 
 def test_accumulate_degree_days():
