@@ -36,9 +36,30 @@ def test_best_windows_diversifies_repeated_hours():
 def test_best_window_reason_surfaces_actionable_drivers():
     row = {"nymph_score": 0.82, "dry_score": 0.10}
     model = {"surface_signal": 0.05}
-    breakdown = {"diel_activity": 1.0, "pressure_factor": 1.05, "sun_factor": 0.98}
+    breakdown = {
+        "diel_activity": 1.0,
+        "pressure_factor": 1.05,
+        "sun_factor": 0.98,
+        "temperature": 1.0,
+        "thermal_profile": "class-level thermal model",
+    }
     regime = {"code": "NYMPH", "label": "Nymph"}
 
     reason = _best_window_reason(row, model, breakdown, regime)
 
-    assert reason == ["nymph", "nymphing play", "low light"]
+    assert reason == ["nymph", "nymphing play", "ideal water"]
+
+
+def test_best_window_reason_prefers_spring_buffered_context():
+    row = {"nymph_score": 0.82, "dry_score": 0.10}
+    model = {"surface_signal": 0.05}
+    breakdown = {
+        "diel_activity": 1.0,
+        "pressure_factor": 1.05,
+        "temperature": 1.0,
+        "thermal_profile": "spring-creek thermal damping (0.67)",
+    }
+
+    reason = _best_window_reason(row, model, breakdown, {"code": "NORMAL"})
+
+    assert reason == ["nymphing play", "spring-buffered water", "low light"]

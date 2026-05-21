@@ -277,10 +277,19 @@ def _best_window_reason(row: dict, score_model: dict, score_breakdown, regime) -
         reasons.append("surface signal")
     elif (row.get("nymph_score") or 0.0) >= 0.45:
         reasons.append("nymphing play")
+    thermal_label = str(sb.get("thermal_profile") or "")
+    if thermal_label.startswith("spring-creek"):
+        reasons.append("spring-buffered water")
+    elif (sb.get("temperature") or 0.0) >= 0.95:
+        reasons.append("ideal water")
     if (sb.get("diel_activity") or 0.0) >= 0.96:
         reasons.append("low light")
     if (sb.get("pressure_factor") or 1.0) >= 1.02:
         reasons.append("falling barometer")
+    if (sb.get("flow_trend") or 0.0) >= 0.95:
+        reasons.append("falling/stable flow")
+    elif (sb.get("flow_percentile") or 0.0) >= 0.90:
+        reasons.append("good flow band")
     if (sb.get("sun_factor") or 1.0) < 0.90:
         reasons.append("bright-sun drag")
     if (row.get("dry_score") or 0.0) >= 0.30:
