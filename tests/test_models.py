@@ -1,6 +1,9 @@
+from datetime import datetime, timedelta, timezone
+
 from src.models.degree_days import daily_degree_day, accumulate_degree_days
 from src.models.nymph_score import compute_nymph_score
 from src.models.dry_score import compute_dry_score
+from src.models.forecast_builder import ReachSignals, _flow_percentile_for_hour
 from src.models.score_calibration import (
     aggression_score,
     confidence_score,
@@ -148,6 +151,39 @@ def test_recession_projects_toward_median():
 
 def test_recession_priors_keep_spring_reaches_slower():
     assert class_prior_tau_hours(True) > class_prior_tau_hours(False)
+
+
+def test_fused_noaa_usgs_flow_uses_relative_local_change():
+    now = datetime(2026, 5, 20, 12, tzinfo=timezone.utc)
+    target = now + timedelta(hours=24)
+    signals = ReachSignals(
+        reach_id="whitewater-main-beaver",
+        stream_name="Whitewater",
+        lat=44.0,
+        lon=-92.0,
+        spring_influenced=True,
+        usgs_gauge_id="05384500",
+        gauge_source="usgs",
+        gauge_is_proxy=True,
+        current_flow_cfs=100.0,
+        local_flow_cfs=50.0,
+        local_flow_source="noaa",
+        water_temp_c=None,
+        water_temp_source=None,
+        flow_percentile=0.5,
+        flow_stats={"p10": 40.0, "p25": 70.0, "p50": 100.0, "p75": 140.0, "p90": 200.0},
+        recent_flows=[],
+        confidence_notes=[],
+        forecast_flow_by_hour={
+            target.replace(minute=0, second=0, microsecond=0).isoformat(): 75.0
+        },
+    )
+    pct, projected, note, tau, source = _flow_percentile_for_hour(signals, target, now)
+    assert projected == 75.0
+    assert note == "local NOAA flow trend + USGS proxy percentile"
+    assert tau is None
+    assert source == "noaa_usgs_fused"
+    assert 0.75 < pct < 0.90
 
 
 def test_headline_score_preserves_hard_regime_caps():

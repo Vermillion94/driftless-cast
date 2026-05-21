@@ -83,6 +83,8 @@ class ReachSignals:
     gauge_source: Optional[str]       # "usgs" | "noaa" | None
     gauge_is_proxy: bool
     current_flow_cfs: Optional[float]
+    local_flow_cfs: Optional[float]
+    local_flow_source: Optional[str]
     water_temp_c: Optional[float]
     water_temp_source: Optional[str]
     flow_percentile: Optional[float]
@@ -115,6 +117,8 @@ def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[fl
     lon = float(reach["centroid_lon"])
     reach_id = str(reach["reach_id"])
     forecast_flow_by_hour: Dict[str, float] = {}
+    local_flow_cfs: Optional[float] = None
+    local_flow_source: Optional[str] = None
 
     if usgs_id:
         source = "usgs"
@@ -154,17 +158,26 @@ def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[fl
                 recent.append(float(flow_cfs))
         except requests.RequestException as exc:
             LOG.info("USGS daily-flow history failed for %s: %s", usgs_id, exc)
-    elif noaa_lid:
-        source = "noaa"
+    if noaa_lid:
         try:
-            readings = fetch_latest_nwps(noaa_lid)
-            if "00060" in readings:
-                flow_cfs = readings["00060"]["value"]
+            noaa_readings = fetch_latest_nwps(noaa_lid)
+            if "00060" in noaa_readings:
+                local_flow_cfs = noaa_readings["00060"]["value"]
+                local_flow_source = "noaa"
+                if flow_cfs is None:
+                    flow_cfs = local_flow_cfs
+                    source = "noaa"
         except requests.RequestException as exc:
             LOG.warning("NWPS failed for %s: %s", noaa_lid, exc)
-            notes.append("live flow reading unavailable")
+            if not usgs_id:
+                notes.append("live flow reading unavailable")
+
+    if usgs_id and noaa_lid and reach.get("gauge_is_proxy") and local_flow_cfs is not None:
+        notes.append("local NOAA flow available; USGS proxy used for percentile climatology")
+    elif noaa_lid and not usgs_id:
+        source = "noaa"
         notes.append("flow percentile unavailable (NOAA gauge)")
-    else:
+    elif not usgs_id and not noaa_lid:
         notes.append("no gauge mapped")
 
     # NOAA streamflow forecast time series (not all gauges have one — small
@@ -245,6 +258,8 @@ def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[fl
         gauge_source=source,
         gauge_is_proxy=bool(reach.get("gauge_is_proxy")),
         current_flow_cfs=flow_cfs,
+        local_flow_cfs=local_flow_cfs,
+        local_flow_source=local_flow_source,
         water_temp_c=water_temp_c,
         water_temp_source=water_temp_source,
         flow_percentile=percentile,
@@ -388,6 +403,15 @@ def _flow_percentile_for_hour(
     # 1) NOAA NWPS streamflow forecast — preferred when gauge has one.
     fc_flow = (signals.forecast_flow_by_hour or {}).get(hour_iso)
     if fc_flow is not None and signals.flow_stats:
+        if signals.gauge_is_proxy and signals.local_flow_cfs and signals.current_flow_cfs:
+            # When NOAA is the nearby/local gauge but USGS is only a proxy
+            # with historical percentiles, do not percentile-ize raw NOAA cfs
+            # against the proxy gauge's climatology. Use the local forecast's
+            # relative change to nudge the proxy baseline instead.
+            ratio = fc_flow / max(float(signals.local_flow_cfs), 1.0)
+            proxy_flow = float(signals.current_flow_cfs) * ratio
+            pct = discharge_percentile(proxy_flow, signals.flow_stats)
+            return pct, fc_flow, "local NOAA flow trend + USGS proxy percentile", None, "noaa_usgs_fused"
         return discharge_percentile(fc_flow, signals.flow_stats), float(fc_flow), None, None, "noaa_forecast"
 
     # 2a) Exponential recession of *flow* (not percentile — the percentile
