@@ -3,7 +3,12 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.models.score_calibration import confidence_score, headline_score, recommendation_rank_score
+from src.models.score_calibration import (
+    confidence_score,
+    headline_breakdown,
+    headline_score,
+    recommendation_rank_score,
+)
 
 # Default: project root next to source. In containers, set DC_DB_PATH to a
 # location backed by a persistent volume (e.g. /app/data/driftless_cast.db on
@@ -460,4 +465,59 @@ def top_windows(hours: int, limit: int = 10) -> List[Dict[str, Any]]:
         if existing is None or d["rank_score"] > existing["rank_score"]:
             best_by_reach[d["reach_id"]] = d
     ranked = sorted(best_by_reach.values(), key=lambda r: r["rank_score"], reverse=True)
+    return ranked[:limit]
+
+
+def hatch_windows(hours: int, limit: int = 6, min_surface: float = 0.25) -> List[Dict[str, Any]]:
+    """Top surface/hatch windows, ranked separately from all-around fishing score.
+
+    A hatch watch is not necessarily a high-probability catching window. It is
+    the best evidence of surface opportunity: modeled hatch readiness, timing,
+    and weather. Keeping this separate avoids burying dry-fly intel behind
+    high but nymph-only scores.
+    """
+    conn = get_connection()
+    rows = conn.execute(
+        """
+        SELECT p.reach_id, r.stream_name, r.segment_name, r.state,
+               r.gauge_is_proxy, r.proxy_distance_km,
+               p.valid_at, p.computed_at, p.nymph_score, p.dry_score,
+               p.active_species, p.regime, p.score_breakdown, p.explanation,
+               p.water_temp_source
+        FROM prediction p
+        JOIN reach r ON r.reach_id = p.reach_id
+        WHERE p.valid_at >= datetime('now', '-1 hour')
+          AND p.valid_at <= datetime('now', '+' || ? || ' hours')
+        """,
+        (hours,),
+    ).fetchall()
+    conn.close()
+
+    best_by_reach: Dict[str, Dict[str, Any]] = {}
+    for row in rows:
+        d = dict(row)
+        score_model = headline_breakdown(
+            d.get("nymph_score"), d.get("dry_score"), d.get("active_species"),
+            d.get("regime"), d.get("score_breakdown")
+        )
+        surface = float(score_model.get("surface_signal") or 0.0)
+        if surface < min_surface:
+            continue
+        conf = confidence_score(
+            d.get("valid_at"), d.get("computed_at"), d.get("water_temp_source"),
+            d.get("gauge_is_proxy"), d.get("score_breakdown"), d.get("proxy_distance_km")
+        )
+        d["combined_score"] = score_model["score"]
+        d["surface_signal"] = surface
+        d["confidence_score"] = conf["score"]
+        # Surface signal leads. Overall score is a secondary nudge so truly bad
+        # fishing conditions do not outrank similarly strong, more fishable hatches.
+        d["surface_rank_score"] = surface * (0.80 + 0.20 * conf["score"]) * (
+            0.75 + 0.25 * d["combined_score"]
+        )
+        existing = best_by_reach.get(d["reach_id"])
+        if existing is None or d["surface_rank_score"] > existing["surface_rank_score"]:
+            best_by_reach[d["reach_id"]] = d
+
+    ranked = sorted(best_by_reach.values(), key=lambda r: r["surface_rank_score"], reverse=True)
     return ranked[:limit]

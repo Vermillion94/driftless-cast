@@ -14,6 +14,7 @@ from src.db import (
     get_reach_predictions,
     forecast_status,
     insert_catch_log,
+    hatch_windows,
     list_catch_logs,
     list_reach_summaries,
     reach_residuals,
@@ -257,6 +258,46 @@ def get_best_windows(hours: int = Query(72, ge=1, le=168), limit: int = Query(10
     return _diversify_windows_by_time(ordered, limit)
 
 
+@router.get("/hatch-windows")
+def get_hatch_windows(
+    hours: int = Query(168, ge=1, le=168),
+    limit: int = Query(6, ge=1, le=20),
+    min_surface: float = Query(0.25, ge=0.0, le=1.0),
+) -> List[dict]:
+    rows = hatch_windows(hours, limit, min_surface)
+    out: List[dict] = []
+    for r in rows:
+        active = _loads_json(r.get("active_species"), [])
+        regime = _loads_json(r.get("regime"), None)
+        score_breakdown = _loads_json(r.get("score_breakdown"), None)
+        score_model = headline_breakdown(
+            r.get("nymph_score"), r.get("dry_score"), active, regime, score_breakdown
+        )
+        top_species = _top_active_species(active)
+        reason = ["surface signal"]
+        if top_species:
+            reason.append(str(top_species.get("common_name") or top_species.get("id") or "active hatch"))
+        if isinstance(score_breakdown, dict) and (score_breakdown.get("sun_factor") or 1.0) < 0.90:
+            reason.append("bright-sun drag")
+        out.append({
+            "reach_id": r["reach_id"],
+            "stream_name": r.get("stream_name"),
+            "segment_name": r.get("segment_name"),
+            "state": r.get("state"),
+            "valid_at": r["valid_at"],
+            "score": r.get("combined_score"),
+            "surface_signal": r.get("surface_signal"),
+            "surface_rank_score": r.get("surface_rank_score"),
+            "confidence_score": r.get("confidence_score"),
+            "top_species": top_species,
+            "reason": reason[:3],
+            "regime": regime,
+            "explanation": r.get("explanation"),
+            "score_model": score_model,
+        })
+    return _diversify_windows_by_time(out, limit, max_per_hour=3)
+
+
 def _loads_json(value, default):
     if isinstance(value, str):
         try:
@@ -300,6 +341,15 @@ def _best_window_reason(row: dict, score_model: dict, score_breakdown, regime) -
         if reason not in deduped:
             deduped.append(reason)
     return deduped[:3]
+
+
+def _top_active_species(active_species) -> Optional[dict]:
+    if not isinstance(active_species, list):
+        return None
+    rows = [row for row in active_species if isinstance(row, dict)]
+    if not rows:
+        return None
+    return max(rows, key=lambda row: row.get("probability") or 0.0)
 
 
 def _window_hour_key(row: dict) -> str:
