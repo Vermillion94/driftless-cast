@@ -1348,6 +1348,7 @@
       ${model ? `<p class="sb-model-note">${renderHeadlineModelNote(model)}</p>` : ""}
       <h4 class="sb-section-h">Component multipliers (1.0 = full credit)</h4>
       ${bar("Water temp", sb.temperature, "water_temp_zone")}
+      ${renderThermalProfileNote(sb)}
       ${bar("Flow percentile", sb.flow_percentile, "flow_percentile")}
       ${bar("Flow trend", sb.flow_trend, "flow_trend")}
       ${multiplier("Pressure trend", sb.pressure_factor, "barometric_pressure")}
@@ -1400,6 +1401,12 @@
     if (sb.flow_tau_hours == null) return "";
     const source = sb.flow_tau_source === "per_gauge_fit" ? "per-gauge fit" : "regional prior";
     return `<div class="sb-top-species">Flow recession: τ ${Number(sb.flow_tau_hours).toFixed(0)}h · ${source}</div>`;
+  }
+
+  function renderThermalProfileNote(sb) {
+    if (!sb || !sb.thermal_profile || sb.thermal_profile === "class-level thermal model") return "";
+    const strength = sb.thermal_spring_strength != null ? ` · strength ${Math.round(sb.thermal_spring_strength * 100)}%` : "";
+    return `<div class="sb-top-species">Thermal profile: ${sb.thermal_profile}${strength}</div>`;
   }
 
   function renderConfidenceNote(confidence) {

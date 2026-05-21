@@ -4,6 +4,7 @@ from src.models.degree_days import daily_degree_day, accumulate_degree_days
 from src.models.nymph_score import compute_nymph_score
 from src.models.dry_score import compute_dry_score
 from src.models.forecast_builder import ReachSignals, _flow_percentile_for_hour
+from src.models.thermal_profile import apply_profile, from_reach
 from src.models.score_calibration import (
     aggression_score,
     confidence_score,
@@ -215,6 +216,30 @@ def test_proxy_reach_displays_local_noaa_flow_when_no_forecast():
     assert tau is not None
     assert source in {"class_prior", "per_gauge_fit"}
     assert 0.25 < pct < 0.75
+
+
+def test_spring_creek_thermal_profile_cools_warm_water_and_damps_diurnal():
+    profile = from_reach({
+        "spring_influenced": 1,
+        "trout_class": "I",
+        "mean_gradient": 6.0,
+        "length_km": 7.0,
+    })
+    assert profile.spring_strength > 0.85
+    assert apply_profile(62.0, profile) < 60.0
+    assert apply_profile(42.0, profile) > 42.0
+    assert profile.diurnal_amp_factor < 0.75
+
+
+def test_freestone_thermal_profile_is_neutral():
+    profile = from_reach({
+        "spring_influenced": 0,
+        "trout_class": "II",
+        "mean_gradient": 3.0,
+        "length_km": 12.0,
+    })
+    assert profile.spring_strength == 0.0
+    assert apply_profile(62.0, profile) == 62.0
 
 
 def test_headline_score_preserves_hard_regime_caps():
