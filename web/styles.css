@@ -642,6 +642,10 @@ html, body {
   flex-direction: column;
   align-items: center;
 }
+.sb-total-lane {
+  background: #fbfdfe;
+  border-color: #d8e7e4;
+}
 .sb-total-label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: #6b7280; font-weight: 600; }
 .sb-total-num { font-size: 1.1rem; font-weight: 700; color: #264653; font-variant-numeric: tabular-nums; }
 .sb-section-h {

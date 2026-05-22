@@ -709,10 +709,12 @@
   function fishingMode(hour) {
     if (!hour) return "Forecast";
     const model = hour.score_model || {};
-    const surface = Math.max(hour.dry_score || 0, model.top_hatch_probability || 0);
+    const lanes = model.lanes || {};
+    const surface = Math.max(hour.dry_score || 0, model.top_hatch_probability || 0, lanes.surface_window || 0);
     const regime = hour.regime || {};
     if (regime.code === "STREAMER") return "Streamer";
     if (surface >= 0.15) return "Dry-fly watch";
+    if ((lanes.activation || 0) >= 0.65) return "Activation window";
     if ((hour.nymph_score || 0) >= 0.45) return "Nymphing play";
     return "Scouting window";
   }
@@ -742,6 +744,7 @@
     }
     if (sb.sun_factor != null && sb.sun_factor < 0.90) chips.push("bright-sun drag");
     if (model.surface_signal >= 0.15) chips.push("surface signal");
+    if (model.lanes && model.lanes.activation >= 0.65) chips.push("activation window");
     return chips.slice(0, 4).map((c) => `<span class="driver-chip">${c}</span>`).join("");
   }
 
@@ -1514,13 +1517,14 @@
       `;
     }
 
+    const lanes = (model && model.lanes) || {};
     const top = sb.top_species;
     const topLine = renderTopSpeciesDetails(top);
     return `
       <div class="sb-totals">
-        <div class="sb-total"><span class="sb-total-label">Nymph</span><span class="sb-total-num">${Math.round(nymph * 100)}</span></div>
-        <div class="sb-total"><span class="sb-total-label">Dry</span><span class="sb-total-num">${Math.round(dry * 100)}</span></div>
-        ${model && model.aggression != null ? `<div class="sb-total"><span class="sb-total-label">Aggression</span><span class="sb-total-num">${Math.round(model.aggression * 100)}</span></div>` : ""}
+        <div class="sb-total sb-total-lane"><span class="sb-total-label">Nymph lane</span><span class="sb-total-num">${Math.round(((lanes.baseline_nymph != null ? lanes.baseline_nymph : nymph) || 0) * 100)}</span></div>
+        <div class="sb-total sb-total-lane"><span class="sb-total-label">Surface</span><span class="sb-total-num">${Math.round(((lanes.surface_window != null ? lanes.surface_window : dry) || 0) * 100)}</span></div>
+        <div class="sb-total sb-total-lane"><span class="sb-total-label">Activation</span><span class="sb-total-num">${Math.round(((lanes.activation != null ? lanes.activation : (model && model.aggression)) || 0) * 100)}</span></div>
         ${confidence && confidence.score != null ? `<div class="sb-total"><span class="sb-total-label">Confidence</span><span class="sb-total-num">${Math.round(confidence.score * 100)}</span></div>` : ""}
         <div class="sb-total"><span class="sb-total-label">Headline</span><span class="sb-total-num">${Math.round(headline * 100)}</span></div>
       </div>
@@ -1537,7 +1541,7 @@
       ${model && model.aggression_factors ? renderAggressionFactors(model.aggression_factors) : ""}
       ${confidence ? renderConfidenceNote(confidence) : ""}
       ${topLine}
-      <p class="sb-note">Nymph and dry are physical component scores. Headline is calibrated from those components so nymph-only plateaus do not read like boiling-rises days. Click any ${helpButton("score_overview").replace(/<\/?button[^>]*>/g, '?')} to see how a component is computed.</p>
+      <p class="sb-note">Lanes separate steady subsurface fishability from surface activity and short activation windows. Headline is calibrated from those lanes so nymph-only plateaus do not read like boiling-rises days. Click any ${helpButton("score_overview").replace(/<\/?button[^>]*>/g, '?')} to see how a component is computed.</p>
     `;
   }
 
@@ -1571,8 +1575,11 @@
     if (model.alignment_bonus_possible) {
       return "Headline is lifted because subsurface conditions and a meaningful surface/hatch signal overlap.";
     }
-    if (source === "dry") {
-      return "Headline is led by surface activity because the hatch model is stronger than the nymph model.";
+    if (source === "surface" || source === "dry") {
+      return "Headline is led by surface activity because the hatch/rise lane is stronger than the nymph lane.";
+    }
+    if (source === "activation") {
+      return "Headline is led by a short activation window from light, drift, pressure, or hatch-adjacent signals.";
     }
     if (source === "blowout") return "Headline is capped by blowout conditions.";
     if (source === "heat_stress") return "Headline is capped by trout heat-stress conditions.";
