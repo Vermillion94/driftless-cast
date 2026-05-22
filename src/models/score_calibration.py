@@ -42,8 +42,13 @@ def _compress_high_end(score: float, ceiling: float) -> float:
 
 
 def _nymph_only_ceiling(aggression: float) -> float:
-    """Dynamic top-end cap for hours without meaningful surface signal."""
-    return 0.76 + 0.06 * max(0.0, min(1.0, aggression))
+    """Dynamic top-end cap for hours without meaningful surface signal.
+
+    The nymph lane can report excellent subsurface reliability, but the
+    headline score is a best-window promise. Without hatch/surface activity,
+    broad spring-creek nymph plateaus should read as solid, not peak.
+    """
+    return 0.68 + 0.10 * max(0.0, min(1.0, aggression))
 
 
 def _top_species_probability(active_species: Any) -> float:
@@ -70,6 +75,25 @@ def _breakdown_value(score_breakdown: Any, key: str, default: float) -> float:
     if isinstance(row, Mapping):
         return _as_float(row.get(key), default)
     return default
+
+
+def _headline_diel_factor(score_breakdown: Any) -> float:
+    """Display-lane timing factor derived from the raw nymph diel multiplier.
+
+    Raw nymph score keeps a broad "fishable" baseline. The headline lane is
+    about useful angling windows, so late night and bright midday should sit
+    visibly lower than dawn/dusk even when water and flow are excellent.
+    """
+    diel = _breakdown_value(score_breakdown, "diel_activity", 0.91)
+    if diel >= 0.98:
+        return 1.00
+    if diel >= 0.96:
+        return 0.98
+    if diel >= 0.91:
+        return 0.93
+    if diel >= 0.86:
+        return 0.86
+    return 0.74
 
 
 def aggression_score(
@@ -235,6 +259,60 @@ def recommendation_rank_score(score: Any, confidence: Any) -> float:
     return quality * (0.82 + 0.18 * conf)
 
 
+def score_lanes(
+    nymph_score: Any,
+    dry_score: Any,
+    active_species: Any = None,
+    regime: Any = None,
+    score_breakdown: Any = None,
+) -> dict[str, Any]:
+    """Method-specific score lanes used by the UI and headline calibration.
+
+    baseline_nymph answers "can you catch fish subsurface?"
+    surface_window answers "is a hatch/rise/terrestrial window firing?"
+    activation answers "are fish especially vulnerable right now?"
+    """
+    nymph = max(0.0, min(1.0, _as_float(nymph_score)))
+    dry = max(0.0, min(1.0, _as_float(dry_score)))
+    top_hatch = _top_species_probability(active_species)
+    surface_signal = max(dry, top_hatch)
+    aggression = aggression_score(nymph, dry, active_species, regime, score_breakdown)
+
+    diel_window = _headline_diel_factor(score_breakdown)
+    baseline_nymph = _compress_high_end(nymph, 0.78) * diel_window
+    surface_window = _compress_high_end(surface_signal, 0.94)
+    if surface_signal >= 0.15:
+        surface_window = min(1.0, surface_window + 0.10 * min(nymph, surface_signal))
+
+    # Activation is intentionally not a pure quality score. It lets short
+    # low-light / drift / pressure windows stand apart from a steady nymph
+    # baseline without pretending every activated hour has surface feeding.
+    activation = nymph * (0.25 + 0.40 * aggression + 0.20 * diel_window)
+    if surface_signal >= 0.15:
+        activation = max(activation, 0.30 + 0.55 * aggression)
+    activation = max(0.0, min(1.0, activation))
+
+    code = _regime_code(regime)
+    cap = None
+    if code == "BLOWOUT":
+        cap = 0.10
+    elif code == "HEAT_STRESS":
+        cap = 0.15
+    if cap is not None:
+        baseline_nymph = min(baseline_nymph, cap)
+        surface_window = min(surface_window, cap)
+        activation = min(activation, cap)
+
+    return {
+        "baseline_nymph": baseline_nymph,
+        "surface_window": surface_window,
+        "activation": activation,
+        "surface_signal": surface_signal,
+        "top_hatch_probability": top_hatch,
+        "aggression": aggression,
+    }
+
+
 def headline_score(
     nymph_score: Any,
     dry_score: Any,
@@ -248,34 +326,18 @@ def headline_score(
     A real hatch/surface signal can outrank them, and a window where both
     subsurface and surface signals are strong gets a small alignment bonus.
     """
-    nymph = max(0.0, min(1.0, _as_float(nymph_score)))
-    dry = max(0.0, min(1.0, _as_float(dry_score)))
-    top_hatch = _top_species_probability(active_species)
+    lanes = score_lanes(nymph_score, dry_score, active_species, regime, score_breakdown)
+    surface_signal = lanes["surface_signal"]
+    aggression = lanes["aggression"]
 
-    nymph_display = _compress_high_end(nymph, 0.84)
-    dry_display = _compress_high_end(dry, 0.93)
-    score = max(nymph_display, dry_display)
-
-    surface_signal = max(dry, top_hatch)
-    aggression = aggression_score(nymph, dry, active_species, regime, score_breakdown)
     if surface_signal >= 0.15:
-        # Rise activity is the scarce signal users are paying to find. A weak
-        # hatch should not make a day "electric", but once surface probability
-        # clears the significance threshold used in forecast_builder, let it
-        # separate an otherwise flat nymph plateau. This is a product
-        # calibration heuristic; the surface signal itself is the entomology.
-        score += 0.12 * min(nymph, surface_signal)
-
-    if aggression >= 0.70:
-        # A short window with change stacked in its favor should stand out
-        # from a flat "comfortable nymphing" plateau.
-        score += 0.06 * (aggression - 0.70) / 0.30
-
-    # A nymph-only plateau can be a good day, but it should not look like a
-    # boiling-rises day unless the surface model agrees. The cap is dynamic so
-    # good but soft nymphing does not tie with a change-stacked nymph window.
-    if surface_signal < 0.15:
-        score = min(score, _nymph_only_ceiling(aggression))
+        score = max(lanes["baseline_nymph"], lanes["surface_window"], lanes["activation"])
+    else:
+        # Keep nymph-only hours visibly below true hatch / activation windows.
+        score = min(
+            max(lanes["baseline_nymph"], lanes["activation"]),
+            _nymph_only_ceiling(aggression),
+        )
 
     code = _regime_code(regime)
     if code == "BLOWOUT":
@@ -297,14 +359,17 @@ def headline_breakdown(
     nymph = max(0.0, min(1.0, _as_float(nymph_score)))
     dry = max(0.0, min(1.0, _as_float(dry_score)))
     top_hatch = _top_species_probability(active_species)
-    nymph_display = _compress_high_end(nymph, 0.84)
-    dry_display = _compress_high_end(dry, 0.93)
+    lanes = score_lanes(nymph, dry, active_species, regime, score_breakdown)
+    nymph_display = lanes["baseline_nymph"]
+    dry_display = _compress_high_end(dry, 0.94)
     score = headline_score(nymph, dry, active_species, regime, score_breakdown)
-    aggression = aggression_score(nymph, dry, active_species, regime, score_breakdown)
+    aggression = lanes["aggression"]
     source = "nymph"
-    if dry_display > nymph_display:
-        source = "dry"
-    surface_signal = max(dry, top_hatch)
+    surface_signal = lanes["surface_signal"]
+    if lanes["surface_window"] > nymph_display:
+        source = "surface"
+    if lanes["activation"] > max(nymph_display, lanes["surface_window"]):
+        source = "activation"
     if surface_signal < 0.15 and score <= _nymph_only_ceiling(aggression):
         source = "nymph_capped"
     code = _regime_code(regime)
@@ -319,6 +384,11 @@ def headline_breakdown(
         "dry_display": dry_display,
         "top_hatch_probability": top_hatch,
         "surface_signal": surface_signal,
+        "lanes": {
+            "baseline_nymph": lanes["baseline_nymph"],
+            "surface_window": lanes["surface_window"],
+            "activation": lanes["activation"],
+        },
         "aggression": aggression,
         "aggression_factors": {
             "surface": surface_signal,

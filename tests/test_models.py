@@ -11,6 +11,7 @@ from src.models.score_calibration import (
     headline_breakdown,
     headline_score,
     recommendation_rank_score,
+    score_lanes,
 )
 from src.models.recession import (
     class_prior_tau_hours,
@@ -253,4 +254,29 @@ def test_headline_breakdown_explains_nymph_cap():
     assert breakdown["score"] == headline_score(1.0, 0.05, [], {"code": "NYMPH"})
     assert breakdown["surface_signal"] == 0.05
     assert "aggression" in breakdown
+    assert set(breakdown["lanes"]) == {"baseline_nymph", "surface_window", "activation"}
     assert "water_temp_zone" in breakdown["evidence"]
+
+
+def test_score_lanes_make_steady_nymphing_less_flat_by_time_of_day():
+    night = score_lanes(
+        0.95, 0.05, [], {"code": "NYMPH"},
+        {"diel_activity": 0.82, "flow_trend": 0.85, "pressure_factor": 1.0, "sun_factor": 1.0},
+    )
+    evening = score_lanes(
+        0.95, 0.05, [], {"code": "NYMPH"},
+        {"diel_activity": 1.0, "flow_trend": 0.85, "pressure_factor": 1.0, "sun_factor": 1.0},
+    )
+
+    assert evening["baseline_nymph"] > night["baseline_nymph"] + 0.15
+    assert evening["activation"] > night["activation"]
+
+
+def test_surface_lane_can_outrank_baseline_nymph_lane():
+    active = [{"id": "sulphur", "probability": 0.65}]
+    lanes = score_lanes(
+        0.55, 0.62, active, {"code": "HATCH"},
+        {"diel_activity": 0.86, "flow_trend": 0.85, "pressure_factor": 1.0, "sun_factor": 0.9},
+    )
+
+    assert lanes["surface_window"] > lanes["baseline_nymph"]
