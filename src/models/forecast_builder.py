@@ -44,7 +44,7 @@ from src.models import anomaly as anomaly_mod
 from src.models import dd_pipeline
 from src.models import regime as regime_mod
 from src.models import temp_estimator
-from src.models.dry_score import hour_of_day_score, shift_window_for_air_temp
+from src.models.dry_score import species_window_score
 from src.models.hatch_predictor import species_activity_probability, weather_match_score
 from src.models.fly_recommender import recommend_flies
 from src.models.nymph_score import compute_nymph_score
@@ -741,8 +741,16 @@ def _score_hour(
         # based on the *hour's* air temp from the NWS hourly forecast.
         sp_start = int(sp.get("emergence_hr_start") or 0)
         sp_end = int(sp.get("emergence_hr_end") or 23)
-        shifted_start, shifted_end = shift_window_for_air_temp(sp_start, sp_end, air_temp_f)
-        window = hour_of_day_score(valid_hour, shifted_start, shifted_end)
+        window, (shifted_start, shifted_end), solar_timing = species_window_score(
+            species=sp,
+            valid_hour=valid_hour,
+            start=sp_start,
+            end=sp_end,
+            air_temp_f=air_temp_f,
+            lat=signals.lat,
+            lon=signals.lon,
+            valid_at=valid_at,
+        )
         temp_gate = 0.0 if (water_temp_f is not None and water_temp_f < 45) else 1.0
         air_gate = terrestrial_air if is_terrestrial else 1.0
         score = max(0.0, min(1.0, season * dd_factor * weather * window * temp_gate * air_gate))
@@ -756,6 +764,7 @@ def _score_hour(
                 "degree_day_score": dd_factor,
                 "weather_score": weather,
                 "timing_score": window,
+                "solar_timing_score": solar_timing,
                 "emergence_window": [shifted_start, shifted_end],
                 "dd_progress": (dd_current / dd_mean) if dd_mean > 0 else None,
                 "is_terrestrial": is_terrestrial,
@@ -810,6 +819,7 @@ def _score_hour(
             "degree_day_score": top.get("degree_day_score"),
             "weather_score": top.get("weather_score"),
             "timing_score": top.get("timing_score"),
+            "solar_timing_score": top.get("solar_timing_score"),
             "emergence_window": top.get("emergence_window"),
         }
 
