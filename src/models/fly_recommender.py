@@ -2,8 +2,33 @@ from typing import Dict, List
 
 
 def choose_stage(species: Dict[str, object], valid_hour: int) -> str:
+    profile = str(species.get("timing_profile") or "").strip()
     start = int(species.get("emergence_hr_start") or 0)
     end = int(species.get("emergence_hr_end") or 23)
+    if profile == "terrestrial":
+        return "adult"
+    if profile == "crawler":
+        return "adult"
+    if profile == "dusk_caddis":
+        if valid_hour <= start + 1:
+            return "emerger"
+        return "adult"
+    if profile == "night":
+        if valid_hour <= start + 1:
+            return "dun"
+        return "spinner"
+    if profile == "morning":
+        if valid_hour <= start + 1:
+            return "dun"
+        if valid_hour >= end - 1:
+            return "spinner"
+        return "emerger"
+    if profile == "evening_mayfly":
+        if valid_hour <= start + 1:
+            return "emerger"
+        if valid_hour >= end - 1:
+            return "spinner"
+        return "dun"
     if valid_hour < start + 2:
         return "dun"
     if valid_hour > end - 2:

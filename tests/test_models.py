@@ -2,8 +2,9 @@ from datetime import datetime, timedelta, timezone
 
 from src.models.degree_days import daily_degree_day, accumulate_degree_days
 from src.models.nymph_score import compute_nymph_score
-from src.models.dry_score import compute_dry_score
+from src.models.dry_score import compute_dry_score, shift_window_for_air_temp, species_window_score
 from src.models.forecast_builder import ReachSignals, _flow_percentile_for_hour
+from src.models.fly_recommender import choose_stage
 from src.models.thermal_profile import apply_profile, from_reach
 from src.models.score_calibration import (
     aggression_score,
@@ -49,6 +50,49 @@ def test_dry_score_with_species():
     result = compute_dry_score(260, species_list, 0.2, 5.0, 55.0, 13)
     assert result["dry_score"] >= 0.0
     assert isinstance(result["active_species"], list)
+
+
+def test_hot_evening_species_shift_later_and_compress():
+    start, end = shift_window_for_air_temp(16, 21, 92.0, {"species_id": "sulphur", "timing_profile": "evening_mayfly"})
+    assert (start, end) == (21, 22)
+
+
+def test_dusk_caddis_gets_low_light_bonus_after_sunset():
+    dusk_score, window, solar = species_window_score(
+        species={"species_id": "tan-caddis", "timing_profile": "dusk_caddis"},
+        valid_hour=21,
+        start=18,
+        end=23,
+        air_temp_f=82.0,
+        lat=43.8,
+        lon=-91.7,
+        valid_at=datetime(2026, 6, 1, 21, 0, tzinfo=timezone(timedelta(hours=-5))),
+    )
+    midday_score, _window2, midday_solar = species_window_score(
+        species={"species_id": "tan-caddis", "timing_profile": "dusk_caddis"},
+        valid_hour=18,
+        start=18,
+        end=23,
+        air_temp_f=82.0,
+        lat=43.8,
+        lon=-91.7,
+        valid_at=datetime(2026, 6, 1, 14, 0, tzinfo=timezone(timedelta(hours=-5))),
+    )
+    assert window == (19, 23)
+    assert solar > midday_solar
+    assert dusk_score > midday_score
+
+
+def test_stage_selection_uses_taxon_profile():
+    caddis = {"timing_profile": "dusk_caddis", "emergence_hr_start": 18, "emergence_hr_end": 23}
+    mayfly = {"timing_profile": "evening_mayfly", "emergence_hr_start": 16, "emergence_hr_end": 21}
+    stonefly = {"timing_profile": "crawler", "emergence_hr_start": 12, "emergence_hr_end": 16}
+    assert choose_stage(caddis, 18) == "emerger"
+    assert choose_stage(caddis, 21) == "adult"
+    assert choose_stage(mayfly, 16) == "emerger"
+    assert choose_stage(mayfly, 19) == "dun"
+    assert choose_stage(mayfly, 21) == "spinner"
+    assert choose_stage(stonefly, 14) == "adult"
 
 
 def test_headline_score_compresses_nymph_only_plateau():
