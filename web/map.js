@@ -12,6 +12,30 @@
   let scrubGrid = null;    // { hours: [...], scores: { reach_id: [...] } } for the time scrubber
   let scrubOffset = 0;     // hour index into scrubGrid.hours; 0 = "now"
   let residualsByReach = {}; // { reach_id: { residual: -.20..+.20, n: int } } from /residuals
+  const REPORTER_PROFILE_KEY = "driftless-cast-reporter-profile";
+  const TOPWATER_LABELS = ["No topwater", "A few rises", "Steady eats", "Topwater popping"];
+
+  function loadReporterProfile() {
+    try {
+      return JSON.parse(localStorage.getItem(REPORTER_PROFILE_KEY) || "{}");
+    } catch {
+      return {};
+    }
+  }
+
+  function saveReporterProfile(profile) {
+    localStorage.setItem(REPORTER_PROFILE_KEY, JSON.stringify(profile || {}));
+  }
+
+  function topwaterLabel(level) {
+    const idx = Number(level);
+    return Number.isInteger(idx) && idx >= 0 && idx < TOPWATER_LABELS.length ? TOPWATER_LABELS[idx] : null;
+  }
+
+  function formatSessionWindow(value) {
+    if (!value) return null;
+    return value.charAt(0).toUpperCase() + value.slice(1);
+  }
 
   async function ensureSpeciesCache() {
     if (speciesById) return;
@@ -937,7 +961,7 @@
               : ""}
           </h3>
           <div class="quick-rate" role="group" aria-label="One-tap trip report">
-            <span class="quick-rate-prompt">Just got off the water?</span>
+            <span class="quick-rate-prompt">Just got off the water? Save a fast score first, then add what was hatching and what worked.</span>
             <button class="quick-rate-btn" data-reach="${fc.reach_id}" data-v="0" title="Skunked">😶</button>
             <button class="quick-rate-btn" data-reach="${fc.reach_id}" data-v="1" title="A few">🙂</button>
             <button class="quick-rate-btn" data-reach="${fc.reach_id}" data-v="2" title="Solid">😄</button>
@@ -945,6 +969,7 @@
           </div>
           <button id="open-catch-log" class="open-catch-log" type="button">+ Add details</button>
           <div id="catch-log-form" class="catch-log-form hidden"></div>
+          <button id="browse-all-reports" class="open-catch-log" type="button">Browse all recent reports</button>
           <ul id="catch-log-list" class="catch-log-list"><li class="muted small">loading recent reports…</li></ul>
         </section>
       `;
@@ -955,7 +980,7 @@
     }
   }
 
-  let currentView = "windows";  // "windows" | "calendar" | "detail" | "learn"
+  let currentView = "windows";  // "windows" | "reports" | "calendar" | "detail" | "learn"
   let currentDetailReachId = null;
 
   // ── Time scrubber ────────────────────────────────────────────────────────
@@ -1029,6 +1054,7 @@
 
   // ── Hash routing ─────────────────────────────────────────────────────────
   // #/reach/{id}  → detail view for that reach (deep-linkable)
+  // #/reports     → recent trip reports
   // #/calendar    → hatch calendar tab
   // #/learn       → learn tab
   // #/learn/{id}  → learn tab + topic overlay
@@ -1038,6 +1064,7 @@
     if (!raw) { setView("windows", { silent: true }); return; }
     const [head, ...rest] = raw.split("/");
     if (head === "reach" && rest[0]) { showReachDetail(rest[0], { silent: true }); return; }
+    if (head === "reports") { setView("reports", { silent: true }); return; }
     if (head === "calendar") { setView("calendar", { silent: true }); return; }
     if (head === "learn") {
       setView("learn", { silent: true });
@@ -1054,8 +1081,8 @@
 
   function setView(view, opts = {}) {
     currentView = view;
-    const sections = ["best-windows", "calendar", "detail", "learn"];
-    const map_ = { "best-windows": "windows", "calendar": "calendar", "detail": "detail", "learn": "learn" };
+    const sections = ["best-windows", "reports", "calendar", "detail", "learn"];
+    const map_ = { "best-windows": "windows", "reports": "reports", "calendar": "calendar", "detail": "detail", "learn": "learn" };
     sections.forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.classList.toggle("hidden", map_[id] !== view);
@@ -1065,10 +1092,12 @@
     });
     // Mobile: collapse the sidebar overlay state into a class so styles can target it.
     document.body.classList.toggle("view-detail", view === "detail");
+    if (view === "reports") loadReports();
     if (view === "calendar") loadCalendar(currentDetailReachId);
     if (view === "learn") loadLearn();
     if (!opts.silent) {
       if (view === "windows") writeHash("");
+      else if (view === "reports") writeHash("#/reports");
       else if (view === "calendar") writeHash("#/calendar");
       else if (view === "learn") writeHash("#/learn");
     }
@@ -1264,12 +1293,15 @@
     const openBtn = document.getElementById("open-catch-log");
     const form = document.getElementById("catch-log-form");
     if (openBtn) openBtn.addEventListener("click", () => openCatchLogForm(reachId, form, openBtn));
+    const browseBtn = document.getElementById("browse-all-reports");
+    if (browseBtn) browseBtn.addEventListener("click", () => setView("reports"));
     // Quick-rate: one-tap submission with default fields. Bypasses the form
     // entirely. The right reflex post-trip is "did I have a good time? tap"
     // — anything more friction-y than that and people don't log.
     document.querySelectorAll(`#detail-body .quick-rate-btn[data-reach="${reachId}"]`).forEach((btn) => {
       btn.addEventListener("click", async () => {
         const success = parseInt(btn.dataset.v, 10);
+        const profile = loadReporterProfile();
         btn.disabled = true;
         const original = btn.textContent;
         btn.textContent = "…";
@@ -1281,6 +1313,7 @@
               reach_id: reachId,
               fished_at: new Date().toISOString(),
               success,
+              reporter_name: profile.name || null,
               method: null, fly_used: null, water_temp_f: null,
               notes: "quick-rate",
             }),
@@ -1303,10 +1336,15 @@
 
   function openCatchLogForm(reachId, formEl, openBtn) {
     if (!formEl) return;
+    const profile = loadReporterProfile();
     formEl.classList.remove("hidden");
     if (openBtn) openBtn.classList.add("hidden");
     const nowIso = new Date().toISOString().slice(0, 16);  // for datetime-local
     formEl.innerHTML = `
+      <div class="catch-log-form-header">
+        <span class="catch-log-form-title">What actually happened?</span>
+        <span class="catch-log-form-sub">Capture the fishing experience, not just a score.</span>
+      </div>
       <label class="cl-label">How was it?
         <div class="cl-rating" role="radiogroup" aria-label="Trip success">
           <button type="button" class="cl-rate" data-v="0" title="Skunked">😶</button>
@@ -1315,27 +1353,59 @@
           <button type="button" class="cl-rate" data-v="3" title="Great">🤩</button>
         </div>
       </label>
-      <label class="cl-label">When
-        <input type="datetime-local" id="cl-fished-at" value="${nowIso}" />
-      </label>
-      <label class="cl-label">Method
-        <select id="cl-method">
-          <option value="">—</option>
-          <option value="dry">Dry fly</option>
-          <option value="nymph">Nymph</option>
-          <option value="streamer">Streamer</option>
-          <option value="mixed">Mixed</option>
-        </select>
-      </label>
-      <label class="cl-label">Fly used (optional)
-        <input type="text" id="cl-fly" placeholder="e.g. Pheasant Tail #14" />
-      </label>
-      <label class="cl-label">Water temp °F (optional)
-        <input type="number" id="cl-water" min="32" max="90" step="1" />
-      </label>
-      <label class="cl-label">Notes (optional)
-        <textarea id="cl-notes" rows="2" placeholder="What worked, what didn't"></textarea>
-      </label>
+      <div class="cl-grid">
+        <label class="cl-label">Name / alias
+          <input type="text" id="cl-name" value="${escapeHtml(profile.name || "")}" placeholder="Ben, DriftlessDan, etc." />
+        </label>
+        <label class="cl-label">When
+          <input type="datetime-local" id="cl-fished-at" value="${nowIso}" />
+        </label>
+        <label class="cl-label">Time of day
+          <select id="cl-window">
+            <option value="">—</option>
+            <option value="dawn">Dawn</option>
+            <option value="morning">Morning</option>
+            <option value="afternoon">Afternoon</option>
+            <option value="dusk">Dusk / last light</option>
+            <option value="night">After dark</option>
+          </select>
+        </label>
+        <label class="cl-label">Method
+          <select id="cl-method">
+            <option value="">—</option>
+            <option value="dry">Dry fly</option>
+            <option value="nymph">Nymph</option>
+            <option value="streamer">Streamer</option>
+            <option value="mixed">Mixed</option>
+          </select>
+        </label>
+        <label class="cl-label cl-label-wide">Topwater activity
+          <div class="cl-toggle-grid" id="cl-topwater">
+            <button type="button" class="cl-toggle" data-v="0">None</button>
+            <button type="button" class="cl-toggle" data-v="1">A few</button>
+            <button type="button" class="cl-toggle" data-v="2">Steady</button>
+            <button type="button" class="cl-toggle" data-v="3">Popping</button>
+          </div>
+        </label>
+        <label class="cl-label cl-label-wide">What bugs did you see?
+          <input type="text" id="cl-insects" placeholder="PMDs, tan caddis, stoneflies crawling, spinners, etc." />
+        </label>
+        <label class="cl-label">What worked?
+          <input type="text" id="cl-worked" placeholder="CDC sulphur, tan elk hair, hopper dropper…" />
+        </label>
+        <label class="cl-label">What didn't?
+          <input type="text" id="cl-didnt-work" placeholder="Heavy nymphs, streamers, big attractors…" />
+        </label>
+        <label class="cl-label">Fly used
+          <input type="text" id="cl-fly" placeholder="e.g. Pheasant Tail #14" />
+        </label>
+        <label class="cl-label">Water temp °F
+          <input type="number" id="cl-water" min="32" max="90" step="1" />
+        </label>
+        <label class="cl-label cl-label-wide">Notes
+          <textarea id="cl-notes" rows="3" placeholder="Fish rose only in the last 30 min. Refused duns, ate cripple and soft hackle."></textarea>
+        </label>
+      </div>
       <div class="cl-actions">
         <button type="button" id="cl-cancel" class="cl-btn cl-btn-ghost">Cancel</button>
         <button type="button" id="cl-submit" class="cl-btn cl-btn-primary" disabled>Submit</button>
@@ -1343,6 +1413,7 @@
       <p id="cl-error" class="error small hidden"></p>
     `;
     let chosenRating = null;
+    let chosenTopwater = null;
     formEl.querySelectorAll(".cl-rate").forEach((b) => {
       b.addEventListener("click", () => {
         chosenRating = parseInt(b.dataset.v, 10);
@@ -1350,20 +1421,34 @@
         document.getElementById("cl-submit").disabled = false;
       });
     });
+    formEl.querySelectorAll(".cl-toggle").forEach((b) => {
+      b.addEventListener("click", () => {
+        chosenTopwater = parseInt(b.dataset.v, 10);
+        formEl.querySelectorAll(".cl-toggle").forEach(x => x.classList.toggle("cl-toggle-on", x === b));
+      });
+    });
     document.getElementById("cl-cancel").addEventListener("click", () => closeCatchLogForm(formEl, openBtn));
     document.getElementById("cl-submit").addEventListener("click", async () => {
       if (chosenRating == null) return;
       const fished = document.getElementById("cl-fished-at").value;
       const fishedIso = fished ? new Date(fished).toISOString() : new Date().toISOString();
+      const reporterName = document.getElementById("cl-name").value.trim() || null;
       const payload = {
         reach_id: reachId,
         fished_at: fishedIso,
         success: chosenRating,
+        reporter_name: reporterName,
         method: document.getElementById("cl-method").value || null,
+        session_window: document.getElementById("cl-window").value || null,
+        topwater_level: chosenTopwater,
+        insect_activity: document.getElementById("cl-insects").value.trim() || null,
+        worked: document.getElementById("cl-worked").value.trim() || null,
+        didnt_work: document.getElementById("cl-didnt-work").value.trim() || null,
         fly_used: document.getElementById("cl-fly").value || null,
         water_temp_f: parseFloat(document.getElementById("cl-water").value) || null,
         notes: document.getElementById("cl-notes").value || null,
       };
+      saveReporterProfile({ name: reporterName || "" });
       const errEl = document.getElementById("cl-error");
       const submitBtn = document.getElementById("cl-submit");
       submitBtn.disabled = true;
@@ -1407,28 +1492,121 @@
         list.innerHTML = `<li class="muted small">No reports yet — be the first.</li>`;
         return;
       }
-      const emoji = ["😶", "🙂", "😄", "🤩"];
-      list.innerHTML = rows.map((r) => {
-        const when = new Date(r.fished_at).toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric" });
-        const method = r.method ? `<span class="cl-method">${r.method}</span>` : "";
-        const fly = r.fly_used ? ` · ${escapeHtml(r.fly_used)}` : "";
-        const wt = r.water_temp_f ? ` · ${Math.round(r.water_temp_f)}°F` : "";
-        const notes = r.notes ? `<div class="cl-notes-line">${escapeHtml(r.notes)}</div>` : "";
-        const predicted = r.predicted_score != null ? ` <span class="cl-vs muted small">(model said ${Math.round(r.predicted_score * 100)})</span>` : "";
-        return `
-          <li class="cl-row">
-            <div class="cl-row-head">
-              <span class="cl-emoji">${emoji[r.success] || ""}</span>
-              <span class="cl-when">${when}</span>
-              ${method}${predicted}
-            </div>
-            <div class="cl-row-sub">${escapeHtml(r.fly_used || "")}${fly && wt ? "" : ""}${wt}</div>
-            ${notes}
-          </li>
-        `;
-      }).join("");
+      list.innerHTML = rows.map(renderCatchLogRow).join("");
     } catch (err) {
       list.innerHTML = `<li class="error small">${err.message}</li>`;
+    }
+  }
+
+  function renderCatchLogRow(r, opts = {}) {
+    const emoji = ["😶", "🙂", "😄", "🤩"];
+    const when = new Date(r.fished_at).toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric" });
+    const reachLabel = opts.showReach && r.stream_name
+      ? `<span class="cl-method">${escapeHtml(r.stream_name)}</span>`
+      : "";
+    const method = r.method ? `<span class="cl-method">${escapeHtml(r.method)}</span>` : "";
+    const reporter = r.reporter_name ? `<span class="cl-reporter">${escapeHtml(r.reporter_name)}</span>` : "";
+    const predicted = r.predicted_score != null ? ` <span class="cl-vs muted small">(model ${Math.round(r.predicted_score * 100)})</span>` : "";
+    const chips = [
+      r.session_window ? `<span class="report-chip">${escapeHtml(formatSessionWindow(r.session_window))}</span>` : "",
+      r.topwater_level != null ? `<span class="report-chip report-chip-topwater-${Number(r.topwater_level)}">${escapeHtml(topwaterLabel(r.topwater_level) || "Topwater")}</span>` : "",
+      r.water_temp_f ? `<span class="report-chip">${Math.round(r.water_temp_f)}°F</span>` : "",
+      r.fly_used ? `<span class="report-chip">${escapeHtml(r.fly_used)}</span>` : "",
+    ].filter(Boolean).join("");
+    const outcome = [
+      r.worked ? `<div class="cl-outcome-line"><span class="cl-outcome-label">Worked:</span>${escapeHtml(r.worked)}</div>` : "",
+      r.didnt_work ? `<div class="cl-outcome-line"><span class="cl-outcome-label">Didn't:</span>${escapeHtml(r.didnt_work)}</div>` : "",
+    ].join("");
+    const bugLine = r.insect_activity ? `<div class="cl-notes-line">Bugs: ${escapeHtml(r.insect_activity)}</div>` : "";
+    const notes = r.notes && r.notes !== "quick-rate" ? `<div class="cl-notes-line">${escapeHtml(r.notes)}</div>` : "";
+    return `
+      <li class="cl-row">
+        <div class="cl-row-head">
+          <span class="cl-emoji">${emoji[r.success] || ""}</span>
+          <span class="cl-when">${when}</span>
+          ${reporter}${reachLabel}${method}${predicted}
+        </div>
+        ${chips ? `<div class="report-entry-chips">${chips}</div>` : ""}
+        ${bugLine}
+        ${outcome}
+        ${notes}
+      </li>
+    `;
+  }
+
+  async function loadReports() {
+    const body = document.getElementById("reports-body");
+    if (!body) return;
+    body.innerHTML = `<p class="muted">loading…</p>`;
+    const profile = loadReporterProfile();
+    try {
+      const [resp, reliabilityResp] = await Promise.all([
+        fetch(`${API_BASE}/catch-log?limit=40`),
+        fetch(`${API_BASE}/reliability`),
+      ]);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const rows = await resp.json();
+      const reliability = reliabilityResp.ok ? await reliabilityResp.json() : { n: 0, by_reach_n: {} };
+      const uniqueReporters = new Set(rows.map((r) => (r.reporter_name || "").trim()).filter(Boolean));
+      const reportsHtml = rows.length
+        ? rows.map((r) => `
+            <li class="report-card">
+              <div class="report-card-head">
+                <span class="report-card-score">${["😶", "🙂", "😄", "🤩"][r.success] || "📝"}</span>
+                <div>
+                  <div class="report-card-title">${escapeHtml(r.stream_name || r.reach_id)}</div>
+                  <div class="report-card-meta">${escapeHtml(r.segment_name || "")}${r.segment_name ? " · " : ""}${timeLocal(r.fished_at)}${r.reporter_name ? ` · ${escapeHtml(r.reporter_name)}` : ""}</div>
+                </div>
+              </div>
+              ${(r.insect_activity || r.fly_used) ? `<div class="report-card-copy">${r.insect_activity ? `<strong>Bugs:</strong> ${escapeHtml(r.insect_activity)}` : ""}${r.insect_activity && r.fly_used ? " · " : ""}${r.fly_used ? `<strong>Fly:</strong> ${escapeHtml(r.fly_used)}` : ""}</div>` : ""}
+              ${(r.worked || r.didnt_work || r.notes) ? `<div class="report-card-outcome">${r.worked ? `<strong>Worked:</strong> ${escapeHtml(r.worked)}` : ""}${r.worked && r.didnt_work ? " · " : ""}${r.didnt_work ? `<strong>Didn't:</strong> ${escapeHtml(r.didnt_work)}` : ""}${(r.worked || r.didnt_work) && r.notes && r.notes !== "quick-rate" ? "<br/>" : ""}${r.notes && r.notes !== "quick-rate" ? escapeHtml(r.notes) : ""}</div>` : ""}
+              <div class="report-card-chips">
+                ${r.method ? `<span class="report-chip">${escapeHtml(r.method)}</span>` : ""}
+                ${r.session_window ? `<span class="report-chip">${escapeHtml(formatSessionWindow(r.session_window))}</span>` : ""}
+                ${r.topwater_level != null ? `<span class="report-chip report-chip-topwater-${Number(r.topwater_level)}">${escapeHtml(topwaterLabel(r.topwater_level) || "Topwater")}</span>` : ""}
+                ${r.water_temp_f ? `<span class="report-chip">${Math.round(r.water_temp_f)}°F</span>` : ""}
+                ${r.predicted_score != null ? `<span class="report-chip">Model ${Math.round(r.predicted_score * 100)}</span>` : ""}
+              </div>
+            </li>
+          `).join("")
+        : `<li class="muted small">No reports yet.</li>`;
+      body.innerHTML = `
+        <div class="reports-toolbar">
+          <div class="reports-profile">
+            <div class="reports-profile-copy">
+              <span class="reports-profile-title">Your reporter profile</span>
+              <span class="reports-profile-sub">This is device-local for now so repeat reports are fast. Real login/auth still needs a backend auth pass.</span>
+            </div>
+            <div class="reports-profile-row">
+              <input id="reports-profile-name" type="text" value="${escapeHtml(profile.name || "")}" placeholder="Name or alias" />
+              <button id="reports-profile-save" class="cl-btn cl-btn-primary" type="button">Save</button>
+            </div>
+          </div>
+          <div class="reports-summary-card">
+            <div class="reports-profile-copy">
+              <span class="reports-profile-title">Community feedback</span>
+              <span class="reports-profile-sub">Recent field reports that can calibrate the model.</span>
+            </div>
+            <div class="reports-summary-grid">
+              <div class="reports-stat"><span class="reports-stat-label">Reports</span><span class="reports-stat-value">${reliability.n || rows.length}</span></div>
+              <div class="reports-stat"><span class="reports-stat-label">Reaches</span><span class="reports-stat-value">${Object.keys(reliability.by_reach_n || {}).length}</span></div>
+              <div class="reports-stat"><span class="reports-stat-label">Reporters</span><span class="reports-stat-value">${uniqueReporters.size}</span></div>
+            </div>
+          </div>
+        </div>
+        <ul class="reports-feed">${reportsHtml}</ul>
+      `;
+      const saveBtn = document.getElementById("reports-profile-save");
+      if (saveBtn) {
+        saveBtn.addEventListener("click", () => {
+          const name = document.getElementById("reports-profile-name").value.trim();
+          saveReporterProfile({ name });
+          saveBtn.textContent = "Saved";
+          setTimeout(() => { saveBtn.textContent = "Save"; }, 1000);
+        });
+      }
+    } catch (err) {
+      body.innerHTML = `<p class="error">Failed to load reports: ${err.message}</p>`;
     }
   }
 
@@ -1777,5 +1955,6 @@
     loadBestWindows();
     loadHatchWatch();
     loadScrubGrid();
+    if (currentView === "reports") loadReports();
   }, REFRESH_MS);
 })();
