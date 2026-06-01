@@ -55,6 +55,14 @@ def initialize_database(db_path: Optional[Path] = None) -> None:
         "pressure_delta_mb": "REAL",
         "score_breakdown": "TEXT",
     })
+    _ensure_columns(conn, "catch_log", {
+        "reporter_name": "TEXT",
+        "session_window": "TEXT",
+        "topwater_level": "INTEGER",
+        "insect_activity": "TEXT",
+        "worked": "TEXT",
+        "didnt_work": "TEXT",
+    })
     conn.commit()
     conn.close()
 
@@ -282,10 +290,12 @@ def insert_catch_log(entry: Dict[str, Any]) -> int:
     cur = conn.execute(
         """
         INSERT INTO catch_log (
-            reach_id, fished_at, success, method, species_caught, notes,
+            reach_id, fished_at, success, reporter_name, method, session_window,
+            topwater_level, insect_activity, species_caught, worked, didnt_work, notes,
             fly_used, water_temp_f, submitted_at, predicted_score, predicted_regime
         ) VALUES (
-            :reach_id, :fished_at, :success, :method, :species_caught, :notes,
+            :reach_id, :fished_at, :success, :reporter_name, :method, :session_window,
+            :topwater_level, :insect_activity, :species_caught, :worked, :didnt_work, :notes,
             :fly_used, :water_temp_f, :submitted_at, :predicted_score, :predicted_regime
         )
         """,
@@ -302,12 +312,15 @@ def list_catch_logs(reach_id: Optional[str] = None, limit: int = 50) -> List[Dic
     if reach_id:
         rows = conn.execute(
             """
-            SELECT id, reach_id, fished_at, success, method, species_caught,
-                   notes, fly_used, water_temp_f, submitted_at,
+            SELECT c.id, c.reach_id, c.fished_at, c.success, c.reporter_name, c.method,
+                   c.session_window, c.topwater_level, c.insect_activity, c.species_caught,
+                   c.worked, c.didnt_work, c.notes, c.fly_used, c.water_temp_f, c.submitted_at,
                    predicted_score, predicted_regime
-            FROM catch_log
-            WHERE reach_id = ?
-            ORDER BY fished_at DESC
+                   , r.stream_name, r.segment_name
+            FROM catch_log c
+            LEFT JOIN reach r ON r.reach_id = c.reach_id
+            WHERE c.reach_id = ?
+            ORDER BY c.fished_at DESC
             LIMIT ?
             """,
             (reach_id, limit),
@@ -315,11 +328,14 @@ def list_catch_logs(reach_id: Optional[str] = None, limit: int = 50) -> List[Dic
     else:
         rows = conn.execute(
             """
-            SELECT id, reach_id, fished_at, success, method, species_caught,
-                   notes, fly_used, water_temp_f, submitted_at,
+            SELECT c.id, c.reach_id, c.fished_at, c.success, c.reporter_name, c.method,
+                   c.session_window, c.topwater_level, c.insect_activity, c.species_caught,
+                   c.worked, c.didnt_work, c.notes, c.fly_used, c.water_temp_f, c.submitted_at,
                    predicted_score, predicted_regime
-            FROM catch_log
-            ORDER BY fished_at DESC
+                   , r.stream_name, r.segment_name
+            FROM catch_log c
+            LEFT JOIN reach r ON r.reach_id = c.reach_id
+            ORDER BY c.fished_at DESC
             LIMIT ?
             """,
             (limit,),

@@ -100,8 +100,14 @@ CREATE TABLE IF NOT EXISTS catch_log (
     reach_id        TEXT NOT NULL,
     fished_at       TEXT NOT NULL,        -- ISO8601, when the trip happened (start time)
     success         INTEGER NOT NULL,     -- 0 skunked, 1 a few, 2 solid, 3 great
+    reporter_name   TEXT,                 -- optional display name / alias
     method          TEXT,                 -- 'dry', 'nymph', 'streamer', 'mixed'
+    session_window  TEXT,                 -- 'dawn', 'morning', 'afternoon', 'dusk', 'night'
+    topwater_level  INTEGER,              -- 0 none, 1 occasional, 2 steady, 3 popping
+    insect_activity TEXT,                 -- free text: PMD/caddis/spinners/etc
     species_caught  TEXT,                 -- JSON array of species_ids OR free text ('brown trout')
+    worked          TEXT,                 -- what worked
+    didnt_work      TEXT,                 -- what did not work
     notes           TEXT,                 -- free text
     fly_used        TEXT,                 -- e.g. 'Pheasant Tail #14'
     water_temp_f    REAL,                 -- optional reported water temp

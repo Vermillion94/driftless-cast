@@ -501,8 +501,14 @@ class CatchLogPayload(BaseModel):
     reach_id: str
     fished_at: str = Field(description="ISO8601 timestamp of when the trip happened")
     success: int = Field(ge=0, le=3, description="0 skunked, 1 a few, 2 solid, 3 great")
+    reporter_name: Optional[str] = None
     method: Optional[str] = None
+    session_window: Optional[str] = None
+    topwater_level: Optional[int] = Field(default=None, ge=0, le=3)
+    insect_activity: Optional[str] = None
     species_caught: Optional[str] = None
+    worked: Optional[str] = None
+    didnt_work: Optional[str] = None
     notes: Optional[str] = None
     fly_used: Optional[str] = None
     water_temp_f: Optional[float] = None
