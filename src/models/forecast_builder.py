@@ -80,7 +80,6 @@ class ReachSignals:
     stream_name: str
     lat: float
     lon: float
-    length_km: Optional[float]
     spring_influenced: bool
     usgs_gauge_id: Optional[str]
     gauge_source: Optional[str]       # "usgs" | "noaa" | None
@@ -94,6 +93,7 @@ class ReachSignals:
     flow_stats: Optional[Dict[str, float]]       # p10..p90 so we can percentile-ize forecasted flow
     recent_flows: List[float]
     confidence_notes: List[str]
+    length_km: Optional[float] = None
     # Forward-looking hydrology
     forecast_flow_by_hour: Optional[Dict[str, float]] = None  # ISO hour → forecast cfs (NOAA NWPS)
     qpf_mm_by_hour: Optional[Dict[str, float]] = None          # ISO hour → mm precip (NWS QPF)
