@@ -9,7 +9,7 @@ Live at **<https://driftless-cast.fly.dev/>**.
 
 ## What it does
 
-For each of 21 trout streams, every hour out to 7 days, computes:
+For each of 39 trout streams, every hour out to 7 days, computes:
 
 - **Headline score** (0–1) shown as Go / Fair / Skip on the map
 - **Nymph and dry-fly scores** as separate components, with full audit-trail multipliers

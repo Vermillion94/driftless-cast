@@ -220,7 +220,7 @@ ongoing attention.
   during dev — see the troubleshooting note in `docs/REFERENCES.md`.
 - **The forecast is empty after deploy**: the build runs in a background
   thread on startup and takes ~30-60s. Check `fly logs` — you'll see
-  `forecast build complete: 21 reaches, ~3270 rows` when it finishes.
+  `forecast build complete: ... reaches, ... rows` when it finishes.
 - **CORS errors in production**: shouldn't happen with the single-port
   setup, but if you split API and UI onto separate hosts, add the UI's
   origin to `allow_origins` in `src/api/main.py`.

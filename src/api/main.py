@@ -75,7 +75,7 @@ def _rebuild_loop() -> None:
 
 @app.on_event("startup")
 def _kick_initial_forecast() -> None:
-    # Fire and forget — don't block startup on ~21 reaches × NWS latency.
+    # Fire and forget — don't block startup on the full seeded reach set × NWS latency.
     threading.Thread(target=_build_forecast_background, daemon=True).start()
     threading.Thread(target=_rebuild_loop, daemon=True).start()
 

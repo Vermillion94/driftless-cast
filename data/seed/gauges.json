@@ -1,19 +1,37 @@
 [
   {
-    "gauge_id": "05342000",
-    "name": "Kinnickinnic River near River Falls, WI",
-    "source": "usgs",
-    "lat": 44.8308,
-    "lon": -92.7331,
-    "params": ["00060", "00065", "00010"]
-  },
-  {
     "gauge_id": "05341498",
     "name": "Apple River at Park in Somerset, WI",
     "source": "usgs",
     "lat": 45.1286,
     "lon": -92.6776,
-    "params": ["00060", "00065"]
+    "params": [
+      "00060",
+      "00065"
+    ]
+  },
+  {
+    "gauge_id": "05342000",
+    "name": "Kinnickinnic River near River Falls, WI",
+    "source": "usgs",
+    "lat": 44.8308,
+    "lon": -92.7331,
+    "params": [
+      "00060",
+      "00065",
+      "00010"
+    ]
+  },
+  {
+    "gauge_id": "05355322",
+    "name": "RUSH RIVER NEAR ESDAILE, WI",
+    "source": "usgs",
+    "lat": 44.6266338,
+    "lon": -92.3324053,
+    "params": [
+      "00060",
+      "00065"
+    ]
   },
   {
     "gauge_id": "05370000",
@@ -21,31 +39,54 @@
     "source": "usgs",
     "lat": 44.8528,
     "lon": -92.2383,
-    "params": ["00060", "00065"]
+    "params": [
+      "00060",
+      "00065"
+    ]
   },
   {
-    "gauge_id": "05408000",
-    "name": "Kickapoo River at La Farge, WI",
+    "gauge_id": "05371050",
+    "name": "PLUM CREEK NEAR ELLA, WI",
     "source": "usgs",
-    "lat": 43.5742,
-    "lon": -90.6432,
-    "params": ["00060", "00065"]
+    "lat": 44.54026078,
+    "lon": -92.0732285,
+    "params": [
+      "00060",
+      "00065"
+    ]
   },
   {
-    "gauge_id": "05388250",
-    "name": "Upper Iowa River near Dorchester, IA",
+    "gauge_id": "05371920",
+    "name": "BUFFALO RIVER NEAR MONDOVI, WI",
     "source": "usgs",
-    "lat": 43.4211,
-    "lon": -91.5088,
-    "params": ["00060", "00065"]
+    "lat": 44.52663179,
+    "lon": -91.6962693,
+    "params": [
+      "00060",
+      "00065"
+    ]
   },
   {
-    "gauge_id": "05389000",
-    "name": "Yellow River near Ion, IA",
+    "gauge_id": "05379400",
+    "name": "TREMPEALEAU RIVER AT ARCADIA, WI",
     "source": "usgs",
-    "lat": 43.1119,
-    "lon": -91.2651,
-    "params": ["00060", "00065"]
+    "lat": 44.25444444,
+    "lon": -91.5052778,
+    "params": [
+      "00060",
+      "00065"
+    ]
+  },
+  {
+    "gauge_id": "05382325",
+    "name": "LA CROSSE RIVER AT SPARTA, WI",
+    "source": "usgs",
+    "lat": 43.9375,
+    "lon": -90.8105556,
+    "params": [
+      "00060",
+      "00065"
+    ]
   },
   {
     "gauge_id": "05383950",
@@ -53,23 +94,10 @@
     "source": "usgs",
     "lat": 43.7828,
     "lon": -92.0316,
-    "params": ["00060", "00065"]
-  },
-  {
-    "gauge_id": "05385000",
-    "name": "Root River near Houston, MN",
-    "source": "usgs",
-    "lat": 43.7686,
-    "lon": -91.5699,
-    "params": ["00060", "00065"]
-  },
-  {
-    "gauge_id": "05385500",
-    "name": "South Fork Root River near Houston, MN",
-    "source": "usgs",
-    "lat": 43.7388,
-    "lon": -91.5643,
-    "params": ["00060", "00065"]
+    "params": [
+      "00060",
+      "00065"
+    ]
   },
   {
     "gauge_id": "05384500",
@@ -77,39 +105,141 @@
     "source": "usgs",
     "lat": 43.8324,
     "lon": -91.7767,
-    "params": ["00065"]
+    "params": [
+      "00065"
+    ]
   },
   {
-    "gauge_id": "EBWM5",
-    "name": "North Fork Whitewater River near Elba, MN (NOAA)",
-    "source": "noaa",
-    "lat": 44.087,
-    "lon": -92.030,
-    "params": ["stage", "discharge"]
+    "gauge_id": "05385000",
+    "name": "Root River near Houston, MN",
+    "source": "usgs",
+    "lat": 43.7686,
+    "lon": -91.5699,
+    "params": [
+      "00060",
+      "00065"
+    ]
   },
   {
-    "gauge_id": "WWPM5",
-    "name": "Middle Fork Whitewater River at Whitewater SP Group Camp, MN (NOAA)",
-    "source": "noaa",
-    "lat": 44.056,
-    "lon": -92.054,
-    "params": ["stage", "discharge"]
+    "gauge_id": "05385500",
+    "name": "South Fork Root River near Houston, MN",
+    "source": "usgs",
+    "lat": 43.7388,
+    "lon": -91.5643,
+    "params": [
+      "00060",
+      "00065"
+    ]
   },
   {
-    "gauge_id": "FLMM5",
-    "name": "Middle Branch Root River at Fillmore, MN (NOAA)",
-    "source": "noaa",
-    "lat": 43.759,
-    "lon": -92.271,
-    "params": ["stage", "discharge"]
+    "gauge_id": "05386490",
+    "name": "SPRING COULEE CREEK NEAR COON VALLEY, WI",
+    "source": "usgs",
+    "lat": 43.69998768,
+    "lon": -90.9445762,
+    "params": [
+      "00060",
+      "00065"
+    ]
   },
   {
-    "gauge_id": "DWCI4",
-    "name": "Waterloo Creek near Dorchester, IA (NOAA)",
-    "source": "noaa",
-    "lat": 43.451,
-    "lon": -91.505,
-    "params": ["stage"]
+    "gauge_id": "05386500",
+    "name": "COON CREEK AT COON VALLEY, WI",
+    "source": "usgs",
+    "lat": 43.7046921,
+    "lon": -91.0184642,
+    "params": [
+      "00060",
+      "00065"
+    ]
+  },
+  {
+    "gauge_id": "05387100",
+    "name": "NORTH FORK BAD AXE RIVER NEAR GENOA, WI",
+    "source": "usgs",
+    "lat": 43.55275008,
+    "lon": -91.149576,
+    "params": [
+      "00060",
+      "00065"
+    ]
+  },
+  {
+    "gauge_id": "05388250",
+    "name": "Upper Iowa River near Dorchester, IA",
+    "source": "usgs",
+    "lat": 43.4211,
+    "lon": -91.5088,
+    "params": [
+      "00060",
+      "00065"
+    ]
+  },
+  {
+    "gauge_id": "05389000",
+    "name": "Yellow River near Ion, IA",
+    "source": "usgs",
+    "lat": 43.1119,
+    "lon": -91.2651,
+    "params": [
+      "00060",
+      "00065"
+    ]
+  },
+  {
+    "gauge_id": "05408000",
+    "name": "Kickapoo River at La Farge, WI",
+    "source": "usgs",
+    "lat": 43.5742,
+    "lon": -90.6432,
+    "params": [
+      "00060",
+      "00065"
+    ]
+  },
+  {
+    "gauge_id": "05408476",
+    "name": "WEST FORK KICKAPOO RIVER @ OGDEN AVE AT CASHTON,WI",
+    "source": "usgs",
+    "lat": 43.72566667,
+    "lon": -90.781,
+    "params": [
+      "00060",
+      "00065"
+    ]
+  },
+  {
+    "gauge_id": "05409270",
+    "name": "READS CREEK AT RILEY ROAD NEAR READSTOWN, WI",
+    "source": "usgs",
+    "lat": 43.4580311,
+    "lon": -90.8095743,
+    "params": [
+      "00060",
+      "00065"
+    ]
+  },
+  {
+    "gauge_id": "05409668",
+    "name": "TAINTER CREEK TRIBUTARY NEAR READSTOWN, WI",
+    "source": "usgs",
+    "lat": 43.4313646,
+    "lon": -90.8887403,
+    "params": [
+      "00060",
+      "00065"
+    ]
+  },
+  {
+    "gauge_id": "05410490",
+    "name": "KICKAPOO RIVER AT STEUBEN, WI",
+    "source": "usgs",
+    "lat": 43.18277778,
+    "lon": -90.8583333,
+    "params": [
+      "00060",
+      "00065"
+    ]
   },
   {
     "gauge_id": "DDGW3",
@@ -117,7 +247,42 @@
     "source": "noaa",
     "lat": 44.132,
     "lon": -91.553,
-    "params": ["stage", "discharge"]
+    "params": [
+      "stage",
+      "discharge"
+    ]
+  },
+  {
+    "gauge_id": "DWCI4",
+    "name": "Waterloo Creek near Dorchester, IA (NOAA)",
+    "source": "noaa",
+    "lat": 43.451,
+    "lon": -91.505,
+    "params": [
+      "stage"
+    ]
+  },
+  {
+    "gauge_id": "EBWM5",
+    "name": "North Fork Whitewater River near Elba, MN (NOAA)",
+    "source": "noaa",
+    "lat": 44.087,
+    "lon": -92.03,
+    "params": [
+      "stage",
+      "discharge"
+    ]
+  },
+  {
+    "gauge_id": "FLMM5",
+    "name": "Middle Branch Root River at Fillmore, MN (NOAA)",
+    "source": "noaa",
+    "lat": 43.759,
+    "lon": -92.271,
+    "params": [
+      "stage",
+      "discharge"
+    ]
   },
   {
     "gauge_id": "FRCM5",
@@ -125,6 +290,20 @@
     "source": "noaa",
     "lat": 44.507,
     "lon": -92.333,
-    "params": ["stage", "discharge"]
+    "params": [
+      "stage",
+      "discharge"
+    ]
+  },
+  {
+    "gauge_id": "WWPM5",
+    "name": "Middle Fork Whitewater River at Whitewater SP Group Camp, MN (NOAA)",
+    "source": "noaa",
+    "lat": 44.056,
+    "lon": -92.054,
+    "params": [
+      "stage",
+      "discharge"
+    ]
   }
 ]
