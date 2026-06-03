@@ -28,6 +28,7 @@ class Regime:
 def classify(
     *,
     valid_at: datetime,
+    reach_id: Optional[str] = None,
     flow_percentile: Optional[float],
     water_temp_f: Optional[float],
     air_temp_f: Optional[float],
@@ -48,6 +49,7 @@ def classify(
     has_hatch = any((s.get("probability") or 0) >= 0.30 for s in (active_species or []))
     runoff = assess_runoff_risk(
         valid_at=valid_at,
+        reach_id=reach_id,
         qpf_map=qpf_map,
         spring_influenced=spring_influenced,
         length_km=length_km,

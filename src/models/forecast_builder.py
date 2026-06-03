@@ -459,6 +459,7 @@ def _flow_percentile_for_hour(
     # spring-buffered mainstem, so use runoff risk rather than a global rule.
     runoff = assess_runoff_risk(
         valid_at=valid_at,
+        reach_id=signals.reach_id,
         qpf_map=qpf_map,
         spring_influenced=signals.spring_influenced,
         length_km=getattr(signals, "length_km", None),
@@ -789,6 +790,7 @@ def _score_hour(
     percentile, projected_flow_cfs, precip_note, tau_hours, tau_source = _flow_percentile_for_hour(signals, valid_at, now)
     runoff = assess_runoff_risk(
         valid_at=valid_at,
+        reach_id=signals.reach_id,
         qpf_map=signals.qpf_mm_by_hour,
         spring_influenced=signals.spring_influenced,
         length_km=signals.length_km,
@@ -859,6 +861,7 @@ def _score_hour(
     # the score so it can use post-pressure-adjusted dry/nymph values.
     regime = regime_mod.classify(
         valid_at=valid_at,
+        reach_id=signals.reach_id,
         flow_percentile=percentile,
         water_temp_f=water_temp_f,
         air_temp_f=air_temp_f,
@@ -975,6 +978,7 @@ def _score_hour(
             "runoff_threshold_24h_in": round(runoff.hurt_threshold_24h_mm / 25.4, 2),
             "rain_preceding_6h_in": round(runoff.preceding_6h_mm / 25.4, 2),
             "rain_preceding_24h_in": round(runoff.preceding_24h_mm / 25.4, 2),
+            "runoff_threshold_source": runoff.threshold_source,
             "thermal_profile": signals.thermal_profile.label,
             "thermal_spring_strength": round(signals.thermal_profile.spring_strength, 3),
         }),

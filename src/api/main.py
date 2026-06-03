@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from src.api import routes
+from src.jobs.forecast_refresh import trigger_forecast_refresh
 
 LOG = logging.getLogger(__name__)
 
@@ -31,28 +32,6 @@ _WEB_DIR = Path(__file__).resolve().parent.parent.parent / "web"
 if _WEB_DIR.exists() and os.getenv("SERVE_STATIC", "1") != "0":
     app.mount("/", StaticFiles(directory=str(_WEB_DIR), html=True), name="web")
 
-
-def _build_forecast_background() -> None:
-    try:
-        # Ensure new columns / new tables (e.g. catch_log, regime) exist on
-        # an already-initialized DB before the forecast build hits them.
-        from src.db import initialize_database, load_reaches
-        initialize_database()
-        # Re-seed reach metadata on boot. This is intentionally idempotent:
-        # it keeps gauge mappings, proxy distances, and notes in sync with
-        # data/seed/reaches.json on persistent Fly volumes.
-        from src.scripts.bootstrap_reaches import bootstrap_reaches
-        if not load_reaches():
-            LOG.info("empty reach table — seeding from data/seed/reaches.json")
-        bootstrap_reaches()
-        from src.models.forecast_builder import build_all
-        LOG.info("forecast build starting")
-        counts = build_all()
-        LOG.info("forecast build complete: %d reaches, %d rows", len(counts), sum(counts.values()))
-    except Exception:
-        LOG.exception("forecast build failed")
-
-
 # Forecast refresh cadence. NWS hourly forecast updates ~hourly; QPF and
 # Open-Meteo pressure similarly. 60 min is the natural sync interval. Jitter
 # stops multiple instances from stampeding USGS / NWS at exactly :00.
@@ -70,13 +49,13 @@ def _rebuild_loop() -> None:
     while True:
         sleep = REBUILD_INTERVAL_SECONDS + random.uniform(0, REBUILD_JITTER_SECONDS)
         time.sleep(sleep)
-        _build_forecast_background()
+        trigger_forecast_refresh()
 
 
 @app.on_event("startup")
 def _kick_initial_forecast() -> None:
     # Fire and forget — don't block startup on the full seeded reach set × NWS latency.
-    threading.Thread(target=_build_forecast_background, daemon=True).start()
+    trigger_forecast_refresh()
     threading.Thread(target=_rebuild_loop, daemon=True).start()
 
 

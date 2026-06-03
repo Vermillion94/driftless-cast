@@ -11,11 +11,10 @@ on:
 jobs:
   refresh:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 2
     steps:
-      - name: Kick Driftless Cast forecast rebuild
+      - name: Wake Driftless Cast
         run: |
           curl --fail --show-error --silent \
-            --max-time 540 \
-            -X POST \
-            https://driftless-cast.fly.dev/refresh
+            --max-time 30 \
+            https://driftless-cast.fly.dev/status

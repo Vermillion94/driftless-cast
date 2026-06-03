@@ -31,6 +31,7 @@ from src.models.nymph_score import (
     temperature_score,
 )
 from src.models import regime as regime_mod
+from src.models import runoff_risk as runoff_mod
 from src.models.runoff_risk import assess_runoff_risk
 
 
@@ -366,6 +367,29 @@ def test_runoff_risk_high_antecedent_flow_lowers_rain_tolerance():
     )
     assert high.hurt_threshold_6h_mm < low.hurt_threshold_6h_mm
     assert high.response_ratio > low.response_ratio
+
+
+def test_runoff_risk_uses_historical_fit_when_present():
+    valid = datetime(2026, 5, 15, 14, tzinfo=timezone.utc)
+    qpf = _qpf_for(valid, 2.0, hours=6)  # 12 mm in 6h
+    original = runoff_mod._RUNOFF_FITS
+    runoff_mod._RUNOFF_FITS = {
+        "test-reach": {
+            "hurt_threshold_6h_mm": 24.0,
+            "hurt_threshold_12h_mm": 30.0,
+            "hurt_threshold_24h_mm": 38.0,
+        }
+    }
+    try:
+        fitted = assess_runoff_risk(
+            valid_at=valid, reach_id="test-reach", qpf_map=qpf,
+            spring_influenced=False, length_km=6.0, flow_percentile=0.45
+        )
+    finally:
+        runoff_mod._RUNOFF_FITS = original
+    assert fitted.hurt_threshold_6h_mm == 24.0
+    assert fitted.hurt_threshold_24h_mm == 38.0
+    assert fitted.threshold_source == "historical_fit"
 
 
 # ─── Fly recommender ───────────────────────────────────────────────────────

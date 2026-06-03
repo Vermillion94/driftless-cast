@@ -16,9 +16,15 @@ The output is used in two places:
 """
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Dict, Optional
+
+
+ROOT = Path(__file__).resolve().parent.parent.parent
+CALIBRATION_PATH = ROOT / "data" / "calibration" / "runoff_response_fit.json"
 
 
 @dataclass(frozen=True)
@@ -34,6 +40,24 @@ class RunoffRisk:
     risk_level: str
     percentile_bump: float
     note: Optional[str]
+    threshold_source: str
+
+
+_RUNOFF_FITS: Optional[Dict[str, Dict[str, object]]] = None
+
+
+def _load_runoff_fits() -> Dict[str, Dict[str, object]]:
+    global _RUNOFF_FITS
+    if _RUNOFF_FITS is not None:
+        return _RUNOFF_FITS
+    try:
+        with CALIBRATION_PATH.open("r", encoding="utf-8") as fh:
+            payload = json.load(fh)
+        fits = payload.get("fits", {})
+        _RUNOFF_FITS = fits if isinstance(fits, dict) else {}
+    except (OSError, ValueError, TypeError):
+        _RUNOFF_FITS = {}
+    return _RUNOFF_FITS
 
 
 def _preceding_qpf_mm(qpf_map: Optional[Dict[str, float]], valid_at: datetime, hours: int) -> float:
@@ -79,17 +103,38 @@ def _base_thresholds_mm(spring_influenced: bool, size_class: str) -> tuple[float
     return lookup[size_class]
 
 
+def _calibrated_thresholds_mm(
+    reach_id: Optional[str],
+    spring_influenced: bool,
+    size_class: str,
+) -> tuple[float, float, float, str]:
+    base_6h, base_24h = _base_thresholds_mm(spring_influenced, size_class)
+    base_12h = (base_6h + base_24h) / 2.0
+    if not reach_id:
+        return base_6h, base_12h, base_24h, "class_prior"
+    fit = _load_runoff_fits().get(str(reach_id))
+    if not isinstance(fit, dict):
+        return base_6h, base_12h, base_24h, "class_prior"
+    try:
+        fit_6h = float(fit.get("hurt_threshold_6h_mm"))
+        fit_12h = float(fit.get("hurt_threshold_12h_mm"))
+        fit_24h = float(fit.get("hurt_threshold_24h_mm"))
+    except (TypeError, ValueError):
+        return base_6h, base_12h, base_24h, "class_prior"
+    return fit_6h, fit_12h, fit_24h, "historical_fit"
+
+
 def assess_runoff_risk(
     *,
     valid_at: datetime,
+    reach_id: Optional[str] = None,
     qpf_map: Optional[Dict[str, float]],
     spring_influenced: bool,
     length_km: Optional[float],
     flow_percentile: Optional[float],
 ) -> RunoffRisk:
     size_class = _size_class(length_km)
-    t6, t24 = _base_thresholds_mm(spring_influenced, size_class)
-    t12 = (t6 + t24) / 2.0
+    t6, t12, t24, threshold_source = _calibrated_thresholds_mm(reach_id, spring_influenced, size_class)
 
     pct = 0.5 if flow_percentile is None else max(0.0, min(1.0, float(flow_percentile)))
     # Already-high water takes less extra rain to tip into poor clarity or
@@ -157,4 +202,5 @@ def assess_runoff_risk(
         risk_level=level,
         percentile_bump=bump,
         note=note,
+        threshold_source=threshold_source,
     )
