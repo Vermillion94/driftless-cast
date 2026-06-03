@@ -87,7 +87,7 @@ def build_for_reach(
         per_base[base_c] = accumulate_dd(water_c, base_c)
 
     # Upsert daily accumulations. A single DELETE + bulk INSERT is fine at
-    # this volume (~60 days × ~5 bases × 21 reaches = 6000 rows worst case).
+    # this volume (~60 days × ~5 bases × current reach count) stays small enough.
     conn = get_connection()
     conn.execute(
         "DELETE FROM dd_accumulation WHERE reach_id = ? AND date >= ?",

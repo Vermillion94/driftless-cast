@@ -31,6 +31,8 @@ from src.models.nymph_score import (
     temperature_score,
 )
 from src.models import regime as regime_mod
+from src.models import runoff_risk as runoff_mod
+from src.models.runoff_risk import assess_runoff_risk
 
 
 # ─── Temperature plateau curve ──────────────────────────────────────────────
@@ -246,6 +248,7 @@ def test_regime_blowout_detection():
     r = regime_mod.classify(
         valid_at=valid, flow_percentile=0.92, water_temp_f=58.0, air_temp_f=70.0,
         dry_score=0.0, nymph_score=0.0, spring_influenced=False,
+        length_km=6.0,
         qpf_map=_qpf_for(valid, 1.5),  # 36mm in 24h
         active_species=[],
     )
@@ -259,6 +262,7 @@ def test_regime_streamer_high_flow():
         valid_at=datetime(2026, 5, 15, 14, tzinfo=timezone.utc),
         flow_percentile=0.82, water_temp_f=55.0, air_temp_f=65.0,
         dry_score=0.0, nymph_score=0.3, spring_influenced=False,
+        length_km=10.0,
         qpf_map=None, active_species=[],
     )
     assert r.code == "STREAMER"
@@ -270,6 +274,7 @@ def test_regime_hatch_when_dry_score_meaningful():
         valid_at=datetime(2026, 4, 25, 13, tzinfo=timezone.utc),
         flow_percentile=0.45, water_temp_f=58.0, air_temp_f=66.0,
         dry_score=0.6, nymph_score=0.5, spring_influenced=True,
+        length_km=8.0,
         qpf_map=None,
         active_species=[{"common_name": "Hendrickson", "probability": 0.55}],
     )
@@ -282,6 +287,7 @@ def test_regime_terrestrial_summer_no_hatch():
         valid_at=datetime(2026, 8, 10, 15, tzinfo=timezone.utc),
         flow_percentile=0.30, water_temp_f=64.0, air_temp_f=85.0,
         dry_score=0.10, nymph_score=0.3, spring_influenced=False,
+        length_km=12.0,
         qpf_map=None, active_species=[],
     )
     assert r.code == "TERRESTRIAL"
@@ -293,6 +299,7 @@ def test_regime_midge_winter_cold():
         valid_at=datetime(2026, 1, 15, 13, tzinfo=timezone.utc),
         flow_percentile=0.45, water_temp_f=38.0, air_temp_f=28.0,
         dry_score=0.0, nymph_score=0.1, spring_influenced=True,
+        length_km=6.0,
         qpf_map=None, active_species=[],
     )
     assert r.code == "MIDGE"
@@ -304,6 +311,7 @@ def test_regime_scud_spring_creek_default():
         valid_at=datetime(2026, 5, 5, 10, tzinfo=timezone.utc),
         flow_percentile=0.40, water_temp_f=55.0, air_temp_f=60.0,
         dry_score=0.10, nymph_score=0.45, spring_influenced=True,
+        length_km=5.0,
         qpf_map=None, active_species=[],
     )
     assert r.code == "SCUD"
@@ -315,6 +323,7 @@ def test_regime_normal_default():
         valid_at=datetime(2026, 5, 5, 10, tzinfo=timezone.utc),
         flow_percentile=0.40, water_temp_f=55.0, air_temp_f=60.0,
         dry_score=0.20, nymph_score=0.65, spring_influenced=False,
+        length_km=12.0,
         qpf_map=None, active_species=[],
     )
     assert r.code == "NORMAL"
@@ -327,10 +336,60 @@ def test_regime_priority_blowout_over_hatch():
     r = regime_mod.classify(
         valid_at=valid, flow_percentile=0.95, water_temp_f=55.0, air_temp_f=65.0,
         dry_score=0.5, nymph_score=0.5, spring_influenced=True,
+        length_km=8.0,
         qpf_map=_qpf_for(valid, 1.5),
         active_species=[{"common_name": "Hendrickson", "probability": 0.6}],
     )
     assert r.code == "BLOWOUT"
+
+
+def test_runoff_risk_small_freestone_more_sensitive_than_spring_creek():
+    valid = datetime(2026, 5, 15, 14, tzinfo=timezone.utc)
+    qpf = _qpf_for(valid, 1.25, hours=6)  # 7.5 mm in 6h
+    flashy = assess_runoff_risk(
+        valid_at=valid, qpf_map=qpf, spring_influenced=False, length_km=6.0, flow_percentile=0.45
+    )
+    spring = assess_runoff_risk(
+        valid_at=valid, qpf_map=qpf, spring_influenced=True, length_km=6.0, flow_percentile=0.45
+    )
+    assert flashy.response_ratio > spring.response_ratio
+    assert flashy.hurt_threshold_6h_mm < spring.hurt_threshold_6h_mm
+
+
+def test_runoff_risk_high_antecedent_flow_lowers_rain_tolerance():
+    valid = datetime(2026, 5, 15, 14, tzinfo=timezone.utc)
+    qpf = _qpf_for(valid, 1.5, hours=6)  # 9 mm in 6h
+    low = assess_runoff_risk(
+        valid_at=valid, qpf_map=qpf, spring_influenced=False, length_km=10.0, flow_percentile=0.30
+    )
+    high = assess_runoff_risk(
+        valid_at=valid, qpf_map=qpf, spring_influenced=False, length_km=10.0, flow_percentile=0.80
+    )
+    assert high.hurt_threshold_6h_mm < low.hurt_threshold_6h_mm
+    assert high.response_ratio > low.response_ratio
+
+
+def test_runoff_risk_uses_historical_fit_when_present():
+    valid = datetime(2026, 5, 15, 14, tzinfo=timezone.utc)
+    qpf = _qpf_for(valid, 2.0, hours=6)  # 12 mm in 6h
+    original = runoff_mod._RUNOFF_FITS
+    runoff_mod._RUNOFF_FITS = {
+        "test-reach": {
+            "hurt_threshold_6h_mm": 24.0,
+            "hurt_threshold_12h_mm": 30.0,
+            "hurt_threshold_24h_mm": 38.0,
+        }
+    }
+    try:
+        fitted = assess_runoff_risk(
+            valid_at=valid, reach_id="test-reach", qpf_map=qpf,
+            spring_influenced=False, length_km=6.0, flow_percentile=0.45
+        )
+    finally:
+        runoff_mod._RUNOFF_FITS = original
+    assert fitted.hurt_threshold_6h_mm == 24.0
+    assert fitted.hurt_threshold_24h_mm == 38.0
+    assert fitted.threshold_source == "historical_fit"
 
 
 # ─── Fly recommender ───────────────────────────────────────────────────────

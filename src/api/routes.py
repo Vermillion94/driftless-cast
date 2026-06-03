@@ -333,6 +333,11 @@ def _best_window_reason(row: dict, score_model: dict, score_breakdown, regime) -
         reasons.append("falling/stable flow")
     elif (sb.get("flow_percentile") or 0.0) >= 0.90:
         reasons.append("good flow band")
+    runoff_level = str(sb.get("runoff_risk_level") or "")
+    if runoff_level in {"hurt", "high"}:
+        reasons.append("rain stain")
+    elif runoff_level == "watch":
+        reasons.append("rain watch")
     if (sb.get("sun_factor") or 1.0) < 0.90:
         reasons.append("bright-sun drag")
     if (row.get("dry_score") or 0.0) >= 0.30:
@@ -553,9 +558,10 @@ def get_residuals() -> dict:
 
 @router.post("/refresh")
 def refresh_forecast() -> dict:
-    # Manual/scheduled kick for the forecast pipeline. GitHub Actions pings
-    # this hourly so Fly auto-stop cannot leave the public forecast stale.
-    from src.models.forecast_builder import build_all
-    counts = build_all()
-    total = sum(counts.values())
-    return {"reaches_updated": len(counts), "hours_written": total}
+    # Manual/scheduled kick for the forecast pipeline. Keep this non-blocking
+    # so waking a sleeping Fly machine does not turn into a long request-path
+    # rebuild that the proxy reports as 503.
+    from src.jobs.forecast_refresh import refresh_state, trigger_forecast_refresh
+    started = trigger_forecast_refresh()
+    state = refresh_state()
+    return {"started": started, **state}

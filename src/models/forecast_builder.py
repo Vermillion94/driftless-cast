@@ -52,6 +52,7 @@ from src.models.recession import (
     calibrated_tau_hours,
     project_flow,
 )
+from src.models.runoff_risk import assess_runoff_risk
 from src.models.seasonal import TERRESTRIAL_SPECIES, seasonal_activity
 from src.models.temp_estimator import estimate_water_series_f
 from src.models import thermal_profile
@@ -92,6 +93,7 @@ class ReachSignals:
     flow_stats: Optional[Dict[str, float]]       # p10..p90 so we can percentile-ize forecasted flow
     recent_flows: List[float]
     confidence_notes: List[str]
+    length_km: Optional[float] = None
     # Forward-looking hydrology
     forecast_flow_by_hour: Optional[Dict[str, float]] = None  # ISO hour → forecast cfs (NOAA NWPS)
     qpf_mm_by_hour: Optional[Dict[str, float]] = None          # ISO hour → mm precip (NWS QPF)
@@ -258,6 +260,7 @@ def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[fl
         stream_name=str(reach["stream_name"]),
         lat=lat,
         lon=lon,
+        length_km=float(reach.get("length_km")) if reach.get("length_km") is not None else None,
         spring_influenced=spring_influenced,
         usgs_gauge_id=str(usgs_id) if usgs_id else None,
         gauge_source=source,
@@ -451,23 +454,21 @@ def _flow_percentile_for_hour(
         # the flow value shown to anglers should be the nearby/local gauge.
         display_flow = signals.local_flow_cfs
 
-    # 2b) Precip bump on top of the recessed baseline. Driftless streams flash
-    # fast: 12.7 mm (0.5") in the preceding 24h already moves the needle.
-    if not qpf_map:
+    # 2b) Reach-aware precip bump on top of the recessed baseline. The same
+    # 0.5" means very different things on a tiny flashy tributary versus a
+    # spring-buffered mainstem, so use runoff risk rather than a global rule.
+    runoff = assess_runoff_risk(
+        valid_at=valid_at,
+        reach_id=signals.reach_id,
+        qpf_map=qpf_map,
+        spring_influenced=signals.spring_influenced,
+        length_km=getattr(signals, "length_km", None),
+        flow_percentile=base_pct,
+    )
+    if runoff.percentile_bump <= 0.0:
         return base_pct, display_flow, None, tau_used, tau_source
-    preceding_mm = 0.0
-    for h in range(1, 25):
-        prior = (valid_at - timedelta(hours=h)).astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0).isoformat()
-        preceding_mm += qpf_map.get(prior, 0.0)
-    if preceding_mm < 3.0:
-        return base_pct, display_flow, None, tau_used, tau_source
-    bump = min(0.45, (preceding_mm - 3.0) / 70.0)
-    adjusted = min(0.98, base_pct + bump)
-    note = None
-    if preceding_mm >= 12.7:  # ≥ 0.5"
-        inches = preceding_mm / 25.4
-        note = f"rain in preceding 24h (~{inches:.1f}\")"
-    return adjusted, display_flow, note, tau_used, tau_source
+    adjusted = min(0.98, base_pct + runoff.percentile_bump)
+    return adjusted, display_flow, runoff.note, tau_used, tau_source
 
 
 def _diurnal_water_temp_f(
@@ -787,6 +788,14 @@ def _score_hour(
     best_dry = max((s["probability"] for s in active_species_payload), default=0.0)
 
     percentile, projected_flow_cfs, precip_note, tau_hours, tau_source = _flow_percentile_for_hour(signals, valid_at, now)
+    runoff = assess_runoff_risk(
+        valid_at=valid_at,
+        reach_id=signals.reach_id,
+        qpf_map=signals.qpf_mm_by_hour,
+        spring_influenced=signals.spring_influenced,
+        length_km=signals.length_km,
+        flow_percentile=percentile,
+    )
     nymph = compute_nymph_score(
         temp_f=water_temp_f,
         flow_percentile=percentile,
@@ -852,12 +861,14 @@ def _score_hour(
     # the score so it can use post-pressure-adjusted dry/nymph values.
     regime = regime_mod.classify(
         valid_at=valid_at,
+        reach_id=signals.reach_id,
         flow_percentile=percentile,
         water_temp_f=water_temp_f,
         air_temp_f=air_temp_f,
         dry_score=dry_adj,
         nymph_score=nymph_adj,
         spring_influenced=signals.spring_influenced,
+        length_km=signals.length_km,
         qpf_map=signals.qpf_mm_by_hour,
         active_species=active_species_payload,
     )
@@ -960,6 +971,14 @@ def _score_hour(
                 signals.gauge_is_proxy and signals.local_flow_cfs is not None
                 and projected_flow_cfs == signals.local_flow_cfs
             ) else "model_projection",
+            "runoff_size_class": runoff.size_class,
+            "runoff_risk_level": runoff.risk_level,
+            "runoff_response_ratio": round(runoff.response_ratio, 3),
+            "runoff_threshold_6h_in": round(runoff.hurt_threshold_6h_mm / 25.4, 2),
+            "runoff_threshold_24h_in": round(runoff.hurt_threshold_24h_mm / 25.4, 2),
+            "rain_preceding_6h_in": round(runoff.preceding_6h_mm / 25.4, 2),
+            "rain_preceding_24h_in": round(runoff.preceding_24h_mm / 25.4, 2),
+            "runoff_threshold_source": runoff.threshold_source,
             "thermal_profile": signals.thermal_profile.label,
             "thermal_spring_strength": round(signals.thermal_profile.spring_strength, 3),
         }),

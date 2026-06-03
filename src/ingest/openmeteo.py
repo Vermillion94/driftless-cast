@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import logging
 from datetime import date, datetime, timedelta, timezone
-from typing import List, Tuple
+from typing import Dict, List, Tuple
 
 import requests
 
@@ -79,6 +79,38 @@ def fetch_hourly_pressure_hpa(lat: float, lon: float,
         except ValueError:
             continue
         out.append((dt, float(p)))
+    return out
+
+
+def fetch_archive_hourly_precip_mm(
+    lat: float,
+    lon: float,
+    start: date,
+    end: date,
+) -> Dict[datetime, float]:
+    """Hourly precipitation (mm) keyed by timezone-aware UTC datetime."""
+    params = {
+        "latitude": f"{lat:.4f}",
+        "longitude": f"{lon:.4f}",
+        "start_date": start.isoformat(),
+        "end_date": end.isoformat(),
+        "hourly": "precipitation",
+        "timezone": "UTC",
+    }
+    resp = requests.get(ARCHIVE_BASE, params=params, timeout=45)
+    resp.raise_for_status()
+    hourly = resp.json().get("hourly", {})
+    times = hourly.get("time", [])
+    precip = hourly.get("precipitation", [])
+    out: Dict[datetime, float] = {}
+    for t, mm in zip(times, precip):
+        if mm is None:
+            continue
+        try:
+            dt = datetime.fromisoformat(t).replace(tzinfo=timezone.utc)
+            out[dt] = float(mm)
+        except (TypeError, ValueError):
+            continue
     return out
 
 
