@@ -333,6 +333,11 @@ def _best_window_reason(row: dict, score_model: dict, score_breakdown, regime) -
         reasons.append("falling/stable flow")
     elif (sb.get("flow_percentile") or 0.0) >= 0.90:
         reasons.append("good flow band")
+    runoff_level = str(sb.get("runoff_risk_level") or "")
+    if runoff_level in {"hurt", "high"}:
+        reasons.append("rain stain")
+    elif runoff_level == "watch":
+        reasons.append("rain watch")
     if (sb.get("sun_factor") or 1.0) < 0.90:
         reasons.append("bright-sun drag")
     if (row.get("dry_score") or 0.0) >= 0.30:

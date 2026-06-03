@@ -11,8 +11,10 @@ Priorities are deliberately ordered: the first matching regime wins.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from typing import Dict, List, Optional
+
+from src.models.runoff_risk import assess_runoff_risk
 
 
 @dataclass
@@ -23,17 +25,6 @@ class Regime:
     fly_hint: Optional[str] = None  # short pattern hint, optional
     severity: str = "info"     # "info" | "warn" | "alert" — drives chip color
 
-
-def _preceding_qpf_mm(qpf_map: Optional[Dict[str, float]], valid_at: datetime, hours: int) -> float:
-    if not qpf_map:
-        return 0.0
-    total = 0.0
-    for h in range(1, hours + 1):
-        prior = (valid_at - timedelta(hours=h)).astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0).isoformat()
-        total += qpf_map.get(prior, 0.0)
-    return total
-
-
 def classify(
     *,
     valid_at: datetime,
@@ -43,6 +34,7 @@ def classify(
     dry_score: float,
     nymph_score: float,
     spring_influenced: bool,
+    length_km: Optional[float],
     qpf_map: Optional[Dict[str, float]],
     active_species: List[Dict[str, object]],
 ) -> Regime:
@@ -51,18 +43,23 @@ def classify(
     Inputs are all optional so the classifier degrades gracefully when a signal
     is missing. The fallback regime is NORMAL.
     """
-    # 24h preceding rain — Driftless loess-soil watersheds blow out fast.
-    preceding_24 = _preceding_qpf_mm(qpf_map, valid_at, 24)
     pct = flow_percentile if flow_percentile is not None else 0.5
     month = valid_at.month
     has_hatch = any((s.get("probability") or 0) >= 0.30 for s in (active_species or []))
+    runoff = assess_runoff_risk(
+        valid_at=valid_at,
+        qpf_map=qpf_map,
+        spring_influenced=spring_influenced,
+        length_km=length_km,
+        flow_percentile=pct,
+    )
 
     # 1) BLOWOUT — heavy rain + high flow = unsafe + unfishable. Hard stop.
-    if preceding_24 >= 25.0 and pct >= 0.85:
+    if runoff.risk_level == "blowout" and pct >= 0.78:
         return Regime(
             code="BLOWOUT",
             label="Blown out",
-            detail=f"~{preceding_24/25.4:.1f}\" rain in last 24h, water muddy and dangerous",
+            detail=runoff.note or "forecast rain likely pushes flow and clarity past fishable limits",
             severity="alert",
         )
 
@@ -87,11 +84,11 @@ def classify(
     # 4) STREAMER — high or rising-and-stained water but still wadeable; or
     #    cold-water aggressive feeding window. This is the regime that recovers
     #    "Skip" days that are actually streamer-prime.
-    if pct >= 0.78 or (preceding_24 >= 12.7 and pct >= 0.65):
+    if pct >= 0.78 or (runoff.risk_level in {"high", "hurt"} and pct >= 0.65):
         return Regime(
             code="STREAMER",
             label="Streamer day",
-            detail="elevated flow, stained water — fish are looking up for big silhouettes",
+            detail=runoff.note or "elevated flow, stained water — fish are looking up for big silhouettes",
             fly_hint="olive/black streamer, large bugger, sculpin pattern",
             severity="warn",
         )
