@@ -2,7 +2,8 @@ from datetime import datetime, timedelta, timezone
 
 from src.models.degree_days import daily_degree_day, accumulate_degree_days
 from src.models.nymph_score import compute_nymph_score
-from src.models.dry_score import compute_dry_score, shift_window_for_air_temp, species_window_score
+from src.models.dry_score import score_species_surface, shift_window_for_air_temp, species_window_score
+from src.models.hatch_predictor import dd_readiness_gate
 from src.models.forecast_builder import ReachSignals, _flow_percentile_for_hour
 from src.models.fly_recommender import choose_stage
 from src.models.thermal_profile import apply_profile, from_reach
@@ -36,20 +37,47 @@ def test_nymph_score_bounds():
     assert 0.0 <= score <= 1.0
 
 
-def test_dry_score_with_species():
-    species_list = [
-        {
-            "species_id": "hendrickson",
-            "dd_threshold_mean": 260,
-            "dd_threshold_sd": 40,
-            "weather_prefs": {"clouds": "any", "wind": "<15"},
-            "emergence_hr_start": 12,
-            "emergence_hr_end": 15,
-        }
-    ]
-    result = compute_dry_score(260, species_list, 0.2, 5.0, 55.0, 13)
-    assert result["dry_score"] >= 0.0
-    assert isinstance(result["active_species"], list)
+def test_score_species_surface_multiplies_signals_and_bounds():
+    # Perfect window, full readiness, ideal weather, comfortable water → 1.0.
+    assert score_species_surface(1.0, 1.0, 1.0, 1.0, 55.0) == 1.0
+    # A single weak factor drags the product down proportionally.
+    assert score_species_surface(0.5, 1.0, 1.0, 1.0, 55.0) == 0.5
+    assert 0.0 <= score_species_surface(0.8, 0.7, 0.9, 0.6, 55.0) <= 1.0
+
+
+def test_score_species_surface_icy_water_hard_gate():
+    # Below 45°F aquatic emergence effectively stops — hard zero regardless.
+    assert score_species_surface(1.0, 1.0, 1.0, 1.0, 41.0) == 0.0
+
+
+def test_score_species_surface_terrestrial_air_gate():
+    # A terrestrial on a cold morning (air_factor 0) scores zero even in-window.
+    assert score_species_surface(
+        1.0, 1.0, 1.0, 1.0, 60.0, is_terrestrial=True, terrestrial_air_factor=0.0
+    ) == 0.0
+    # Warm air restores the terrestrial.
+    assert score_species_surface(
+        1.0, 1.0, 1.0, 1.0, 60.0, is_terrestrial=True, terrestrial_air_factor=1.0
+    ) == 1.0
+
+
+def test_dd_readiness_gate_is_one_sided_and_floored():
+    mean, sd = 260.0, 40.0
+    # Far below threshold → near the floor (cold reach, hatch not ready).
+    cold = dd_readiness_gate(50.0, mean, sd)
+    # At threshold → essentially full readiness.
+    ready = dd_readiness_gate(mean, mean, sd)
+    # Well past threshold → STAYS high (the calendar, not DD, closes the window).
+    past = dd_readiness_gate(mean + 4 * sd, mean, sd)
+    assert cold <= 0.35           # near DD_GATE_FLOOR (0.30)
+    assert ready >= 0.85
+    assert past >= ready          # one-sided: no post-peak decay
+    assert past <= 1.0
+
+
+def test_dd_readiness_gate_neutral_without_threshold():
+    # Terrestrials / unparameterized species (threshold 0) get a neutral 1.0.
+    assert dd_readiness_gate(500.0, 0.0, 1.0) == 1.0
 
 
 def test_hot_evening_species_shift_later_and_compress():
