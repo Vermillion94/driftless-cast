@@ -1,9 +1,8 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
-from src.models.hatch_predictor import species_activity_probability, weather_match_score
 from src.models.solar import sun_altitude_deg
 
 
@@ -161,46 +160,31 @@ def species_window_score(
     return max(0.0, min(1.0, window * solar_factor)), (shifted_start, shifted_end), solar_factor
 
 
-def compute_species_dry_score(
-    dd_current: float,
-    species: Dict[str, object],
-    cloud_cover: Optional[float],
-    wind_mph: Optional[float],
+def score_species_surface(
+    seasonal_score: float,
+    dd_factor: float,
+    weather_score: float,
+    window_score: float,
     water_temp_f: Optional[float],
-    valid_hour: int,
+    is_terrestrial: bool = False,
+    terrestrial_air_factor: float = 1.0,
 ) -> float:
-    threshold_mean = float(species.get("dd_threshold_mean", 0.0))
-    threshold_sd = float(species.get("dd_threshold_sd", 1.0))
-    weather_prefs = species.get("weather_prefs") or {}
-    activity = species_activity_probability(dd_current, threshold_mean, threshold_sd)
-    weather_score = weather_match_score(weather_prefs, cloud_cover or 0.5, wind_mph or 10.0)
-    window, _emergence_window, _solar_factor = species_window_score(
-        species=species,
-        valid_hour=valid_hour,
-        start=int(species.get("emergence_hr_start") or 0),
-        end=int(species.get("emergence_hr_end") or 23),
+    """Single production rule for one species' surface (dry/hatch) probability.
+
+    Multiplies the independent readiness signals and applies two hard gates:
+      * water below 45°F → 0 (aquatic emergence effectively stops on icy water)
+      * terrestrials → scaled by how warm the air is, since there are no
+        beetles in the grass on a 50°F morning.
+
+    `forecast_builder._score_hour` is the only production caller. Previously the
+    builder inlined this arithmetic while `compute_dry_score` (an older
+    DD-activity-driven variant) was exercised only by tests, so the tested path
+    and the served path could silently disagree. Keeping the math in one tested
+    helper closes that gap.
+    """
+    temp_gate = 0.0 if (water_temp_f is not None and water_temp_f < 45) else 1.0
+    air_gate = terrestrial_air_factor if is_terrestrial else 1.0
+    return max(
+        0.0,
+        min(1.0, seasonal_score * dd_factor * weather_score * window_score * temp_gate * air_gate),
     )
-    if water_temp_f is not None and water_temp_f < 45:
-        return 0.0
-    return max(0.0, min(1.0, activity * weather_score * window))
-
-
-def compute_dry_score(
-    dd_current: float,
-    species_list: List[Dict[str, object]],
-    cloud_cover: Optional[float],
-    wind_mph: Optional[float],
-    water_temp_f: Optional[float],
-    valid_hour: int,
-) -> Dict[str, object]:
-    scores = []
-    active_species = []
-    for species in species_list:
-        score = compute_species_dry_score(dd_current, species, cloud_cover, wind_mph, water_temp_f, valid_hour)
-        if score > 0:
-            active_species.append({"id": species["species_id"], "probability": score})
-        scores.append(score)
-    return {
-        "dry_score": max(scores) if scores else 0.0,
-        "active_species": active_species,
-    }

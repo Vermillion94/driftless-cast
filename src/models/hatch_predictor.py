@@ -19,6 +19,52 @@ def species_activity_probability(dd_current: float, threshold_mean: float, thres
     return peak_probability(dd_current, threshold_mean, threshold_sd)
 
 
+# Floor for the degree-day readiness gate. Several DD thresholds in
+# species.json are coarse observed medians ("manually accepted observed
+# median; literature prior superseded"), not firm literature values, so the
+# gate is allowed to *dampen* a calendar-driven hatch but never erase it.
+DD_GATE_FLOOR = 0.30
+
+
+def dd_readiness_gate(
+    dd_current: float,
+    threshold_mean: float,
+    threshold_sd: float,
+    floor: float = DD_GATE_FLOOR,
+) -> float:
+    """One-sided degree-day *readiness* gate, in [floor, 1.0].
+
+    This replaces `species_activity_probability` (a symmetric Gaussian) as the
+    DD term in the forecast. The Gaussian decayed on *both* sides of the
+    threshold, so a reach that had blown well past a species' degree-day
+    threshold (hatch already over) scored the same low factor as a reach that
+    had not yet warmed up to it (not ready). Worse, multiplying that bell by
+    the seasonal-calendar bell in `seasonal.seasonal_activity` double-counted
+    phenology around the same date.
+
+    The correct division of labor: degree-days answer "has this reach actually
+    accumulated enough heat for emergence to be *possible*?" and the seasonal
+    calendar answers "is this the time of year, and is the season winding
+    down?". So this term should rise as accumulated heat approaches the
+    threshold and then *stay high* — the calendar, not DD, closes the window.
+
+    Logistic onset centered roughly one standard deviation below the threshold
+    mean (emergence begins as accumulated heat approaches the threshold and is
+    essentially complete by the mean), scaled into [floor, 1.0].
+    """
+    if threshold_mean <= 0:
+        return 1.0
+    scale = max(1.0, threshold_sd) / 2.0
+    center = threshold_mean - max(1.0, threshold_sd)
+    # Guard the exponent against overflow for very cold reaches far below threshold.
+    z = (dd_current - center) / scale
+    if z < -60.0:
+        logistic = 0.0
+    else:
+        logistic = 1.0 / (1.0 + exp(-z))
+    return floor + (1.0 - floor) * logistic
+
+
 def weather_match_score(preferences: Dict[str, str], cloud_cover: float, wind_mph: float) -> float:
     score = 1.0
     clouds = preferences.get("clouds")

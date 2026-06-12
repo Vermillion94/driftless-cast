@@ -44,8 +44,8 @@ from src.models import anomaly as anomaly_mod
 from src.models import dd_pipeline
 from src.models import regime as regime_mod
 from src.models import temp_estimator
-from src.models.dry_score import species_window_score
-from src.models.hatch_predictor import species_activity_probability, weather_match_score
+from src.models.dry_score import score_species_surface, species_window_score
+from src.models.hatch_predictor import dd_readiness_gate, weather_match_score
 from src.models.fly_recommender import recommend_flies
 from src.models.nymph_score import compute_nymph_score
 from src.models.recession import (
@@ -593,6 +593,39 @@ def _build_water_temp_by_date(
     return dict(zip(contiguous, water_series))
 
 
+def _forward_dd_by_base_by_date(
+    dd_at_archive_end: Dict[float, float],
+    water_temp_f_by_date: Dict[date, float],
+    archive_end: date,
+    base_temps_c: List[float],
+) -> Dict[float, Dict[date, float]]:
+    """Continue degree-day accumulation forward across the forecast horizon.
+
+    `dd_pipeline.build_for_reach` accumulates DD from season start only up to
+    the Open-Meteo archive boundary (~5 days stale). Previously that single
+    end-of-archive total was reused for every one of the 168 forecast hours,
+    so the DD term contributed *zero* forward resolution: a hatch crossing its
+    threshold three days out read identically today and in three days.
+
+    This extends the accumulation past the archive boundary using the same
+    forward daily water-temp series the temperature score uses (historical +
+    NWS-forecast air → Mohseni → thermal profile), so degree-days actually
+    advance day-by-day through the week. Dates at or before the archive end
+    fall back to the archive total.
+    """
+    out: Dict[float, Dict[date, float]] = {}
+    forward_dates = [d for d in sorted(water_temp_f_by_date) if d > archive_end]
+    for base_c in base_temps_c:
+        running = dd_at_archive_end.get(base_c, 0.0)
+        per_date: Dict[date, float] = {}
+        for d in forward_dates:
+            water_c = (water_temp_f_by_date[d] - 32.0) * 5.0 / 9.0
+            running += max(0.0, water_c - base_c)
+            per_date[d] = running
+        out[base_c] = per_date
+    return out
+
+
 def _resolve_gridpoint(reach_id: str, lat: float, lon: float, cached: Optional[str]) -> Optional[str]:
     if cached:
         return cached
@@ -688,6 +721,7 @@ def _score_hour(
     species_list: List[Dict[str, object]],
     now: datetime,
     water_temp_f_by_date: Optional[Dict[date, float]] = None,
+    dd_by_base_by_date: Optional[Dict[float, Dict[date, float]]] = None,
 ) -> Dict[str, object]:
     valid_hour = valid_at.hour
     valid_date = valid_at.date()
@@ -718,18 +752,27 @@ def _score_hour(
         season = seasonal_activity(sp_id, valid_date, signals.hatch_shift_days)
         if season <= 0.05:
             continue
-        # Calibrated DD readiness — is this season's heat actually accumulated?
-        # When DD computation failed or threshold is absurdly off-calibration,
-        # dd_factor defaults to 1.0 (neutral) so seasonal still drives scoring.
+        # Calibrated DD readiness — has this reach actually accumulated the heat
+        # for emergence to be possible? This is a one-sided gate (see
+        # hatch_predictor.dd_readiness_gate): it suppresses a hatch the calendar
+        # expects when the water hasn't warmed enough yet, then stays high — the
+        # seasonal calendar, not DD, closes the window after the peak.
+        #
+        # `dd_current` advances day-by-day across the forecast horizon via
+        # forward accumulation; pre-horizon dates fall back to the end-of-archive
+        # total. When the DD pipeline produced nothing (empty dd_by_base) or the
+        # species has no threshold, dd_factor stays neutral at 1.0 so the
+        # seasonal calendar still drives scoring.
         base_c = float(sp.get("base_temp_c") or 5.0)
-        dd_current = dd_by_base.get(base_c, 0.0)
+        forward_dd = (dd_by_base_by_date or {}).get(base_c)
+        if forward_dd and valid_date in forward_dd:
+            dd_current = forward_dd[valid_date]
+        else:
+            dd_current = dd_by_base.get(base_c, 0.0)
         dd_mean = float(sp.get("dd_threshold_mean") or 0.0)
         dd_sd = float(sp.get("dd_threshold_sd") or 1.0)
-        if dd_mean > 0 and dd_current > 0:
-            dd_factor = species_activity_probability(dd_current, dd_mean, dd_sd)
-            # Floor to 0.15 so a seasonal peak isn't entirely squashed when our
-            # DD estimate is off — calibration data is sparse outside Hex.
-            dd_factor = max(0.15, dd_factor)
+        if dd_by_base and dd_mean > 0:
+            dd_factor = dd_readiness_gate(dd_current, dd_mean, dd_sd)
         else:
             dd_factor = 1.0
 
@@ -752,9 +795,15 @@ def _score_hour(
             lon=signals.lon,
             valid_at=valid_at,
         )
-        temp_gate = 0.0 if (water_temp_f is not None and water_temp_f < 45) else 1.0
-        air_gate = terrestrial_air if is_terrestrial else 1.0
-        score = max(0.0, min(1.0, season * dd_factor * weather * window * temp_gate * air_gate))
+        score = score_species_surface(
+            seasonal_score=season,
+            dd_factor=dd_factor,
+            weather_score=weather,
+            window_score=window,
+            water_temp_f=water_temp_f,
+            is_terrestrial=is_terrestrial,
+            terrestrial_air_factor=terrestrial_air,
+        )
         if score > 0.0:
             active_species_payload.append({
                 "id": sp_id,
@@ -855,7 +904,6 @@ def _score_hour(
     pressure_factor, pressure_note = _pressure_trend_factor(signals.pressure_pa_by_hour, valid_at)
     nymph_adj = max(0.0, min(1.0, nymph * pressure_factor))
     dry_adj = max(0.0, min(1.0, best_dry * pressure_factor))
-    combined = max(nymph_adj, dry_adj)
 
     # ── Regime classification — what *kind* of fishing day is this? Runs after
     # the score so it can use post-pressure-adjusted dry/nymph values.
@@ -873,15 +921,10 @@ def _score_hour(
         active_species=active_species_payload,
     )
 
-    # BLOWOUT / HEAT_STRESS override combined score — telling someone to "go"
-    # on a 6"-rain day is dangerous regardless of the model, and telling them
-    # to fish a 90°F / 72°F-water midday hour is bad for the trout regardless
-    # of how the underlying multipliers shook out. Cap combined low; nymph/dry
-    # remain unmodified for transparency / debugging.
-    if regime.code == "BLOWOUT":
-        combined = min(combined, 0.10)
-    elif regime.code == "HEAT_STRESS":
-        combined = min(combined, 0.15)
+    # The headline score (and its BLOWOUT / HEAT_STRESS caps) is computed at
+    # read time by score_calibration.headline_score from the persisted
+    # nymph/dry/regime/breakdown columns, so it is intentionally NOT recomputed
+    # or stored here. nymph_adj / dry_adj are stored unmodified for transparency.
 
     parts: List[str] = []
     # Use the per-hour percentile for the explanation so tomorrow's rain shows up.
@@ -939,7 +982,6 @@ def _score_hour(
         "valid_at": valid_at.isoformat(),
         "nymph_score": nymph_adj,
         "dry_score": dry_adj,
-        "combined_score": combined,
         "active_species": json.dumps(active_species_payload),
         "recommended_flies": json.dumps(flies),
         "explanation": explanation,
@@ -1005,6 +1047,17 @@ def build_for_reach(reach: Dict[str, object], species: List[Dict[str, object]]) 
     # forecasted daily air-temp series, so a forecasted warming front actually
     # moves the water temp across the 7-day horizon.
     water_temp_f_by_date = _build_water_temp_by_date(signals, periods, now)
+    # Continue degree-day accumulation past the (stale) archive boundary so the
+    # DD readiness gate advances day-by-day across the forecast horizon.
+    archive_end = now.date() - timedelta(days=dd_pipeline.ARCHIVE_TRAIL_DAYS)
+    species_base_temps_c = sorted({float(sp.get("base_temp_c") or 5.0) for sp in species})
+    dd_by_base_by_date = (
+        _forward_dd_by_base_by_date(
+            signals.dd_by_base_c or {}, water_temp_f_by_date, archive_end, species_base_temps_c
+        )
+        if water_temp_f_by_date
+        else {}
+    )
     horizon = now + timedelta(hours=FORECAST_HORIZON_H)
     computed_at = now.replace(microsecond=0).isoformat()
     rows: List[Dict[str, object]] = []
@@ -1035,6 +1088,7 @@ def build_for_reach(reach: Dict[str, object], species: List[Dict[str, object]]) 
             species_list=species,
             now=now,
             water_temp_f_by_date=water_temp_f_by_date,
+            dd_by_base_by_date=dd_by_base_by_date,
         )
         row["computed_at"] = computed_at
         rows.append(row)
@@ -1046,34 +1100,40 @@ def build_for_reach(reach: Dict[str, object], species: List[Dict[str, object]]) 
         row = _score_hour(
             signals, valid_at, None, None, None, None, None, species, now,
             water_temp_f_by_date=water_temp_f_by_date,
+            dd_by_base_by_date=dd_by_base_by_date,
         )
         row["computed_at"] = computed_at
         rows.append(row)
 
+    # DELETE + INSERT in one transaction so a mid-write failure rolls back the
+    # DELETE too (the reach keeps its previous forecast rather than going blank),
+    # and close the connection even if the write raises.
     conn = get_connection()
-    conn.execute("DELETE FROM prediction WHERE reach_id = ?", (signals.reach_id,))
-    conn.executemany(
-        """
-        INSERT INTO prediction (
-            reach_id, valid_at, computed_at, nymph_score, dry_score,
-            active_species, recommended_flies, explanation,
-            water_temp_f, water_temp_source, anomaly_f, hatch_shift_days,
-            fish_stress, air_temp_f, cloud_cover, wind_mph, flow_cfs,
-            precip_prob, short_forecast, regime, pressure_delta_mb,
-            score_breakdown
-        ) VALUES (
-            :reach_id, :valid_at, :computed_at, :nymph_score, :dry_score,
-            :active_species, :recommended_flies, :explanation,
-            :water_temp_f, :water_temp_source, :anomaly_f, :hatch_shift_days,
-            :fish_stress, :air_temp_f, :cloud_cover, :wind_mph, :flow_cfs,
-            :precip_prob, :short_forecast, :regime, :pressure_delta_mb,
-            :score_breakdown
-        )
-        """,
-        rows,
-    )
-    conn.commit()
-    conn.close()
+    try:
+        with conn:
+            conn.execute("DELETE FROM prediction WHERE reach_id = ?", (signals.reach_id,))
+            conn.executemany(
+                """
+                INSERT INTO prediction (
+                    reach_id, valid_at, computed_at, nymph_score, dry_score,
+                    active_species, recommended_flies, explanation,
+                    water_temp_f, water_temp_source, anomaly_f, hatch_shift_days,
+                    fish_stress, air_temp_f, cloud_cover, wind_mph, flow_cfs,
+                    precip_prob, short_forecast, regime, pressure_delta_mb,
+                    score_breakdown
+                ) VALUES (
+                    :reach_id, :valid_at, :computed_at, :nymph_score, :dry_score,
+                    :active_species, :recommended_flies, :explanation,
+                    :water_temp_f, :water_temp_source, :anomaly_f, :hatch_shift_days,
+                    :fish_stress, :air_temp_f, :cloud_cover, :wind_mph, :flow_cfs,
+                    :precip_prob, :short_forecast, :regime, :pressure_delta_mb,
+                    :score_breakdown
+                )
+                """,
+                rows,
+            )
+    finally:
+        conn.close()
     return len(rows)
 
 

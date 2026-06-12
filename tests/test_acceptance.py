@@ -20,7 +20,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from src.models.dry_score import compute_dry_score, hour_of_day_score
+from src.models.dry_score import hour_of_day_score
 from src.models.fly_recommender import recommend_flies
 from src.models.nymph_score import (
     compute_nymph_score,
