@@ -1,0 +1,5 @@
+# Normalize all text to LF in the repository and on checkout, regardless of
+# the contributor's OS (core.autocrlf is not relied upon). Without this, edits
+# made on Windows can flip whole files to CRLF and bury real changes in
+# line-ending noise. Binary files are auto-detected and left untouched.
+* text=auto eol=lf
