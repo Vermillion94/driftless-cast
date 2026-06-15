@@ -15,7 +15,16 @@
     "gauge_is_proxy": 0,
     "nws_gridpoint": null,
     "spring_influenced": 0,
-    "notes": "Flagship NE Iowa river; smallmouth and browns."
+    "notes": "Flagship NE Iowa river; smallmouth and browns.",
+    "region": "Driftless",
+    "fishery": {
+      "tier": "good",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Flagship NE Iowa river; smallmouth and browns"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "yellow-ion",
@@ -33,7 +42,16 @@
     "gauge_is_proxy": 0,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Yellow River State Forest reaches; wild browns."
+    "notes": "Yellow River State Forest reaches; wild browns.",
+    "region": "Driftless",
+    "fishery": {
+      "tier": "excellent",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Yellow River State Forest reaches; wild browns"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "beaver-creek-caledonia",
@@ -52,7 +70,16 @@
     "nws_gridpoint": null,
     "spring_influenced": 1,
     "notes": "Beaver Creek Valley State Park reach. Flow proxy: South Fork Root River near Houston (USGS 05385500) — spring-influenced, ~12 mi N. Switched from the formerly-used lower-Root-mainstem 05385000 because that gauge is freestone and over-reads storm percentiles for spring creeks like Beaver.",
-    "proxy_distance_km": 19.0
+    "proxy_distance_km": 19.0,
+    "region": "Driftless",
+    "fishery": {
+      "tier": "excellent",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Beaver Creek Valley State Park reach"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "garvin-brook-stockton",
@@ -71,7 +98,16 @@
     "nws_gridpoint": null,
     "spring_influenced": 1,
     "notes": "Tight spring creek south of Winona. Flow proxy: NOAA North Fork Whitewater near Elba (EBWM5) — same Winona County bluff country, same spring-fed hydrology. Switched from the formerly-used Trempealeau at Dodge (DDGW3) because Trempealeau is a freestone WI mainstem with very different recession behavior.; flow percentile via proxy gauge: Rush Creek near Rushford (24km, similar small Mississippi-tributary spring creek)",
-    "proxy_distance_km": 24.0
+    "proxy_distance_km": 24.0,
+    "region": "Driftless",
+    "fishery": {
+      "tier": "excellent",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Tight spring creek south of Winona"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "hay-creek-red-wing",
@@ -90,7 +126,16 @@
     "nws_gridpoint": null,
     "spring_influenced": 1,
     "notes": "Heavily-fished MN spring creek just south of Red Wing. Proxy: NOAA Wells Creek near Frontenac, ~11 mi NE (same Red Wing bluff-country drainage).; flow percentile via proxy gauge: Kinnickinnic near River Falls (42km, nearest USGS spring-creek-class gauge)",
-    "proxy_distance_km": 42.0
+    "proxy_distance_km": 42.0,
+    "region": "Driftless",
+    "fishery": {
+      "tier": "premier",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Heavily-fished MN spring creek just south of Red Wing"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "whitewater-north-fork-elba",
@@ -109,7 +154,16 @@
     "nws_gridpoint": null,
     "spring_influenced": 1,
     "notes": "Wild brown stronghold; heavily spring-influenced. NOAA gauge is on this reach (USGS version was decommissioned in 1993).; flow percentile via proxy gauge: Root R at Pilot Mound (34km, similar regional spring-creek class)",
-    "proxy_distance_km": 34.0
+    "proxy_distance_km": 34.0,
+    "region": "Driftless",
+    "fishery": {
+      "tier": "premier",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Wild brown stronghold; heavily spring-influenced"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "pine-creek-caledonia",
@@ -128,7 +182,16 @@
     "nws_gridpoint": null,
     "spring_influenced": 1,
     "notes": "Houston County spring creek; Class I throughout. Pine Cr is a small Mississippi-tributary spring creek with no gauge of its own. Flow proxy: South Fork Root River near Houston (USGS 05385500) — chosen over the (formerly used) lower-Root-mainstem 05385000 because S Fk Root is spring-influenced and similar small-creek hydrology. ~12 mi N, same Houston County bluff country.",
-    "proxy_distance_km": 19.0
+    "proxy_distance_km": 19.0,
+    "region": "Driftless",
+    "fishery": {
+      "tier": "excellent",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Houston County spring creek; Class I throughout"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "root-houston",
@@ -146,7 +209,16 @@
     "gauge_is_proxy": 0,
     "nws_gridpoint": null,
     "spring_influenced": 0,
-    "notes": "Lower Root; marginal summer temps, spring and fall prime."
+    "notes": "Lower Root; marginal summer temps, spring and fall prime.",
+    "region": "Driftless",
+    "fishery": {
+      "tier": "good",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Lower Root; marginal summer temps, spring and fall prime"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "root-lanesboro",
@@ -164,7 +236,16 @@
     "gauge_is_proxy": 0,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Main stem Root at Lanesboro; gauge is 3 mi downstream on the same reach."
+    "notes": "Main stem Root at Lanesboro; gauge is 3 mi downstream on the same reach.",
+    "region": "Driftless",
+    "fishery": {
+      "tier": "premier",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Main stem Root at Lanesboro; gauge is 3 mi downstream on the same reach"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "rush-creek-rushford",
@@ -182,7 +263,16 @@
     "gauge_is_proxy": 0,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Classic Driftless spring creek; Trichos and Sulphurs. Gauge reports stage only (no discharge)."
+    "notes": "Classic Driftless spring creek; Trichos and Sulphurs. Gauge reports stage only (no discharge).",
+    "region": "Driftless",
+    "fishery": {
+      "tier": "premier",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Classic Driftless spring creek; Trichos and Sulphurs"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "south-fork-root-houston",
@@ -200,7 +290,16 @@
     "gauge_is_proxy": 0,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Class I wild browns; spring-fed headwaters."
+    "notes": "Class I wild browns; spring-fed headwaters.",
+    "region": "Driftless",
+    "fishery": {
+      "tier": "premier",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Class I wild browns; spring-fed headwaters"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "whitewater-south-fork-altura",
@@ -219,7 +318,16 @@
     "nws_gridpoint": null,
     "spring_influenced": 1,
     "notes": "Popular sight-fishing water near Altura. Proxy: NOAA Middle Fork Whitewater at Whitewater State Park Group Camp, ~4 mi S (sibling fork of same Whitewater drainage).; flow percentile via proxy gauge: Rush Creek near Rushford (31km, similar regional spring-creek class)",
-    "proxy_distance_km": 31.0
+    "proxy_distance_km": 31.0,
+    "region": "Driftless",
+    "fishery": {
+      "tier": "premier",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Popular sight-fishing water near Altura"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "trout-run-creek-chatfield",
@@ -238,7 +346,16 @@
     "nws_gridpoint": null,
     "spring_influenced": 1,
     "notes": "Spring creek with DNR easements; wild browns. Proxy: NOAA Middle Branch Root at Fillmore, ~10 mi SW (same Middle Branch Root drainage).; flow percentile via proxy gauge: Root R at Pilot Mound (12km, same Root River watershed)",
-    "proxy_distance_km": 12.0
+    "proxy_distance_km": 12.0,
+    "region": "Driftless",
+    "fishery": {
+      "tier": "premier",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Spring creek with DNR easements; wild browns"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "whitewater-main-beaver",
@@ -257,7 +374,16 @@
     "nws_gridpoint": null,
     "spring_influenced": 1,
     "notes": "Whitewater River at Beaver; Whitewater State Park reach. Proxy: NOAA North Fork Whitewater near Elba, ~5 mi upstream (same drainage).; flow percentile via proxy gauge: Rush Creek near Rushford (40km, similar regional spring-creek class)",
-    "proxy_distance_km": 40.0
+    "proxy_distance_km": 40.0,
+    "region": "Driftless",
+    "fishery": {
+      "tier": "premier",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Whitewater River at Beaver; Whitewater State Park reach"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "winnebago-creek-caledonia",
@@ -276,7 +402,16 @@
     "nws_gridpoint": null,
     "spring_influenced": 1,
     "notes": "SE MN spring creek. Proxy: NOAA Waterloo Creek near Dorchester, ~8 mi S (small-stream proxy, similar class).; flow percentile via proxy gauge: South Fork Root near Houston (23km, spring-influenced regional proxy)",
-    "proxy_distance_km": 23.0
+    "proxy_distance_km": 23.0,
+    "region": "Driftless",
+    "fishery": {
+      "tier": "good",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "SE MN spring creek"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "apple-somerset",
@@ -294,7 +429,16 @@
     "gauge_is_proxy": 0,
     "nws_gridpoint": null,
     "spring_influenced": 0,
-    "notes": "Apple River at Park in Somerset; mixed wild and stocked."
+    "notes": "Apple River at Park in Somerset; mixed wild and stocked.",
+    "region": "Driftless",
+    "fishery": {
+      "tier": "good",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Apple River at Park in Somerset; mixed wild and stocked"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "bishop-branch-viroqua",
@@ -388,7 +532,16 @@
     "gauge_is_proxy": 0,
     "nws_gridpoint": null,
     "spring_influenced": 0,
-    "notes": "Lower Kickapoo near La Farge; warm-water/marginal trout."
+    "notes": "Lower Kickapoo near La Farge; warm-water/marginal trout.",
+    "region": "Driftless",
+    "fishery": {
+      "tier": "fair",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Lower Kickapoo near La Farge; warm-water/marginal trout"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "kickapoo-ontario",
@@ -406,7 +559,16 @@
     "gauge_is_proxy": 0,
     "nws_gridpoint": null,
     "spring_influenced": 0,
-    "notes": "Upper Kickapoo; Class II trout. USGS gauge 05407468 (Kickapoo R @ ST HWY 131 at Ontario) is on this reach — active, reports flow + stage."
+    "notes": "Upper Kickapoo; Class II trout. USGS gauge 05407468 (Kickapoo R @ ST HWY 131 at Ontario) is on this reach — active, reports flow + stage.",
+    "region": "Driftless",
+    "fishery": {
+      "tier": "fair",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Upper Kickapoo; Class II trout"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "kickapoo-steuben",
@@ -443,7 +605,16 @@
     "gauge_is_proxy": 0,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Popular limestone spring creek; heavy BWO and Sulphur hatches."
+    "notes": "Popular limestone spring creek; heavy BWO and Sulphur hatches.",
+    "region": "Driftless",
+    "fishery": {
+      "tier": "premier",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Popular limestone spring creek; heavy BWO and Sulphur hatches"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "la-crosse-sparta",
@@ -576,7 +747,16 @@
     "nws_gridpoint": null,
     "spring_influenced": 1,
     "notes": "Class I wild brown trout; Kiap-TU-Wish restoration reaches. Rush's own USGS gauge 05355325 is inactive (verified 2026-04) and has no published daily statistics. Flow proxy: Kinnickinnic at River Falls (USGS 05342000) — chosen over the geographically-closer Eau Galle (05370000) because Kinni is a same-class spring-influenced limestone creek with similar drainage area (165 vs ~140 sqmi); Eau Galle is freestone with a much flashier flow distribution and would over-read storm percentiles for Rush. The structural water-temp guard still forces Mohseni for thermal regime.",
-    "proxy_distance_km": 38.0
+    "proxy_distance_km": 38.0,
+    "region": "Driftless",
+    "fishery": {
+      "tier": "premier",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Class I wild brown trout; Kiap-TU-Wish restoration reaches"
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "south-fork-bad-axe-westby",
@@ -709,7 +889,16 @@
     "proxy_distance_km": null,
     "nws_gridpoint": null,
     "spring_influenced": 1,
-    "notes": "Bootstrapped from WI DNR trout-regulation geometry (1 mapped segments) and paired to local USGS gauge 05408476."
+    "notes": "Bootstrapped from WI DNR trout-regulation geometry (1 mapped segments) and paired to local USGS gauge 05408476.",
+    "region": "Driftless",
+    "fishery": {
+      "tier": "premier",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Vernon County's flagship Class I water. Heavy DNR easement coverage; strong wild brown population. Famous for Hendrickson and Sulphur emergences."
+    },
+    "model_caveat": null
   },
   {
     "reach_id": "willow-burkhardt",
@@ -728,6 +917,15 @@
     "nws_gridpoint": null,
     "spring_influenced": 0,
     "notes": "Willow River at Willow River State Park near Burkhardt. Proxy: Apple River at Somerset, ~9 mi N (same St. Croix drainage; Willow's own gauge was discontinued in Jan 2024).",
-    "proxy_distance_km": 14.0
+    "proxy_distance_km": 14.0,
+    "region": "Driftless",
+    "fishery": {
+      "tier": "good",
+      "wild_population": true,
+      "trout_density_per_mile": null,
+      "density_source": null,
+      "notes": "Willow River at Willow River State Park near Burkhardt"
+    },
+    "model_caveat": null
   }
 ]

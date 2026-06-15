@@ -62,6 +62,9 @@ NAME_ALIASES: Dict[str, List[str]] = {
     "Winnebago Creek":               ["Winnebago Creek"],
     "Garvin Brook":                  ["Garvin Brook"],
     "Hay Creek":                     ["Hay Creek"],
+    "West Fork Kickapoo River":      ["West Fork Kickapoo", "W Fork Kickapoo", "West Branch Kickapoo"],
+    "Coon Creek":                    ["Coon Creek"],
+    "Timber Coulee Creek":           ["Timber Coulee", "Timber Cooley"],
 }
 
 # Bounding-box radius (degrees) around the centroid for the NHDPlus query.

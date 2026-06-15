@@ -955,6 +955,25 @@ html, body {
 }
 .regime-chip.regime-warn  { background: #fff4e1; color: #815616; border-color: #f1d7a4; }
 .regime-chip.regime-alert { background: #ffe6e1; color: #87271a; border-color: #f0b9ad; }
+
+.fishery-chip {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: capitalize;
+  border: 1px solid transparent;
+  background: #eef1f4;
+  color: #3a4654;
+  border-color: #d3d9e0;
+  cursor: help;
+}
+.fishery-chip.tier-premier   { background: #fbf0d8; color: #7a5a12; border-color: #ecd8a4; }
+.fishery-chip.tier-excellent { background: #e2f1e6; color: #245c38; border-color: #bcdcc6; }
+.fishery-chip.tier-good      { background: #e4edf9; color: #1f3a6b; border-color: #b8cde8; }
+.fishery-chip.tier-fair      { background: #eef1f4; color: #4a5562; border-color: #d3d9e0; }
 .regime-hint {
   margin: 4px 0 0;
   font-size: 0.78rem;
@@ -1145,6 +1164,13 @@ html, body {
   border-radius: 4px;
   font-size: 0.85rem;
   margin: 6px 0 10px;
+}
+/* Informational (non-alarming) variant — e.g. out-of-region model caveat. */
+.warning-banner.soft {
+  background: #f1f5fb;
+  border: 1px solid #c4d4e8;
+  border-left: 4px solid #5a7fb0;
+  color: #2f496e;
 }
 
 #map {
