@@ -16,8 +16,8 @@ jobs:
     name: Synthetic acceptance suite
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.13" }
       - name: Install
         run: |
@@ -28,14 +28,14 @@ jobs:
       - name: Bootstrap seed database
         run: python -m src.scripts.bootstrap_reaches
       - name: Run acceptance tests
-        run: python -m pytest tests/test_acceptance.py tests/test_models.py tests/test_api.py -q
+        run: python -m pytest tests/ -q
 
   backtest:
     name: Hindcast against USGS + Mohseni
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
         with: { python-version: "3.13" }
       - name: Install
         run: |
