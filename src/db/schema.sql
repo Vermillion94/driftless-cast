@@ -16,7 +16,10 @@ CREATE TABLE IF NOT EXISTS reach (
     nws_gridpoint    TEXT,
     spring_influenced INTEGER DEFAULT 0,
     notes            TEXT,
-    dnr_summary      TEXT
+    dnr_summary      TEXT,
+    region           TEXT,                          -- e.g. "Driftless", "North Shore MN"
+    fishery          TEXT,                          -- JSON: tier/wild_population/density/etc
+    model_caveat     TEXT                           -- e.g. "hatch model is Driftless-tuned"
 );
 
 CREATE TABLE IF NOT EXISTS gauge (

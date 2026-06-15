@@ -58,6 +58,7 @@ def get_reach_detail(reach_id: str) -> dict:
     reach = get_reach(reach_id)
     if not reach:
         raise HTTPException(status_code=404, detail="Reach not found")
+    reach["fishery"] = _loads_json(reach.get("fishery"), None)
     return reach
 
 
@@ -160,6 +161,8 @@ def get_reach_forecast(reach_id: str, hours: int = Query(168, ge=1, le=168)) -> 
     except (ValueError, TypeError):
         dnr_summary = None
 
+    fishery = _loads_json(reach.get("fishery"), None)
+
     # Staleness — `computed_at` is when the forecast was last built. The
     # rebuild loop runs hourly; anything past 90min is genuinely stale (NWS
     # has likely updated its hourly forecast in the meantime).
@@ -186,6 +189,9 @@ def get_reach_forecast(reach_id: str, hours: int = Query(168, ge=1, le=168)) -> 
         "gauge_is_proxy": bool(reach.get("gauge_is_proxy")),
         "proxy_distance_km": reach.get("proxy_distance_km"),
         "dnr_summary": dnr_summary,
+        "region": reach.get("region"),
+        "fishery": fishery,
+        "model_caveat": reach.get("model_caveat"),
         "computed_at": computed_at,
         "stale_minutes": stale_minutes,
         "is_stale": is_stale,

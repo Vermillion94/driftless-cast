@@ -894,6 +894,22 @@
         ? `<div class="warning-banner">⚠ Water over 68°F — handle fish minimally, or fish dawn/dusk only. ${helpButton("fish_stress")}</div>`
         : "";
 
+      // Curated fishery quality (premier/excellent/good/fair) — editorial tier
+      // that spans MN/WI/IA, distinct from the WI-only DNR-inferred tier below.
+      const fishery = fc.fishery;
+      const fisheryTitle = [
+        fishery && fishery.wild_population ? "Wild, self-sustaining population" : "",
+        fishery && fishery.notes ? fishery.notes : "",
+      ].filter(Boolean).join(" · ").replace(/"/g, "&quot;");
+      const fisheryChip = (fishery && fishery.tier)
+        ? `<span class="fishery-chip tier-${fishery.tier}" title="${fisheryTitle}">${fishery.tier} fishery${fishery.wild_population ? " · wild" : ""}</span>`
+        : "";
+      // Out-of-region streams (e.g. North Shore) where the Driftless-tuned hatch
+      // model is less reliable carry a caveat; null for in-region reaches.
+      const caveatBanner = fc.model_caveat
+        ? `<div class="warning-banner soft">ℹ ${fc.model_caveat}</div>`
+        : "";
+
       const dnr = fc.dnr_summary;
       const dnrBlock = dnr
         ? `<section class="section dnr">
@@ -917,13 +933,14 @@
         <h2>${fc.stream_name}</h2>
         <p class="segment">${fc.segment_name || ""}</p>
         ${stressBanner}
+        ${caveatBanner}
         <div class="verdict" style="border-left-color:${scoreColor(nowScore)}">
           <div class="verdict-head">
             <span class="score-pill" style="background:${scoreColor(nowScore)}">${scoreLabel(nowScore)}</span>
             <span class="score-num">${Math.round(nowScore * 100)} / 100</span>
             ${helpButton("score_overview")}
           </div>
-          <div class="chips">${waterBadge}${anomalyChip}${baroChip}${regimeChip}</div>
+          <div class="chips">${fisheryChip}${waterBadge}${anomalyChip}${baroChip}${regimeChip}</div>
           ${(now.regime && now.regime.code !== "NORMAL" && now.regime.fly_hint) ? `<p class="regime-hint">↳ ${now.regime.fly_hint}</p>` : ""}
           <p class="explanation">${now.explanation || ""}</p>
           ${bestWindowHTML}

@@ -104,3 +104,36 @@ def test_hatch_windows_endpoint_surfaces_species(monkeypatch):
     assert payload[0]["top_species"]["common_name"] == "Sulphur"
     assert payload[0]["fish_stress"] is False
     assert payload[0]["reason"] == ["surface signal", "Sulphur", "bright-sun drag"]
+
+
+def test_fishery_metadata_roundtrips_through_upsert_and_summary():
+    """A reach upserted with a `fishery` dict is stored as JSON and comes back
+    parsed as a dict in the reach summary (the seed-JSON -> DB -> API path)."""
+    from src.db.queries import upsert_reach, list_reach_summaries, get_reach
+    reach = {
+        "reach_id": "test-fishery-roundtrip",
+        "stream_name": "Test Creek",
+        "segment_name": "near Nowhere",
+        "state": "WI",
+        "trout_class": "I",
+        "geometry_geojson": "{}",
+        "centroid_lat": 43.8,
+        "centroid_lon": -91.7,
+        "length_km": 5.0,
+        "mean_gradient": 4.0,
+        "usgs_gauge_id": None,
+        "nws_gridpoint": None,
+        "spring_influenced": 1,
+        "notes": "synthetic",
+        "region": "Driftless",
+        "fishery": {"tier": "premier", "wild_population": True, "notes": "blue ribbon"},
+        "model_caveat": None,
+    }
+    upsert_reach(reach)
+    stored = get_reach("test-fishery-roundtrip")
+    # Raw column is JSON text in the DB.
+    assert isinstance(stored["fishery"], str)
+    summary = next(r for r in list_reach_summaries() if r["reach_id"] == "test-fishery-roundtrip")
+    assert summary["region"] == "Driftless"
+    assert summary["fishery"]["tier"] == "premier"
+    assert summary["fishery"]["wild_population"] is True

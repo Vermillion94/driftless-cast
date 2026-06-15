@@ -1,3 +1,4 @@
+import json
 import os
 import sqlite3
 from pathlib import Path
@@ -38,6 +39,9 @@ def initialize_database(db_path: Optional[Path] = None) -> None:
         "gauge_is_proxy": "INTEGER DEFAULT 0",
         "proxy_distance_km": "REAL",
         "dnr_summary": "TEXT",
+        "region": "TEXT",
+        "fishery": "TEXT",
+        "model_caveat": "TEXT",
     })
     _ensure_columns(conn, "prediction", {
         "water_temp_f": "REAL",
@@ -75,12 +79,31 @@ def _ensure_columns(conn: sqlite3.Connection, table: str, columns: Dict[str, str
 
 
 def upsert_reach(reach: Dict[str, Any]) -> None:
-    reach = {"gauge_is_proxy": 0, "noaa_lid": None, "proxy_distance_km": None, **reach}
+    payload = {
+        "gauge_is_proxy": 0, "noaa_lid": None, "proxy_distance_km": None,
+        "region": None, "fishery": None, "model_caveat": None,
+        **reach,
+    }
+    # `fishery` may be supplied as a dict/list from the seed JSON; store as JSON text.
+    if isinstance(payload.get("fishery"), (dict, list)):
+        payload["fishery"] = json.dumps(payload["fishery"])
     conn = get_connection()
     conn.execute(
         """
-        INSERT INTO reach (reach_id, stream_name, segment_name, state, trout_class, geometry_geojson, centroid_lat, centroid_lon, length_km, mean_gradient, usgs_gauge_id, noaa_lid, gauge_is_proxy, proxy_distance_km, nws_gridpoint, spring_influenced, notes)
-        VALUES (:reach_id, :stream_name, :segment_name, :state, :trout_class, :geometry_geojson, :centroid_lat, :centroid_lon, :length_km, :mean_gradient, :usgs_gauge_id, :noaa_lid, :gauge_is_proxy, :proxy_distance_km, :nws_gridpoint, :spring_influenced, :notes)
+        INSERT INTO reach (
+            reach_id, stream_name, segment_name, state, trout_class,
+            geometry_geojson, centroid_lat, centroid_lon, length_km,
+            mean_gradient, usgs_gauge_id, noaa_lid, gauge_is_proxy,
+            proxy_distance_km, nws_gridpoint, spring_influenced, notes,
+            region, fishery, model_caveat
+        )
+        VALUES (
+            :reach_id, :stream_name, :segment_name, :state, :trout_class,
+            :geometry_geojson, :centroid_lat, :centroid_lon, :length_km,
+            :mean_gradient, :usgs_gauge_id, :noaa_lid, :gauge_is_proxy,
+            :proxy_distance_km, :nws_gridpoint, :spring_influenced, :notes,
+            :region, :fishery, :model_caveat
+        )
         ON CONFLICT(reach_id) DO UPDATE SET
             stream_name = excluded.stream_name,
             segment_name = excluded.segment_name,
@@ -97,9 +120,12 @@ def upsert_reach(reach: Dict[str, Any]) -> None:
             proxy_distance_km = excluded.proxy_distance_km,
             nws_gridpoint = excluded.nws_gridpoint,
             spring_influenced = excluded.spring_influenced,
-            notes = excluded.notes;
+            notes = excluded.notes,
+            region = excluded.region,
+            fishery = excluded.fishery,
+            model_caveat = excluded.model_caveat;
         """,
-        reach,
+        payload,
     )
     conn.commit()
     conn.close()
@@ -130,6 +156,7 @@ def list_reach_summaries() -> List[Dict[str, Any]]:
             r.centroid_lat, r.centroid_lon, r.usgs_gauge_id, r.noaa_lid, r.gauge_is_proxy,
             r.proxy_distance_km,
             r.geometry_geojson, r.spring_influenced,
+            r.region, r.fishery, r.model_caveat,
             p.nymph_score, p.dry_score, p.active_species, p.regime, p.score_breakdown,
             p.valid_at AS prediction_valid_at
         FROM reach r
@@ -158,8 +185,19 @@ def list_reach_summaries() -> List[Dict[str, Any]]:
             d["combined_score"] = headline_score(nymph, dry, active_species, regime, score_breakdown)
         else:
             d["combined_score"] = None
+        d["fishery"] = _parse_fishery(d.get("fishery"))
         summaries.append(d)
     return summaries
+
+
+def _parse_fishery(value: Any) -> Optional[Dict[str, Any]]:
+    """Decode the stored `fishery` JSON blob into a dict for API responses."""
+    if isinstance(value, str) and value:
+        try:
+            return json.loads(value)
+        except ValueError:
+            return None
+    return value if isinstance(value, dict) else None
 
 
 def get_reach_predictions(reach_id: str, hours: int) -> List[Dict[str, Any]]:
