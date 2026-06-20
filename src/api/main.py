@@ -7,7 +7,6 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from src.api import routes
@@ -16,12 +15,6 @@ from src.jobs.forecast_refresh import trigger_forecast_refresh
 LOG = logging.getLogger(__name__)
 
 app = FastAPI(title="Driftless Cast")
-# Compress responses for clients that accept it. The dominant payload — the
-# /reaches stream geometry — is highly repetitive JSON and shrinks ~7x; the
-# static map.js / styles.css shrink ~4x. Without this, every page load pulled
-# ~3MB of uncompressed geometry. minimum_size skips tiny bodies where the gzip
-# header overhead isn't worth it.
-app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
