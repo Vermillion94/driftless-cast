@@ -2,39 +2,65 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Driftless Cast</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Driftless Cast — trout fishing forecast for the Driftless Area</title>
+  <meta name="description" content="Should you go fishing today? Hour-by-hour trout forecasts for Driftless Area streams in Minnesota, Wisconsin and Iowa — hatches, water, weather, season rules, and what to tie on." />
+  <meta name="theme-color" content="#123c33" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0e1513" media="(prefers-color-scheme: dark)" />
+  <meta property="og:title" content="Driftless Cast" />
+  <meta property="og:description" content="Trout fishing forecast for the Driftless Area — when, where and how to fish, and when to skip." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="/icons/og.png" />
+  <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <button id="sidebar-toggle" type="button" aria-label="Toggle sidebar" aria-expanded="true">☰</button>
+  <button id="sidebar-toggle" type="button" aria-label="Toggle panel" aria-expanded="true">☰</button>
   <div id="app">
     <aside id="sidebar">
-      <header>
-        <h1>Driftless Cast</h1>
-        <p id="summary" class="muted">Loading…</p>
-        <nav class="tab-bar">
-          <button class="tab tab-active" data-view="windows">Best windows</button>
+      <header class="app-header">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true">
+            <rect width="32" height="32" rx="8" fill="#123c33" />
+            <path d="M5 22.5c3.5-8.5 11-12.5 20.5-10" fill="none" stroke="#7fd6b8" stroke-width="2.2" stroke-linecap="round" />
+            <path d="M5 25.5c5.5 2.2 12 1.8 20-2.5" fill="none" stroke="#3dbb98" stroke-width="1.6" stroke-linecap="round" opacity="0.8" />
+            <circle cx="25.6" cy="12.4" r="2.3" fill="#f2c14e" />
+          </svg>
+          <div class="brand-text">
+            <h1>Driftless Cast</h1>
+            <span class="brand-tag" id="summary">Trout forecast for the Driftless Area</span>
+          </div>
+        </div>
+        <div id="context-line" class="context-line" aria-label="Season status by state"></div>
+        <nav class="tab-bar" aria-label="Sections">
+          <button class="tab tab-active" data-view="windows">Today</button>
+          <button class="tab" data-view="calendar">Hatches</button>
           <button class="tab" data-view="reports">Reports</button>
-          <button class="tab" data-view="calendar">Hatch calendar</button>
           <button class="tab" data-view="learn">Learn</button>
         </nav>
       </header>
-      <section id="planning-summary" class="planning-summary">
-        <p class="muted">checking forecast freshness…</p>
-      </section>
       <section id="near-me" class="near-panel">
-        <button id="near-me-btn" type="button" class="near-btn">&#128205; Where should I fish near me?</button>
+        <button id="near-me-btn" type="button" class="near-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>
+          Where should I fish near me?
+        </button>
         <p id="near-status" class="muted small hidden"></p>
         <ol id="near-list" class="near-list"></ol>
       </section>
+      <section id="planning-summary" class="planning-summary">
+        <span class="skeleton" aria-hidden="true"></span>
+      </section>
       <section id="best-windows">
-        <h2>Best next 72h</h2>
-        <ol id="windows-list"><li class="muted">computing…</li></ol>
+        <h2>Best bets · next 3 days</h2>
+        <ol id="windows-list"><li><span class="skeleton" aria-hidden="true"></span></li><li><span class="skeleton" aria-hidden="true"></span></li></ol>
         <div class="hatch-watch-panel">
           <h3>Hatch watch</h3>
-          <p class="muted">Surface signals worth watching, even when the all-around score is lower.</p>
           <ol id="hatch-watch-list"><li class="muted">checking hatches…</li></ol>
         </div>
       </section>
@@ -50,12 +76,23 @@
         <h2>Learn</h2>
         <div id="learn-body"><p class="muted">loading…</p></div>
       </section>
+      <section id="page" class="hidden">
+        <button type="button" class="back-link" data-view-link="windows">← Back</button>
+        <div id="page-body"></div>
+      </section>
       <section id="detail" class="hidden">
-        <button id="close-detail" type="button" aria-label="Back to list">← back</button>
+        <button id="close-detail" type="button" aria-label="Back to list">← All streams</button>
         <div id="detail-body"></div>
       </section>
+      <footer class="app-footer">
+        <a href="#/page/about">About</a>
+        <a href="#/learn">How it works</a>
+        <a href="#/page/data">Data sources</a>
+        <a href="#/page/privacy">Privacy</a>
+        <span>Forecasts are guidance — check current regulations.</span>
+      </footer>
     </aside>
-    <div id="map">
+    <div id="map" role="region" aria-label="Map of Driftless trout streams">
       <div id="scrubber" class="scrubber scrubber-empty" aria-label="Forecast time scrubber">
         <button id="scrub-now" type="button" title="Jump to now">Now</button>
         <input id="scrub-slider" type="range" min="0" max="0" value="0" step="1" disabled aria-label="Forecast hour" />
@@ -63,7 +100,7 @@
       </div>
     </div>
   </div>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
   <script src="map.js"></script>
 </body>
 </html>

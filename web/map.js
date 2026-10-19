@@ -7,7 +7,7 @@
     : "";
   const REFRESH_MS = 5 * 60 * 1000;
 
-  let map, markersByReach = {};
+  let map, markersByReach = {}, reachGroup = null;
   let speciesById = null;  // populated once from /calendar — used to render full pattern lists per active species
   let scrubGrid = null;    // { hours: [...], scores: { reach_id: [...] } } for the time scrubber
   let scrubOffset = 0;     // hour index into scrubGrid.hours; 0 = "now"
@@ -60,22 +60,35 @@
     { t: 1.00, c: [ 30, 132,  73] },   // dark green     — Go
   ];
 
-  function scoreColor(score) {
-    if (score == null) return "#9aa5b1";
-    const s = Math.max(0, Math.min(1, score));
-    let lo = SCORE_STOPS[0], hi = SCORE_STOPS[SCORE_STOPS.length - 1];
-    for (let i = 0; i < SCORE_STOPS.length - 1; i++) {
-      if (s >= SCORE_STOPS[i].t && s <= SCORE_STOPS[i + 1].t) {
-        lo = SCORE_STOPS[i]; hi = SCORE_STOPS[i + 1]; break;
-      }
-    }
-    const span = hi.t - lo.t || 1;
-    const k = (s - lo.t) / span;
-    const r = Math.round(lo.c[0] + (hi.c[0] - lo.c[0]) * k);
-    const g = Math.round(lo.c[1] + (hi.c[1] - lo.c[1]) * k);
-    const b = Math.round(lo.c[2] + (hi.c[2] - lo.c[2]) * k);
-    return `rgb(${r},${g},${b})`;
+  // Discrete verdict palette — the same five classes as the daily verdict
+  // (trip_verdict.py thresholds) so map, chips and day strip all agree.
+  const VERDICT = {
+    go:     { label: "Go",       color: "#1a7f4b" },
+    good:   { label: "Worth it", color: "#5fa04a" },
+    slow:   { label: "Slow",     color: "#d9a521" },
+    skip:   { label: "Skip",     color: "#c4442f" },
+    closed: { label: "Closed",   color: "#8a9893" },
+  };
+
+  function verdictKey(score, closed) {
+    if (closed) return "closed";
+    if (score == null) return "closed";
+    if (score >= 0.70) return "go";
+    if (score >= 0.50) return "good";
+    if (score > 0.30) return "slow";
+    return "skip";
   }
+
+  function vchip(score, closed, text) {
+    const k = verdictKey(score, closed);
+    return `<span class="vchip v-${k}">${escapeHtml(text || VERDICT[k].label)}</span>`;
+  }
+
+  function scoreColor(score) {
+    if (score == null) return VERDICT.closed.color;
+    return VERDICT[verdictKey(score, false)].color;
+  }
+
 
   // Redundant encoding: line/marker thickness grows with score so the map
   // still ranks correctly when printed grayscale or read by colorblind users.
@@ -93,10 +106,13 @@
   }
 
   function scoreLabel(score) {
-    if (score == null) return "?";
-    if (score >= 0.65) return "Go";
-    if (score >= 0.4) return "Fair";
-    return "Skip";
+    if (score == null) return "—";
+    return VERDICT[verdictKey(score, false)].label;
+  }
+
+  function cssVar(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
   }
 
   function hourScore(hour) {
@@ -107,13 +123,15 @@
 
   function initMap() {
     map = L.map("map", { zoomControl: true }).setView([43.9, -91.7], 8);
-    const osm = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors",
-      maxZoom: 18,
-    });
-    // USGS Topo basemap reads gradient and parking-relevant terrain better than
-    // OSM for fishing planning. Default to topo; expose OSM as a toggle for the
-    // few reaches where the topo tiles get blocky at z16+.
+    // Both basemaps are USGS The National Map (public domain). OpenStreetMap's
+    // public tile servers were dropped: their usage policy doesn't cover an
+    // app building on them, commercial or at scale.
+    const usgsImagery = L.tileLayer(
+      "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}",
+      { attribution: "USGS The National Map", maxZoom: 16 }
+    );
+    // USGS Topo reads gradient, roads and access terrain well for fishing
+    // planning; it is the default, with imagery as the alternate layer.
     const usgsTopo = L.tileLayer(
       "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
       {
@@ -123,7 +141,7 @@
     );
     usgsTopo.addTo(map);
     L.control.layers(
-      { "USGS Topo": usgsTopo, "OpenStreetMap": osm },
+      { "Topo": usgsTopo, "Imagery": usgsImagery },
       {},
       { position: "topright", collapsed: true }
     ).addTo(map);
@@ -136,12 +154,10 @@
     legend.onAdd = function () {
       const div = L.DomUtil.create("div", "score-legend");
       div.innerHTML = `
-        <div class="legend-title">Forecast score</div>
-        <div class="legend-row"><span class="legend-swatch" style="background:${scoreColor(0.85)}"></span>Go (65+)</div>
-        <div class="legend-row"><span class="legend-swatch" style="background:${scoreColor(0.5)}"></span>Fair (40–64)</div>
-        <div class="legend-row"><span class="legend-swatch" style="background:${scoreColor(0.2)}"></span>Skip (&lt;40)</div>
-        <div class="legend-row"><span class="legend-swatch" style="background:#9aa5b1"></span>No data</div>
-        <div class="legend-foot">thicker line = higher score</div>
+        <div class="legend-title">Fishing outlook</div>
+        ${["go", "good", "slow", "skip", "closed"].map((k) =>
+          `<div class="legend-row"><span class="legend-swatch" style="background:${VERDICT[k].color}"></span>${VERDICT[k].label}</div>`).join("")}
+        <div class="legend-foot">thicker line = better</div>
       `;
       L.DomEvent.disableClickPropagation(div);
       return div;
@@ -245,12 +261,22 @@
     }
   }
 
+  function isClosed(reach) {
+    return !!(reach && reach.season && reach.season.is_closed);
+  }
+
+  function reachColor(reach) {
+    return VERDICT[verdictKey(effectiveScore(reach), isClosed(reach))].color;
+  }
+
   function styleForReach(reach) {
     const score = effectiveScore(reach);
+    const closed = isClosed(reach);
     return {
-      color: scoreColor(score),
-      weight: scoreWeight(score),
-      opacity: score == null ? 0.55 : 0.95,
+      color: reachColor(reach),
+      weight: closed ? 4 : scoreWeight(score),
+      opacity: closed || score == null ? 0.6 : 0.95,
+      dashArray: closed ? "2 7" : null,
       lineCap: "round",
       lineJoin: "round",
     };
@@ -258,9 +284,28 @@
 
   function reachTooltip(reach) {
     const score = effectiveScore(reach);
-    const segment = reach.segment_name ? `${reach.segment_name} · ` : "";
-    if (score == null) return `${reach.stream_name} ${segment}(no forecast yet)`;
-    return `${reach.stream_name} — ${scoreLabel(score)} (${Math.round(score * 100)})`;
+    const name = escapeHtml(reach.stream_name);
+    const seg = reach.segment_name ? `<span class="muted"> · ${escapeHtml(reach.segment_name)}</span>` : "";
+    if (isClosed(reach)) return `<strong>${name}</strong>${seg}<br>Season closed`;
+    if (score == null) return `<strong>${name}</strong>${seg}<br>No forecast yet`;
+    return `<strong>${name}</strong>${seg}<br>${scoreLabel(score)} · ${Math.round(score * 100)}`;
+  }
+
+  function renderContextLine(reaches) {
+    const el = document.getElementById("context-line");
+    if (!el) return;
+    const byState = {};
+    reaches.forEach((r) => {
+      if (r.state && r.season && !byState[r.state]) byState[r.state] = r.season;
+    });
+    const order = ["MN", "WI", "IA"].filter((s) => byState[s]);
+    const cls = { open: "is-open", catch_and_release: "is-cr", closed: "is-closed" };
+    const word = { open: "open", catch_and_release: "C&R only", closed: "closed" };
+    el.innerHTML = order.map((st) => {
+      const s = byState[st];
+      const title = s.next_change ? `${s.label} — changes ${s.next_change}` : s.label;
+      return `<span class="context-chip ${cls[s.status] || ""}" title="${escapeHtml(title)}"><span class="dot"></span>${st} ${word[s.status] || s.status}</span>`;
+    }).join("");
   }
 
   async function loadReaches() {
@@ -268,8 +313,14 @@
     try {
       const resp = await fetch(`${API_BASE}/reaches`);
       const reaches = await resp.json();
-      const group = L.layerGroup();
+      // Reuse one layer group: this runs on every refresh, and adding a new
+      // group each time used to stack duplicate lines on the map.
+      if (reachGroup) reachGroup.clearLayers();
+      else reachGroup = L.layerGroup().addTo(map);
+      const group = reachGroup;
       markersByReach = {};
+      renderContextLine(reaches);
+      const haloColor = cssVar("--surface", "#ffffff");
       let withScore = 0;
       reaches.forEach((reach) => {
         if (reach.centroid_lat == null || reach.centroid_lon == null) return;
@@ -286,12 +337,12 @@
           // Render the reach as a polyline. Keep it as a separate layer (not
           // L.geoJSON) so we can update its style cheaply when the scrubber moves.
           primaryLayer = L.polyline(latlngs, styleForReach(reach));
-          // Halo line behind it, fixed white, so the colored line reads on
-          // any basemap (USGS topo green hillshade was washing out yellows).
+          // Halo line behind it (surface color) so the colored line reads on
+          // any basemap and in dark mode.
           const halo = L.polyline(latlngs, {
-            color: "#ffffff",
-            weight: scoreWeight(score) + 6,
-            opacity: 0.85,
+            color: haloColor,
+            weight: scoreWeight(score) + 5,
+            opacity: 0.8,
             lineCap: "round",
           });
           group.addLayer(halo);
@@ -299,9 +350,9 @@
         } else {
           primaryLayer = L.circleMarker([reach.centroid_lat, reach.centroid_lon], {
             radius: dotRadius(score),
-            color: scoreColor(score),
+            color: reachColor(reach),
             weight: 3,
-            fillColor: scoreColor(score),
+            fillColor: reachColor(reach),
             fillOpacity: score == null ? 0.45 : 0.85,
           });
           group.addLayer(primaryLayer);
@@ -312,20 +363,20 @@
         // Centroid marker — primary tap target. Sized with score, filled with
         // score color, dark border for contrast against the topo basemap.
         const dot = L.circleMarker([reach.centroid_lat, reach.centroid_lon], {
-          radius: dotRadius(score),
-          color: "#1f2933",
-          weight: 2,
-          fillColor: scoreColor(score),
-          fillOpacity: score == null ? 0.5 : 0.95,
+          radius: isClosed(reach) ? 5 : dotRadius(score),
+          color: haloColor,
+          weight: 2.5,
+          fillColor: reachColor(reach),
+          fillOpacity: score == null ? 0.6 : 1,
         });
-        dot.bindTooltip(reachTooltip(reach));
+        dot.bindTooltip(reachTooltip(reach), { direction: "top", offset: [0, -6] });
         dot.on("click", () => showReachDetail(reach.reach_id));
         group.addLayer(dot);
 
         markersByReach[reach.reach_id] = { line: primaryLayer, dot, reach };
       });
-      group.addTo(map);
-      summaryEl.textContent = `${reaches.length} reaches · ${withScore} scored`;
+      const openCount = reaches.filter((r) => !isClosed(r)).length;
+      summaryEl.textContent = `${reaches.length} streams · ${openCount} open today`;
     } catch (err) {
       summaryEl.innerHTML = `<span class="error">Error loading reaches: ${err.message}</span>`;
     }
@@ -339,13 +390,12 @@
       if (dot) {
         if (dot.setStyle) {
           dot.setStyle({
-            color: "#1f2933",
-            fillColor: scoreColor(score),
-            fillOpacity: score == null ? 0.5 : 0.95,
+            fillColor: reachColor(reach),
+            fillOpacity: score == null ? 0.6 : 1,
           });
         }
         // setRadius is on circleMarker — updates the dot size with the new score.
-        if (dot.setRadius) dot.setRadius(dotRadius(score));
+        if (dot.setRadius) dot.setRadius(isClosed(reach) ? 5 : dotRadius(score));
         if (dot.setTooltipContent) dot.setTooltipContent(reachTooltip(reach));
       }
     });
@@ -371,7 +421,6 @@
         .sort((a, b) => b.rank_score - a.rank_score);
       listEl.innerHTML = windows.map((w) => {
         const score = w.score;
-        const verdict = scoreLabel(score);
         const color = scoreColor(score);
         const proxyText = w.gauge_is_proxy
           ? ` · proxy ${w.proxy_distance_km != null ? `~${Math.round(w.proxy_distance_km)} km` : "gauge"}`
@@ -379,15 +428,16 @@
         const reason = Array.isArray(w.reason) && w.reason.length
           ? `<span class="window-reason">${w.reason.map(escapeHtml).join(" · ")}</span>`
           : "";
+        const play = w.regime && w.regime.label ? escapeHtml(w.regime.label) : "";
         return `
           <li data-reach="${w.reach_id}">
             <button type="button" class="window-row">
-              <span class="score-pill" style="background:${color}">${verdict}</span>
               <span class="window-main">
-                <span class="window-name">${w.stream_name}</span>
-                <span class="window-sub">${w.segment_name || ""} · ${timeLocal(w.valid_at)}${w.aggression_score != null ? ` · aggression ${Math.round(w.aggression_score * 100)}` : ""}${w.confidence_score != null ? ` · confidence ${Math.round(w.confidence_score * 100)}` : ""}${proxyText}</span>
-                ${reason}
+                <span class="window-name">${escapeHtml(w.stream_name)}<span class="state">${escapeHtml(w.state || "")}</span></span>
+                <span class="window-sub">${escapeHtml(w.segment_name || "")} · ${timeLocal(w.valid_at)}</span>
+                ${play ? `<span class="window-reason">${play}</span>` : ""}
               </span>
+              ${vchip(score, false)}
               <span class="window-score">${(score * 100).toFixed(0)}</span>
             </button>
           </li>
@@ -423,12 +473,11 @@
         return `
           <li data-reach="${w.reach_id}">
             <button type="button" class="window-row window-row-hatch">
-              <span class="score-pill surface-pill">${surface}</span>
               <span class="window-main">
-                <span class="window-name">${escapeHtml(speciesLabel)} on ${escapeHtml(w.stream_name || "stream")}</span>
-                <span class="window-sub">${escapeHtml(w.segment_name || "")} · ${timeLocal(w.valid_at)} · overall ${Math.round(score * 100)}/100${confidence}</span>
-                ${reason}
+                <span class="window-name">${escapeHtml(speciesLabel)}</span>
+                <span class="window-sub">${escapeHtml(w.stream_name || "stream")} · ${timeLocal(w.valid_at)}</span>
               </span>
+              <span class="chip chip-accent">${surface}</span>
             </button>
           </li>
         `;
@@ -441,18 +490,6 @@
     }
   }
 
-  function renderFlies(flies, activeSpecies, allSpecies) {
-    // Show full per-active-species pattern lists, grouped, plus the primary/dropper pick.
-    const rows = [];
-    if (flies && flies.primary) {
-      rows.push(`<div class="fly fly-pick"><span class="fly-role">★ Primary</span><span class="fly-name">${flies.primary.pattern}${flies.primary.size ? ` #${flies.primary.size}` : ""}</span></div>`);
-    }
-    if (flies && flies.dropper) {
-      rows.push(`<div class="fly fly-pick"><span class="fly-role">+ Dropper</span><span class="fly-name">${flies.dropper.pattern}${flies.dropper.size ? ` #${flies.dropper.size}` : ""}</span></div>`);
-    }
-    return `<div class="flies">${rows.join("")}</div>` +
-      renderHatchPatternBoxes(activeSpecies, allSpecies);
-  }
 
   function renderHatchPatternBoxes(activeSpecies, allSpecies) {
     const top = (activeSpecies || []).slice().sort((a,b) => (b.probability||0)-(a.probability||0)).slice(0, 4);
@@ -844,9 +881,7 @@
   }
 
   // ── Field guide: season, trip call, tactics, near me ─────────────────────
-  const VERDICT_COLORS = {
-    go: "#1a9850", good: "#91cf60", slow: "#fee08b", skip: "#d73027", closed: "#9aa5b1",
-  };
+  const VERDICT_COLORS = Object.fromEntries(Object.entries(VERDICT).map(([k, v]) => [k, v.color]));
 
   function renderSeasonBanner(season) {
     if (!season) return "";
@@ -864,22 +899,97 @@
     return html;
   }
 
+  function heroLine(day) {
+    // The verdict + window are already the headline; for an ordinary day the
+    // useful sentence is the method. Keep the advice when it says more
+    // (skip reason, closed, or "a later day is clearly better").
+    const method = day.best_window && day.best_window.method;
+    const generic = day.advice && day.advice.startsWith(`${day.verdict_label} — best`);
+    if (generic && method) return method.charAt(0).toUpperCase() + method.slice(1) + ".";
+    return day.advice || "";
+  }
+
+  function renderHero(days, nowScore) {
+    const today = days && days[0];
+    if (!today) return "";
+    const v = VERDICT[today.verdict] || VERDICT.closed;
+    const win = today.verdict === "closed" ? "" : `best ${escapeHtml(today.best_window.label)}`;
+    const reasons = (today.reasons || []).map((r) => `<li>${escapeHtml(r)}</li>`).join("");
+    const score = today.best_window && today.best_window.score != null ? Math.round(today.best_window.score * 100) : null;
+    return `
+      <section class="hero" style="--hero-color:${v.color}">
+        ${score != null && today.verdict !== "closed" ? `<div class="hero-score"><span class="num">${score}</span><small>best window</small></div>` : ""}
+        <div class="hero-label">Today</div>
+        <div class="hero-verdict"><span class="hero-word">${escapeHtml(v.label)}</span><span class="hero-window">${win}</span></div>
+        <p class="hero-advice">${escapeHtml(heroLine(today))}</p>
+        ${reasons ? `<ul class="hero-reasons">${reasons}</ul>` : ""}
+      </section>`;
+  }
+
   function renderTripCall(days) {
     if (!days || !days.length) return "";
-    const today = days[0];
-    const cells = days.slice(0, 7).map((d) => `
-      <li class="trip-day" title="${escapeHtml(d.advice || "")}">
-        <span class="trip-wd">${escapeHtml(d.weekday)}</span>
-        <span class="trip-verdict" style="background:${VERDICT_COLORS[d.verdict] || "#9aa5b1"}">${escapeHtml(d.verdict_label)}</span>
-        <span class="trip-window">${d.verdict === "closed" ? "—" : escapeHtml(d.best_window.label)}</span>
+    const cells = days.slice(0, 7).map((d, i) => `
+      <li class="trip-day${i === 0 ? " is-today" : ""}" title="${escapeHtml(d.advice || "")}">
+        <span class="trip-wd">${i === 0 ? "Today" : escapeHtml(d.weekday)}</span>
+        <span class="trip-verdict" style="background:${VERDICT_COLORS[d.verdict] || "#9aa5b1"}" aria-label="${escapeHtml(d.verdict_label)}"></span>
+        <span class="trip-window">${d.verdict === "closed" ? "—" : escapeHtml((d.best_window.label || "").split("–")[0])}</span>
       </li>`).join("");
-    const reasons = (today.reasons || []).map((r) => `<li>${escapeHtml(r)}</li>`).join("");
+    const legend = ["go", "good", "slow", "skip", "closed"].map((k) =>
+      `<span><i style="background:${VERDICT[k].color}"></i>${VERDICT[k].label}</span>`).join("");
     return `
       <section class="section trip-call">
-        <h3>Should I go?</h3>
-        <p class="trip-advice"><strong>${escapeHtml(today.advice || "")}</strong></p>
-        ${reasons ? `<ul class="trip-reasons">${reasons}</ul>` : ""}
+        <h3>Next 7 days</h3>
         <ol class="trip-days">${cells}</ol>
+        <div class="trip-legend">${legend}</div>
+      </section>`;
+  }
+
+  function flowWord(pct) {
+    if (pct == null) return { v: "—", s: "no flow history" };
+    const p = Math.round(pct * 100);
+    if (pct < 0.10) return { v: "Very low", s: `${p}th percentile for the date` };
+    if (pct < 0.28) return { v: "Low", s: `${p}th percentile for the date` };
+    if (pct <= 0.68) return { v: "Normal", s: `${p}th percentile for the date` };
+    if (pct <= 0.85) return { v: "High", s: `${p}th percentile for the date` };
+    return { v: "Very high", s: `${p}th percentile for the date` };
+  }
+
+  function renderConditions(h) {
+    if (!h) return "";
+    const sb = h.score_breakdown || {};
+    const t = h.tactics || {};
+    const flow = flowWord(sb.percentile_used);
+    const water = h.water_temp_f != null ? `${Math.round(h.water_temp_f)}°F` : "—";
+    const waterSrc = h.water_temp_source === "gauge" ? "measured at gauge" : "estimated from air temps";
+    const cfs = h.flow_cfs != null ? ` · ${Math.round(h.flow_cfs)} cfs` : "";
+    const air = h.air_temp_f != null ? `${Math.round(h.air_temp_f)}°F` : "—";
+    const wind = h.wind_mph != null ? `wind ${Math.round(h.wind_mph)} mph` : "";
+    const sky = h.short_forecast ? escapeHtml(h.short_forecast) : "";
+    return `
+      <section class="section">
+        <h3>Conditions now</h3>
+        <div class="tiles">
+          <div class="tile"><div class="tile-k">Water ${helpButton(h.water_temp_source === "gauge" ? "water_temp_zone" : "mohseni")}</div><div class="tile-v">${water}</div><div class="tile-s">${waterSrc}</div></div>
+          <div class="tile"><div class="tile-k">Flow ${helpButton("flow_percentile")}</div><div class="tile-v">${flow.v}</div><div class="tile-s">${flow.s}${cfs}</div></div>
+          <div class="tile"><div class="tile-k">Clarity</div><div class="tile-v">${escapeHtml((t.clarity_label || "—").replace(/^./, (c) => c.toUpperCase()))}</div><div class="tile-s">estimated from flow &amp; rain</div></div>
+          <div class="tile"><div class="tile-k">Weather</div><div class="tile-v">${air}</div><div class="tile-s">${[sky, wind].filter(Boolean).join(" · ")}</div></div>
+        </div>
+      </section>`;
+  }
+
+  function renderOnTheWater(h) {
+    const top = ((h && h.active_species) || []).slice()
+      .sort((a, b) => (b.probability || 0) - (a.probability || 0)).slice(0, 4);
+    const items = top.map((s) => {
+      const p = Math.round((s.probability || 0) * 100);
+      return `<li><span>${escapeHtml(s.common_name || s.id)}</span><span class="muted small">${p}%</span>
+        <span class="hatch-bar"><i style="width:${Math.max(4, p)}%"></i></span></li>`;
+    }).join("");
+    return `
+      <section class="section">
+        <h3>On the water ${helpButton("emergence_hour")}</h3>
+        ${items ? `<ul class="hatches">${items}</ul>` : `<p class="muted">No meaningful hatch in this window — fish subsurface.</p>`}
+        ${renderHatchPatternBoxes(h && h.active_species, speciesById)}
       </section>`;
   }
 
@@ -888,14 +998,16 @@
     const list = (items) => (items || []).map((x) => `<li>${escapeHtml(x)}</li>`).join("");
     return `
       <section class="section tactics">
-        <h3>How &amp; where to fish${whenLabel ? ` · ${escapeHtml(whenLabel)}` : ""}</h3>
-        <p class="tactic-method"><strong>${escapeHtml(t.method)}</strong> <span class="muted small">· ${escapeHtml(t.clarity_label || "")} water</span></p>
-        ${t.rig && t.rig !== "—" ? `<p class="tactic-rig"><span class="tactic-k">Rig</span> ${escapeHtml(t.rig)}</p>` : ""}
-        ${t.water && t.water.length ? `<div class="tactic-block"><span class="tactic-k">Fish</span><ul>${list(t.water)}</ul></div>` : ""}
-        ${t.flies && t.flies.length ? `<div class="tactic-block"><span class="tactic-k">Flies</span><ul class="tactic-flies">${list(t.flies.slice(0, 6))}</ul></div>` : ""}
-        ${t.approach && t.approach.length ? `<div class="tactic-block"><span class="tactic-k">Approach</span><ul>${list(t.approach)}</ul></div>` : ""}
-        ${t.where ? `<p class="tactic-where"><span class="tactic-k">Where</span> ${escapeHtml(t.where)}</p>` : ""}
-        <p class="muted small">Guide-derived practice from Driftless fly-shop reports and agency guidance — a starting point, not gospel.</p>
+        <h3>How &amp; where to fish${whenLabel ? ` · ${escapeHtml(whenLabel)}` : ""} ${helpButton("season_and_tactics")}</h3>
+        <p class="tactic-method"><strong>${escapeHtml(t.method)}</strong></p>
+        <div class="tactic-grid">
+          ${t.flies && t.flies.length ? `<div class="tactic-block"><span class="tactic-k">Tie on</span><ul class="tactic-flies">${list(t.flies.slice(0, 6))}</ul></div>` : ""}
+          ${t.rig && t.rig !== "—" ? `<div class="tactic-block"><span class="tactic-k">Rig</span><p class="tactic-rig">${escapeHtml(t.rig)}</p></div>` : ""}
+          ${t.water && t.water.length ? `<div class="tactic-block"><span class="tactic-k">Fish</span><ul>${list(t.water)}</ul></div>` : ""}
+          ${t.approach && t.approach.length ? `<div class="tactic-block"><span class="tactic-k">Approach</span><ul>${list(t.approach)}</ul></div>` : ""}
+          ${t.where ? `<div class="tactic-block"><span class="tactic-k">Where</span><p class="tactic-where">${escapeHtml(t.where)}</p></div>` : ""}
+        </div>
+        <p class="fine-print">Guide-derived practice from Driftless fly-shop reports and agency guidance — a starting point, not gospel.</p>
       </section>`;
   }
 
@@ -923,11 +1035,10 @@
         listEl.innerHTML = rows.map((r) => {
           const today = r.today || {};
           const tmrw = r.tomorrow || {};
-          const color = VERDICT_COLORS[today.verdict] || "#9aa5b1";
           return `<li><button type="button" class="window-row" data-reach="${r.reach_id}">
-              <span class="score-pill" style="background:${color}">${escapeHtml(today.verdict_label || "—")}</span>
+              <span class="vchip v-${today.verdict || "closed"}">${escapeHtml(today.verdict_label || "—")}</span>
               <span class="window-main">
-                <span class="window-name">${escapeHtml(r.stream_name)} <span class="muted small">${r.distance_mi} mi</span></span>
+                <span class="window-name">${escapeHtml(r.stream_name)}<span class="state">${r.distance_mi} mi</span></span>
                 <span class="window-sub">${escapeHtml(today.advice || "")}</span>
                 ${tmrw.verdict ? `<span class="window-reason">Tomorrow: ${escapeHtml(tmrw.verdict_label)} ${tmrw.verdict === "closed" ? "" : escapeHtml(tmrw.best_window.label)}</span>` : ""}
               </span>
@@ -967,15 +1078,6 @@
       }
       const now = hours[0];
       const nowScore = hourScore(now);
-      const topActive = (now.active_species || [])
-        .slice().sort((a, b) => (b.probability || 0) - (a.probability || 0));
-      const activeHTML = topActive.length
-        ? `<ul class="hatches">${topActive.map(s => {
-            const name = s.common_name || s.id;
-            const dd = s.dd_progress != null ? ` · DD ${Math.round(s.dd_progress * 100)}%` : "";
-            return `<li><strong>${name}</strong> · ${Math.round((s.probability || 0) * 100)}%${dd}</li>`;
-          }).join("")}</ul>`
-        : `<p class="muted">No dry-fly hatch active right now.</p>`;
 
       const waterTopic = now.water_temp_source === "gauge" ? "water_temp_zone" : "mohseni";
       const waterBadge = now.water_temp_f != null
@@ -1022,10 +1124,6 @@
 
       const days = groupByDay(hours);
       const bestWindow = findBestWindow(hours);
-      const bestDay = days.reduce((a, b) => (b.peak > a.peak ? b : a), { peak: 0 });
-      const bestWindowHTML = bestWindow && bestWindow.score > nowScore + 0.1
-        ? `<p class="best-window">Best ahead: <strong>${formatWindowRange(bestWindow.start, bestWindow.end)}</strong> · ${Math.round(bestWindow.score * 100)}/100</p>`
-        : "";
       const planHTML = renderFishingPlan(hours, now, bestWindow);
       const seasonHTML = renderSeasonBanner(fc.season);
       const tripHTML = renderTripCall(fc.days);
@@ -1035,45 +1133,42 @@
         tacticsHour === now ? "right now" : `today's best window ${(fc.days && fc.days[0] && fc.days[0].best_window.label) || ""}`,
       );
 
+      const seasonChip = fc.season
+        ? `<span class="chip ${fc.season.status === "closed" ? "chip-closed" : fc.season.status === "catch_and_release" ? "chip-info" : "chip-accent"}">${escapeHtml(fc.season.label)}</span>`
+        : "";
+      const springChip = fc.spring_influenced ? `<span class="chip chip-info">Spring creek</span>` : "";
+      const stateChip = fc.state ? `<span class="chip">${escapeHtml(fc.state)}${fc.trout_class ? ` · Class ${escapeHtml(fc.trout_class)}` : ""}</span>` : "";
       body.innerHTML = `
-        <h2>${fc.stream_name}</h2>
-        <p class="segment">${fc.segment_name || ""}</p>
+        <header class="reach-head">
+          <h2 class="reach-title">${escapeHtml(fc.stream_name)}</h2>
+          <p class="reach-sub">${escapeHtml(fc.segment_name || "")}</p>
+          <div class="reach-chips">${seasonChip}${stateChip}${springChip}${fisheryChip}</div>
+        </header>
         ${seasonHTML}
         ${stressBanner}
         ${caveatBanner}
-        <div class="verdict" style="border-left-color:${scoreColor(nowScore)}">
-          <div class="verdict-head">
-            <span class="score-pill" style="background:${scoreColor(nowScore)}">${scoreLabel(nowScore)}</span>
-            <span class="score-num">${Math.round(nowScore * 100)} / 100</span>
-            ${helpButton("score_overview")}
-          </div>
-          <div class="chips">${fisheryChip}${waterBadge}${anomalyChip}${baroChip}${regimeChip}</div>
-          ${(now.regime && now.regime.code !== "NORMAL" && now.regime.fly_hint) ? `<p class="regime-hint">↳ ${now.regime.fly_hint}</p>` : ""}
-          <p class="explanation">${now.explanation || ""}</p>
-          ${bestWindowHTML}
-        </div>
+        ${renderHero(fc.days, nowScore)}
         ${tripHTML}
         ${tacticsHTML}
-        ${planHTML}
+        ${renderOnTheWater(tacticsHour)}
+        ${renderConditions(now)}
         <section class="section">
-          <h3>7-day outlook</h3>
-          ${renderDayStrip(days)}
+          <h3>Hour by hour</h3>
           ${renderSparkline(hours)}
           <div id="spark-tooltip" class="spark-tooltip"></div>
-          <p class="spark-legend muted">hover or drag across the chart for any hour</p>
+          <p class="spark-legend muted">Hover or drag across the chart for any hour.</p>
         </section>
-        <section class="section">
-          <h3>Active hatches</h3>
-          ${activeHTML}
-        </section>
-        <section class="section">
-          <h3>Recommended flies</h3>
-          ${renderFlies(now.flies, now.active_species, speciesById)}
-        </section>
-        <section class="section scores">
-          <h3>Score breakdown</h3>
-          ${renderScoreBreakdown(now)}
-        </section>
+        <details class="section why">
+          <summary>Why this forecast</summary>
+          <div class="why-body">
+            <div class="chips">${waterBadge}${anomalyChip}${baroChip}${regimeChip}</div>
+            <p class="explanation">${escapeHtml(now.explanation || "")}</p>
+            ${planHTML}
+            ${renderDayStrip(days)}
+            <h3 style="margin-top:14px">Score breakdown ${helpButton("score_overview")}</h3>
+            ${renderScoreBreakdown(now)}
+          </div>
+        </details>
         ${dnrBlock}
         <section class="section catch-log-section">
           <h3>Trip reports
@@ -1197,6 +1292,7 @@
       if (rest[0]) showTopic(rest[0]);
       return;
     }
+    if (head === "page" && rest[0]) { showPage(rest[0], { silent: true }); return; }
     setView("windows", { silent: true });
   }
 
@@ -1207,11 +1303,16 @@
 
   function setView(view, opts = {}) {
     currentView = view;
-    const sections = ["best-windows", "reports", "calendar", "detail", "learn"];
-    const map_ = { "best-windows": "windows", "reports": "reports", "calendar": "calendar", "detail": "detail", "learn": "learn" };
+    const sections = ["best-windows", "reports", "calendar", "detail", "learn", "page"];
+    const map_ = { "best-windows": "windows", "reports": "reports", "calendar": "calendar", "detail": "detail", "learn": "learn", "page": "page" };
     sections.forEach((id) => {
       const el = document.getElementById(id);
       if (el) el.classList.toggle("hidden", map_[id] !== view);
+    });
+    // "Near me" and the freshness/best-pick card belong to the home view only.
+    ["near-me", "planning-summary"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle("hidden", view !== "windows");
     });
     document.querySelectorAll(".tab").forEach((b) => {
       b.classList.toggle("tab-active", b.dataset.view === view);
@@ -1227,6 +1328,60 @@
       else if (view === "calendar") writeHash("#/calendar");
       else if (view === "learn") writeHash("#/learn");
     }
+  }
+
+  const PAGES = {
+    about: {
+      title: "About Driftless Cast",
+      html: `
+        <p>Driftless Cast is a fishing forecast for the trout streams of the Driftless Area — southeast Minnesota, western Wisconsin and northeast Iowa.
+        For every stream, every hour for the next week, it answers the questions you ask before you drive: <strong>is it worth going, when, and what do I tie on?</strong></p>
+        <h4>How it works</h4>
+        <ul>
+          <li><strong>Water</strong> — live USGS and NOAA gauge flows compared with decades of history for the date; water temperature measured or modeled from air temperature with curves fit to Driftless streams.</li>
+          <li><strong>Bugs</strong> — a hatch calendar for 19 Driftless food sources built from the MN DNR southeast Minnesota hatch chart and guide field reports, adjusted by degree-days and this year's warmth.</li>
+          <li><strong>Weather</strong> — the National Weather Service hourly forecast: cloud, wind, rain and thunderstorms.</li>
+          <li><strong>Rules</strong> — Minnesota, Wisconsin and Iowa trout seasons, a spawning advisory, and hard stops for lightning, dangerous cold and lethal water temperatures.</li>
+        </ul>
+        <p>Every number traces to a source in the Learn tab. When the evidence is weak we say so.</p>
+        <p class="muted">Forecasts are guidance, not guarantees. Always check current regulations, landowner access and conditions on site.</p>`,
+    },
+    privacy: {
+      title: "Privacy",
+      html: `
+        <p>Driftless Cast has no accounts, no ads and no third-party trackers.</p>
+        <ul>
+          <li><strong>Location</strong> — "near me" uses your browser's location once, rounded to about 100 m, to sort streams by distance. It is not stored.</li>
+          <li><strong>Trip reports</strong> — what you submit (stream, date, how it went, optional notes and display name) is stored to calibrate the model and shown to other anglers. Don't include anything you wouldn't post publicly.</li>
+          <li><strong>On your device</strong> — your reporter name is remembered in your browser's local storage.</li>
+          <li><strong>Server logs</strong> — standard request logs (IP address, time, page) are kept briefly by our host for security and abuse prevention.</li>
+        </ul>`,
+    },
+    data: {
+      title: "Data sources",
+      html: `
+        <p>All live inputs are public-domain U.S. government data:</p>
+        <ul>
+          <li>USGS Water Data — streamflow, daily-flow statistics, water temperature</li>
+          <li>NOAA National Weather Service — hourly forecast, precipitation (QPF)</li>
+          <li>NOAA National Water Prediction Service — river gauges and flow forecasts</li>
+          <li>NOAA Regional Climate Centers (ACIS) — historical daily air temperature</li>
+          <li>USGS NHDPlus HR — stream centerlines · USGS The National Map — basemap</li>
+          <li>MN / WI / IA DNR — trout-stream classes and season rules</li>
+        </ul>
+        <p>Hatch timing draws on the MN DNR southeast Minnesota hatch chart and published entomology; tactics on Driftless guide reports. Full citations are in the Learn tab.</p>`,
+    },
+  };
+
+  function showPage(id, opts = {}) {
+    const page = PAGES[id];
+    if (!page) { setView("windows"); return; }
+    currentView = "page";
+    setView("page", { silent: true });
+    document.getElementById("page-body").innerHTML =
+      `<article class="page"><h2>${escapeHtml(page.title)}</h2>${page.html}</article>`;
+    document.getElementById("sidebar").scrollTop = 0;
+    if (!opts.silent) writeHash(`#/page/${id}`);
   }
 
   // Education content — grouped into categories so the page reads as a
@@ -1701,7 +1856,7 @@
           <div class="reports-profile">
             <div class="reports-profile-copy">
               <span class="reports-profile-title">Your reporter profile</span>
-              <span class="reports-profile-sub">This is device-local for now so repeat reports are fast. Real login/auth still needs a backend auth pass.</span>
+              <span class="reports-profile-sub">Saved on this device so your next report is one tap. Shown with your reports.</span>
             </div>
             <div class="reports-profile-row">
               <input id="reports-profile-name" type="text" value="${escapeHtml(profile.name || "")}" placeholder="Name or alias" />
@@ -1750,12 +1905,13 @@
     overlay.id = "explainer-overlay";
     overlay.className = "explainer-overlay";
     overlay.innerHTML = `
-      <div class="explainer-card" onclick="event.stopPropagation()">
+      <div class="explainer-card" role="dialog" aria-modal="true">
         <button class="explainer-close" aria-label="Close">×</button>
         ${innerHtml}
       </div>
     `;
-    overlay.addEventListener("click", () => overlay.remove());
+    // No inline handlers (blocked by the CSP): close on backdrop click only.
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
     overlay.querySelector(".explainer-close").addEventListener("click", () => overlay.remove());
     document.body.appendChild(overlay);
   }
@@ -1955,13 +2111,16 @@
     currentDetailReachId = null;
   }
 
-  function monthLabel(doy) {
-    const d = new Date(new Date().getFullYear(), 0, doy);
-    return d.toLocaleDateString(undefined, { month: "short" });
+  function shortSpeciesName(name) {
+    // "Tan Caddis (Hydropsyche / Cinnamon Sedge)" → "Tan Caddis";
+    // "Grannom / Black Caddis" → "Grannom"; keeps the label inside the column.
+    const s = String(name).split(" (")[0].split(" / ")[0];
+    return s.length > 17 ? s.slice(0, 16) + "…" : s;
   }
 
+
   function calendarColor(activity) {
-    if (activity == null || activity < 0.05) return "#f3f5f7";
+    if (activity == null || activity < 0.05) return cssVar("--surface-3", "#edf1ef");
     // Off-white through teal toward saturated
     const a = Math.min(1, activity);
     const t = Math.round(40 + a * 40);   // hue
@@ -1982,12 +2141,16 @@
       const inner = w - padL - padR;
       // Month grid (every ~30.4 days)
       const monthMarkers = [];
+      const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
       for (let m = 1; m <= 12; m++) {
-        const doy = Math.round((m - 1) * 30.4) + 1;
-        monthMarkers.push({ doy, x: padL + (doy / 365) * inner, label: monthLabel(doy) });
+        // Day-of-year of the 1st of month m (non-leap is fine for a label).
+        const doy = Math.round((Date.UTC(2025, m - 1, 1) - Date.UTC(2025, 0, 1)) / 86400000) + 1;
+        monthMarkers.push({ doy, x: padL + (doy / 365) * inner, label: MONTHS[m - 1] });
       }
       const todayX = padL + (todayDoy / 365) * inner;
-      const rowsHtml = data.species.map((sp) => {
+      const MINOR_WEIGHT = 0.2;
+      const minor = data.species.filter((sp) => (sp.driftless_weight ?? 1) < MINOR_WEIGHT);
+      const rowsHtml = data.species.filter((sp) => (sp.driftless_weight ?? 1) >= MINOR_WEIGHT).map((sp) => {
         const cells = sp.samples.map((s, i) => {
           const x = padL + (s.doy / 365) * inner;
           const wCell = inner / samples + 0.5;
@@ -1995,14 +2158,14 @@
         }).join("");
         return `<div class="cal-row" data-sp="${sp.species_id}">
           <svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" class="cal-svg">
-            <text x="0" y="${h-5}" font-size="10" fill="#374151">${sp.common_name || sp.species_id}</text>
+            <text x="0" y="${h-5}" font-size="10" class="cal-label">${escapeHtml(shortSpeciesName(sp.common_name || sp.species_id))}</text>
             ${cells}
-            <line x1="${todayX}" y1="0" x2="${todayX}" y2="${h-3}" stroke="#264653" stroke-width="1" opacity="0.7" />
+            <line x1="${todayX}" y1="0" x2="${todayX}" y2="${h-3}" class="cal-today" stroke-width="1" />
           </svg>
         </div>`;
       }).join("");
       const monthRow = `<svg viewBox="0 0 ${w} 14" preserveAspectRatio="none" class="cal-svg cal-month-row">
-        ${monthMarkers.map(m => `<text x="${m.x}" y="11" font-size="9" fill="#6b7280">${m.label}</text>`).join("")}
+        ${monthMarkers.map(m => `<text x="${m.x}" y="11" font-size="9" class="cal-month">${m.label}</text>`).join("")}
       </svg>`;
       const reachNote = reachId
         ? `<p class="muted">For ${reachId} · shifted ${data.shift_days >= 0 ? "+" : ""}${data.shift_days.toFixed(1)}d by recent thermal anomaly</p>`
@@ -2011,7 +2174,8 @@
         ${reachNote}
         ${monthRow}
         <div class="cal-rows">${rowsHtml}</div>
-        <p class="muted spark-legend">vertical line = today. Shaded band = activity probability.</p>
+        <p class="muted spark-legend">Vertical line = today. Shaded band = how likely the bug is active.</p>
+        ${minor.length ? `<p class="muted spark-legend">Not shown: ${minor.map((sp) => escapeHtml(shortSpeciesName(sp.common_name || sp.species_id))).join(", ")} — documented elsewhere but not meaningful Driftless hatches.</p>` : ""}
       `;
       body.querySelectorAll(".cal-row").forEach((row) => {
         row.addEventListener("click", () => {
@@ -2028,17 +2192,18 @@
     const flies = (sp.fly_patterns || []).map(p =>
       `<div class="fly"><span class="fly-role">${p.stage || "fly"}</span><span class="fly-name">${p.pattern}${p.size ? ` #${p.size}` : ""}</span></div>`
     ).join("");
-    const peakLabel = `${monthLabel(Math.round(((sp.peak_month - 1) * 30.4) + sp.peak_day))} ${sp.peak_day}`;
+    const peakLabel = `${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][sp.peak_month - 1]} ${sp.peak_day}`;
     const window = sp.first_present && sp.last_present
       ? `${sp.first_present.slice(5)} → ${sp.last_present.slice(5)}`
       : "—";
     const body = document.getElementById("calendar-body");
+    body.querySelectorAll(".cal-detail-overlay").forEach((el) => el.remove());
     body.insertAdjacentHTML("beforeend", `
-      <div class="cal-detail-overlay" onclick="this.remove()">
-        <div class="cal-detail-card" onclick="event.stopPropagation()">
-          <button class="cal-close" onclick="this.parentElement.parentElement.remove()">×</button>
-          <h3>${sp.common_name}</h3>
-          <p class="muted">${sp.scientific_name || ""}</p>
+      <div class="cal-detail-overlay">
+        <div class="cal-detail-card" role="dialog" aria-modal="true">
+          <button class="cal-close" aria-label="Close">×</button>
+          <h3>${escapeHtml(sp.common_name)}</h3>
+          <p class="muted">${escapeHtml(sp.scientific_name || "")}</p>
           <p><strong>Peak:</strong> ${peakLabel}</p>
           <p><strong>Window:</strong> ${window}</p>
           <h4>Patterns</h4>
@@ -2046,7 +2211,16 @@
         </div>
       </div>
     `);
+    const overlay = body.querySelector(".cal-detail-overlay:last-child");
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+    overlay.querySelector(".cal-close").addEventListener("click", () => overlay.remove());
   }
+
+  // Escape closes any open explainer / species card.
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    document.querySelectorAll(".explainer-overlay, .cal-detail-overlay").forEach((el) => el.remove());
+  });
 
   initMap();
   // Mobile bottom-sheet toggle — desktop ignores this (display:none in CSS).
@@ -2061,7 +2235,14 @@
   document.querySelectorAll(".tab").forEach((b) => {
     b.addEventListener("click", () => setView(b.dataset.view));
   });
+  document.querySelectorAll("[data-view-link]").forEach((b) => {
+    b.addEventListener("click", () => setView(b.dataset.viewLink));
+  });
   attachScrubber();
+  // Offline shell + last-good forecast (web/sw.js). Same-origin prod only.
+  if ("serviceWorker" in navigator && API_BASE === "") {
+    window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+  }
   const nearBtn = document.getElementById("near-me-btn");
   if (nearBtn) nearBtn.addEventListener("click", loadNearMe);
   // Residuals first so the very first paint of /reaches uses the calibrated
