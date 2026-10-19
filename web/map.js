@@ -95,9 +95,8 @@
   // Tuned to be visible against the busy USGS Topo basemap at zoom 8 (the
   // regional default); thin lines disappeared into the topographic shading.
   function scoreWeight(score) {
-    if (score == null) return 5;
-    const s = Math.max(0, Math.min(1, score));
-    return 5 + Math.round(s * 4);  // 5..9 px
+    if (score == null) return 3;
+    return 4 + Math.round(Math.max(0, Math.min(1, score)) * 2);  // 4..6 px
   }
   function dotRadius(score) {
     if (score == null) return 6;
@@ -122,47 +121,50 @@
   }
 
   function initMap() {
-    map = L.map("map", { zoomControl: true }).setView([43.9, -91.7], 8);
-    // Both basemaps are USGS The National Map (public domain). OpenStreetMap's
-    // public tile servers were dropped: their usage policy doesn't cover an
-    // app building on them, commercial or at scale.
-    const usgsImagery = L.tileLayer(
-      "https://basemap.nationalmap.gov/arcgis/rest/services/USGSImageryTopo/MapServer/tile/{z}/{y}/{x}",
-      { attribution: "USGS The National Map", maxZoom: 16 }
-    );
-    // USGS Topo reads gradient, roads and access terrain well for fishing
-    // planning; it is the default, with imagery as the alternate layer.
-    const usgsTopo = L.tileLayer(
-      "https://basemap.nationalmap.gov/arcgis/rest/services/USGSTopo/MapServer/tile/{z}/{y}/{x}",
-      {
-        attribution: "USGS The National Map",
-        maxZoom: 16,
-      }
-    );
-    usgsTopo.addTo(map);
-    L.control.layers(
-      { "Topo": usgsTopo, "Imagery": usgsImagery },
-      {},
-      { position: "topright", collapsed: true }
-    ).addTo(map);
-
-    addLegendControl();
+    map = L.map("map", {
+      zoomControl: false, attributionControl: true, minZoom: 7, maxZoom: 15,
+      maxBounds: [[40.9, -96.4], [46.6, -86.9]], maxBoundsViscosity: 0.8,
+    })
+      .setView([43.75, -91.55], 8);
+    L.control.zoom({ position: "bottomright" }).addTo(map);
+    // Our own basemap: USGS 3DEP hillshade pre-rendered for the Driftless
+    // (src/scripts/build_basemap.py) + USGS hydrography. Public domain, fast,
+    // and the carved coulee terrain is the region's whole identity.
+    L.tileLayer("/tiles/hillshade/{z}/{x}/{y}.jpg", {
+      minZoom: 6, maxNativeZoom: 11, maxZoom: 15, className: "tiles-relief",
+      bounds: [[40.8, -96.5], [46.7, -86.8]],
+      attribution: "Terrain &amp; water: USGS The National Map",
+    }).addTo(map);
+    L.tileLayer("https://basemap.nationalmap.gov/arcgis/rest/services/USGSHydroCached/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 15, className: "tiles-hydro",
+    }).addTo(map);
+    map.createPane("towns");
+    map.getPane("towns").style.zIndex = 450;
+    map.getPane("towns").style.pointerEvents = "none";
+    loadTowns();
+    map.on("zoomend", updateTownVisibility);
   }
 
-  function addLegendControl() {
-    const legend = L.control({ position: "bottomleft" });
-    legend.onAdd = function () {
-      const div = L.DomUtil.create("div", "score-legend");
-      div.innerHTML = `
-        <div class="legend-title">Fishing outlook</div>
-        ${["go", "good", "slow", "skip", "closed"].map((k) =>
-          `<div class="legend-row"><span class="legend-swatch" style="background:${VERDICT[k].color}"></span>${VERDICT[k].label}</div>`).join("")}
-        <div class="legend-foot">thicker line = better</div>
-      `;
-      L.DomEvent.disableClickPropagation(div);
-      return div;
-    };
-    legend.addTo(map);
+  let townLayer = null;
+  let townsData = [];
+  async function loadTowns() {
+    try {
+      const resp = await fetch(`${API_BASE}/data/towns.json`);
+      townsData = await resp.json();
+    } catch { townsData = []; }
+    townLayer = L.layerGroup();
+    townsData.forEach((t) => {
+      const icon = L.divIcon({ className: `town town-t${t.tier}`, html: `<span>${escapeHtml(t.name)}</span>`, iconSize: null });
+      L.marker([t.lat, t.lon], { icon, pane: "towns", interactive: false, keyboard: false }).addTo(townLayer);
+    });
+    townLayer.addTo(map);
+    updateTownVisibility();
+  }
+
+  function updateTownVisibility() {
+    const z = map.getZoom();
+    document.body.classList.toggle("z-towns2", z >= 9);
+    document.body.classList.toggle("z-towns1", z >= 7);
   }
 
   function timeLocal(iso) {
@@ -198,36 +200,12 @@
     const el = document.getElementById("planning-summary");
     if (!el) return;
     try {
-      const [statusResp, windowsResp] = await Promise.all([
-        fetch(`${API_BASE}/status`),
-        fetch(`${API_BASE}/best-windows?hours=48&limit=4`),
-      ]);
-      const status = statusResp.ok ? await statusResp.json() : {};
-      const windows = windowsResp.ok ? await windowsResp.json() : [];
-      const top = windows[0] || null;
-      const isFresh = status.is_stale === false;
-      const statusClass = isFresh ? "fresh" : "stale";
-      const updated = relativeAge(status.stale_minutes);
-      const topScore = top ? applyResidual(top.reach_id, top.score) : null;
-      const topHtml = top
-        ? `<button type="button" class="summary-pick" data-reach="${top.reach_id}">
-             <span class="summary-label">Best next 48h</span>
-             <strong>${top.stream_name}</strong>
-             <span>${top.segment_name || top.state || ""} · ${timeLocal(top.valid_at)} · ${Math.round(topScore * 100)}/100</span>
-           </button>`
-        : `<div class="summary-pick summary-pick-empty"><span class="summary-label">Best next 48h</span><strong>Forecast warming up</strong><span>No ranked windows yet.</span></div>`;
-      el.innerHTML = `
-        <div class="freshness freshness-${statusClass}">
-          <span class="freshness-dot"></span>
-          <span>${isFresh ? "Fresh forecast" : "Stale forecast"}</span>
-          <span class="freshness-age">updated ${updated}</span>
-        </div>
-        ${topHtml}
-      `;
-      const btn = el.querySelector(".summary-pick[data-reach]");
-      if (btn) btn.addEventListener("click", () => showReachDetail(btn.dataset.reach));
-    } catch (err) {
-      el.innerHTML = `<p class="error">Forecast status unavailable: ${err.message}</p>`;
+      const resp = await fetch(`${API_BASE}/status`);
+      const status = resp.ok ? await resp.json() : {};
+      const fresh = status.is_stale === false;
+      el.innerHTML = `<span class="dot ${fresh ? "ok" : "stale"}"></span>Forecast updated ${relativeAge(status.stale_minutes)}`;
+    } catch {
+      el.textContent = "";
     }
   }
 
@@ -274,9 +252,8 @@
     const closed = isClosed(reach);
     return {
       color: reachColor(reach),
-      weight: closed ? 4 : scoreWeight(score),
-      opacity: closed || score == null ? 0.6 : 0.95,
-      dashArray: closed ? "2 7" : null,
+      weight: closed ? 3 : scoreWeight(score),
+      opacity: closed ? 0.85 : 1,
       lineCap: "round",
       lineJoin: "round",
     };
@@ -292,27 +269,131 @@
   }
 
   function renderContextLine(reaches) {
-    const el = document.getElementById("context-line");
+    // "Today" summary at the top of the home panel: date, what's open, what
+    // looks good — one glance, plain English.
+    const el = document.getElementById("today-summary");
     if (!el) return;
+    const now = new Date();
+    const day = now.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
     const byState = {};
-    reaches.forEach((r) => {
-      if (r.state && r.season && !byState[r.state]) byState[r.state] = r.season;
-    });
-    const order = ["MN", "WI", "IA"].filter((s) => byState[s]);
-    const cls = { open: "is-open", catch_and_release: "is-cr", closed: "is-closed" };
-    const word = { open: "open", catch_and_release: "C&R only", closed: "closed" };
-    el.innerHTML = order.map((st) => {
+    reaches.forEach((r) => { if (r.state && r.season && !byState[r.state]) byState[r.state] = r.season; });
+    const open = reaches.filter((r) => !isClosed(r));
+    const good = open.filter((r) => (effectiveScore(r) ?? 0) >= 0.5).length;
+    const closedStates = Object.entries(byState).filter(([, s]) => s.status === "closed");
+    const crStates = Object.entries(byState).filter(([, s]) => s.status === "catch_and_release");
+    const fmt = (iso) => iso ? new Date(iso + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+    let line;
+    if (!open.length) {
+      line = "Every stream is in its closed season.";
+    } else if (closedStates.length) {
+      const names = closedStates.map(([st, s]) => `${st} reopens ${fmt(s.next_change)}`).join(" · ");
+      line = `${open.length} of ${reaches.length} streams are open today. ${names}.`;
+    } else {
+      line = `${open.length} streams open${good ? ` · ${good} worth fishing right now` : ""}.`;
+    }
+    if (crStates.length) line += ` ${crStates.map(([st]) => st).join(" & ")}: catch & release only.`;
+    const chips = ["MN", "WI", "IA"].filter((st) => byState[st]).map((st) => {
       const s = byState[st];
-      const title = s.next_change ? `${s.label} — changes ${s.next_change}` : s.label;
-      return `<span class="context-chip ${cls[s.status] || ""}" title="${escapeHtml(title)}"><span class="dot"></span>${st} ${word[s.status] || s.status}</span>`;
+      const cls = s.status === "open" ? "is-open" : s.status === "catch_and_release" ? "is-cr" : "is-closed";
+      const word = s.status === "open" ? "Open" : s.status === "catch_and_release" ? "C&R" : "Closed";
+      return `<span class="state-chip ${cls}" title="${escapeHtml(s.label)}">${st} · ${word}</span>`;
     }).join("");
+    el.innerHTML = `<p class="today-date">${escapeHtml(day)}</p><p class="today-line">${escapeHtml(line)}</p><div class="state-chips">${chips}</div>`;
   }
 
+  // One row style for every list (best bets, near me, hatch watch, all streams).
+  function streamRow({ reachId, title, sub, chip, meta }) {
+    return `<li><button type="button" class="row" data-reach="${escapeHtml(reachId)}">
+        <span class="row-main"><span class="row-title">${title}</span>${sub ? `<span class="row-sub">${sub}</span>` : ""}</span>
+        <span class="row-side">${chip || ""}${meta ? `<span class="row-meta">${meta}</span>` : ""}</span>
+      </button></li>`;
+  }
+
+  function bindRows(container) {
+    container.querySelectorAll("button.row[data-reach]").forEach((b) =>
+      b.addEventListener("click", () => showReachDetail(b.dataset.reach)));
+  }
+
+  // Best score over the rest of today's fishable hours (5am–9pm local), from
+  // the hourly grid the scrubber already loads. Lists say "today", the map
+  // follows the scrubber hour.
+  function todayBest(reach) {
+    const hours = scrubGrid && scrubGrid.hours;
+    const scores = scrubGrid && scrubGrid.scores && scrubGrid.scores[reach.reach_id];
+    if (!hours || !scores) return effectiveScore(reach);
+    const today = new Date().toDateString();
+    let best = null;
+    hours.forEach((iso, i) => {
+      const d = new Date(iso);
+      const h = d.getHours();
+      if (d.toDateString() !== today || h < 5 || h > 21) return;
+      const v = scores[i];
+      if (v != null && (best == null || v > best)) best = v;
+    });
+    return applyResidual(reach.reach_id, best == null ? effectiveScore(reach) : best);
+  }
+
+  let allReaches = [];
+  function renderAllStreams() {
+    const el = document.getElementById("all-streams");
+    if (!el) return;
+    const q = (document.getElementById("stream-search")?.value || "").trim().toLowerCase();
+    let list = allReaches.slice();
+    let townHit = null;
+    if (q) {
+      townHit = townsData.find((t) => t.name.toLowerCase().startsWith(q));
+      list = list.filter((r) => {
+        const hay = `${r.stream_name} ${r.segment_name || ""} ${r.state}`.toLowerCase();
+        if (hay.includes(q)) return true;
+        if (townHit) {
+          const d = Math.hypot((r.centroid_lat - townHit.lat) * 111, (r.centroid_lon - townHit.lon) * 80);
+          return d <= 30;
+        }
+        return false;
+      });
+    }
+    const row = (r) => {
+      const score = todayBest(r);
+      const k = verdictKey(score, isClosed(r));
+      return streamRow({
+        reachId: r.reach_id,
+        title: `${escapeHtml(r.stream_name)}<span class="row-state">${escapeHtml(r.state || "")}</span>`,
+        sub: escapeHtml(r.segment_name || ""),
+        chip: `<span class="vdot v-${k}"></span><span class="vlabel">${VERDICT[k].label}</span>`,
+      });
+    };
+    const open = list.filter((r) => !isClosed(r)).sort((a, b) => (todayBest(b) ?? 0) - (todayBest(a) ?? 0));
+    const closed = list.filter((r) => isClosed(r)).sort((a, b) => a.stream_name.localeCompare(b.stream_name));
+    document.getElementById("all-count").textContent = q ? `${list.length} match${list.length === 1 ? "" : "es"}` : `${allReaches.length}`;
+    if (!list.length) {
+      el.innerHTML = `<p class="muted empty">No streams match “${escapeHtml(q)}”.</p>`;
+      return;
+    }
+    el.innerHTML = `
+      ${open.length ? `<p class="subgroup">Open · best today${townHit ? ` · near ${escapeHtml(townHit.name)}` : ""}</p><ol class="rows">${open.map(row).join("")}</ol>` : ""}
+      ${closed.length ? `<details class="closed-group"${q ? " open" : ""}><summary><span>Closed season</span><span class="muted">${closed.length}</span></summary><ol class="rows">${closed.map(row).join("")}</ol></details>` : ""}`;
+    bindRows(el);
+  }
+
+  let geometryById = null;
+  async function loadGeometry() {
+    if (geometryById) return geometryById;
+    try {
+      const resp = await fetch(`${API_BASE}/geometry`);
+      const fc = await resp.json();
+      geometryById = {};
+      (fc.features || []).forEach((f) => { geometryById[f.id] = f.geometry; });
+    } catch { geometryById = {}; }
+    return geometryById;
+  }
+
+  let firstFit = true;
   async function loadReaches() {
     const summaryEl = document.getElementById("summary");
     try {
-      const resp = await fetch(`${API_BASE}/reaches`);
+      const [resp, geoms] = await Promise.all([fetch(`${API_BASE}/reaches`), loadGeometry()]);
       const reaches = await resp.json();
+      allReaches = reaches;
       // Reuse one layer group: this runs on every refresh, and adding a new
       // group each time used to stack duplicate lines on the map.
       if (reachGroup) reachGroup.clearLayers();
@@ -320,173 +401,102 @@
       const group = reachGroup;
       markersByReach = {};
       renderContextLine(reaches);
-      const haloColor = cssVar("--surface", "#ffffff");
-      let withScore = 0;
-      reaches.forEach((reach) => {
+      renderAllStreams();
+      const casing = cssVar("--map-casing", "#ffffff");
+      const bounds = [];
+      // Closed reaches first so open (colored) water draws on top.
+      reaches.slice().sort((a, b) => Number(isClosed(b)) - Number(isClosed(a))).forEach((reach) => {
         if (reach.centroid_lat == null || reach.centroid_lon == null) return;
         const score = effectiveScore(reach);
-        if (score != null) withScore += 1;
-
-        let geom = null;
-        if (reach.geometry_geojson) {
-          try { geom = JSON.parse(reach.geometry_geojson); } catch {}
-        }
-        let primaryLayer;
-        const latlngs = geoLatLngs(geom);
-        if (latlngs && latlngs.length >= 1) {
-          // Render the reach as a polyline. Keep it as a separate layer (not
-          // L.geoJSON) so we can update its style cheaply when the scrubber moves.
-          primaryLayer = L.polyline(latlngs, styleForReach(reach));
-          // Halo line behind it (surface color) so the colored line reads on
-          // any basemap and in dark mode.
-          const halo = L.polyline(latlngs, {
-            color: haloColor,
-            weight: scoreWeight(score) + 5,
-            opacity: 0.8,
-            lineCap: "round",
-          });
+        const latlngs = geoLatLngs(geoms[reach.reach_id]);
+        let line, halo = null;
+        if (latlngs && latlngs.length) {
+          halo = L.polyline(latlngs, { color: casing, weight: scoreWeight(score) + 4, opacity: isClosed(reach) ? 0.6 : 0.95, lineCap: "round", interactive: false });
+          line = L.polyline(latlngs, styleForReach(reach));
           group.addLayer(halo);
-          group.addLayer(primaryLayer);
+          group.addLayer(line);
+          bounds.push(...(Array.isArray(latlngs[0][0]) ? latlngs.flat() : latlngs));
         } else {
-          primaryLayer = L.circleMarker([reach.centroid_lat, reach.centroid_lon], {
-            radius: dotRadius(score),
-            color: reachColor(reach),
-            weight: 3,
-            fillColor: reachColor(reach),
-            fillOpacity: score == null ? 0.45 : 0.85,
-          });
-          group.addLayer(primaryLayer);
+          line = L.circleMarker([reach.centroid_lat, reach.centroid_lon], { radius: 6, color: casing, weight: 2, fillColor: reachColor(reach), fillOpacity: 1 });
+          group.addLayer(line);
+          bounds.push([reach.centroid_lat, reach.centroid_lon]);
         }
-        primaryLayer.bindTooltip(reachTooltip(reach), { sticky: true });
-        primaryLayer.on("click", () => showReachDetail(reach.reach_id));
-
-        // Centroid marker — primary tap target. Sized with score, filled with
-        // score color, dark border for contrast against the topo basemap.
-        const dot = L.circleMarker([reach.centroid_lat, reach.centroid_lon], {
-          radius: isClosed(reach) ? 5 : dotRadius(score),
-          color: haloColor,
-          weight: 2.5,
-          fillColor: reachColor(reach),
-          fillOpacity: score == null ? 0.6 : 1,
-        });
-        dot.bindTooltip(reachTooltip(reach), { direction: "top", offset: [0, -6] });
-        dot.on("click", () => showReachDetail(reach.reach_id));
-        group.addLayer(dot);
-
-        markersByReach[reach.reach_id] = { line: primaryLayer, dot, reach };
+        line.bindTooltip(reachTooltip(reach), { sticky: true, className: "reach-tip" });
+        line.on("click", () => showReachDetail(reach.reach_id));
+        markersByReach[reach.reach_id] = { line, halo, dot: null, reach };
       });
+      if (firstFit && bounds.length) {
+        const padLeft = window.innerWidth > 720 ? 440 : 20;
+        map.fitBounds(bounds, { paddingTopLeft: [padLeft, 30], paddingBottomRight: [30, window.innerWidth > 720 ? 90 : 220] });
+        firstFit = false;
+      }
+      if (focusedReachId) focusReach(focusedReachId, !pendingFly);
       const openCount = reaches.filter((r) => !isClosed(r)).length;
-      summaryEl.textContent = `${reaches.length} streams · ${openCount} open today`;
+      if (summaryEl) summaryEl.textContent = `${reaches.length} streams · ${openCount} open today`;
     } catch (err) {
-      summaryEl.innerHTML = `<span class="error">Error loading reaches: ${err.message}</span>`;
+      const el = document.getElementById("all-streams");
+      if (el) el.innerHTML = `<p class="error">Couldn't load streams: ${escapeHtml(err.message)}</p>`;
     }
   }
 
   function repaintReaches() {
-    Object.values(markersByReach).forEach(({ line, dot, reach }) => {
-      const score = effectiveScore(reach);
-      if (line.setStyle) line.setStyle(styleForReach(reach));
+    Object.values(markersByReach).forEach(({ line, reach }) => {
+      if (line.setStyle) line.setStyle(line instanceof L.CircleMarker ? { fillColor: reachColor(reach) } : styleForReach(reach));
       if (line.setTooltipContent) line.setTooltipContent(reachTooltip(reach));
-      if (dot) {
-        if (dot.setStyle) {
-          dot.setStyle({
-            fillColor: reachColor(reach),
-            fillOpacity: score == null ? 0.6 : 1,
-          });
-        }
-        // setRadius is on circleMarker — updates the dot size with the new score.
-        if (dot.setRadius) dot.setRadius(isClosed(reach) ? 5 : dotRadius(score));
-        if (dot.setTooltipContent) dot.setTooltipContent(reachTooltip(reach));
-      }
     });
+    if (focusedReachId) focusReach(focusedReachId, true);
+    renderAllStreams();
   }
 
   async function loadBestWindows() {
     const listEl = document.getElementById("windows-list");
     try {
-      const resp = await fetch(`${API_BASE}/best-windows?hours=72&limit=10`);
+      const resp = await fetch(`${API_BASE}/best-windows?hours=72&limit=6`);
       let windows = await resp.json();
       if (!windows.length) {
-        listEl.innerHTML = `<li class="muted">forecast pipeline still warming up — retrying…</li>`;
+        listEl.innerHTML = `<li class="empty muted">No open streams look worth the drive in the next 3 days.</li>`;
         return;
       }
-      // Apply per-reach residual on the displayed score and re-sort so the
-      // ranked list agrees with the on-map colors.
       windows = windows
-        .map((w) => {
-          const score = applyResidual(w.reach_id, w.score);
-          const rank_score = w.rank_score != null ? applyResidual(w.reach_id, w.rank_score) : score;
-          return { ...w, score, rank_score };
-        })
+        .map((w) => ({ ...w, score: applyResidual(w.reach_id, w.score), rank_score: w.rank_score != null ? applyResidual(w.reach_id, w.rank_score) : applyResidual(w.reach_id, w.score) }))
         .sort((a, b) => b.rank_score - a.rank_score);
       listEl.innerHTML = windows.map((w) => {
-        const score = w.score;
-        const color = scoreColor(score);
-        const proxyText = w.gauge_is_proxy
-          ? ` · proxy ${w.proxy_distance_km != null ? `~${Math.round(w.proxy_distance_km)} km` : "gauge"}`
-          : "";
-        const reason = Array.isArray(w.reason) && w.reason.length
-          ? `<span class="window-reason">${w.reason.map(escapeHtml).join(" · ")}</span>`
-          : "";
+        const k = verdictKey(w.score, false);
         const play = w.regime && w.regime.label ? escapeHtml(w.regime.label) : "";
-        return `
-          <li data-reach="${w.reach_id}">
-            <button type="button" class="window-row">
-              <span class="window-main">
-                <span class="window-name">${escapeHtml(w.stream_name)}<span class="state">${escapeHtml(w.state || "")}</span></span>
-                <span class="window-sub">${escapeHtml(w.segment_name || "")} · ${timeLocal(w.valid_at)}</span>
-                ${play ? `<span class="window-reason">${play}</span>` : ""}
-              </span>
-              ${vchip(score, false)}
-              <span class="window-score">${(score * 100).toFixed(0)}</span>
-            </button>
-          </li>
-        `;
+        return streamRow({
+          reachId: w.reach_id,
+          title: `${escapeHtml(w.stream_name)}<span class="row-state">${escapeHtml(w.state || "")}</span>`,
+          sub: [timeLocal(w.valid_at), play].filter(Boolean).join(" · "),
+          chip: `<span class="vchip v-${k}">${VERDICT[k].label}</span>`,
+        });
       }).join("");
-      listEl.querySelectorAll("li[data-reach]").forEach((li) => {
-        li.querySelector("button").addEventListener("click", () => showReachDetail(li.dataset.reach));
-      });
+      bindRows(listEl);
     } catch (err) {
-      listEl.innerHTML = `<li class="error">${err.message}</li>`;
+      listEl.innerHTML = `<li class="error">${escapeHtml(err.message)}</li>`;
     }
   }
 
   async function loadHatchWatch() {
     const listEl = document.getElementById("hatch-watch-list");
+    const group = document.getElementById("hatch-watch-group");
     if (!listEl) return;
     try {
-      const resp = await fetch(`${API_BASE}/hatch-windows?hours=168&limit=6&min_surface=0.25`);
+      const resp = await fetch(`${API_BASE}/hatch-windows?hours=168&limit=4&min_surface=0.25`);
       const windows = resp.ok ? await resp.json() : [];
-      if (!windows.length) {
-        listEl.innerHTML = `<li class="muted">No strong surface signal in the 7-day forecast.</li>`;
-        return;
-      }
+      if (group) group.classList.toggle("hidden", !windows.length);
       listEl.innerHTML = windows.map((w) => {
-        const score = applyResidual(w.reach_id, w.score);
-        const species = w.top_species || {};
-        const speciesLabel = species.common_name || species.id || "surface activity";
-        const surface = w.surface_signal != null ? `${Math.round(w.surface_signal * 100)}% surface` : "surface";
-        const confidence = w.confidence_score != null ? ` · confidence ${Math.round(w.confidence_score * 100)}` : "";
-        const reason = Array.isArray(w.reason) && w.reason.length
-          ? `<span class="window-reason">${w.reason.map(escapeHtml).join(" · ")}</span>`
-          : "";
-        return `
-          <li data-reach="${w.reach_id}">
-            <button type="button" class="window-row window-row-hatch">
-              <span class="window-main">
-                <span class="window-name">${escapeHtml(speciesLabel)}</span>
-                <span class="window-sub">${escapeHtml(w.stream_name || "stream")} · ${timeLocal(w.valid_at)}</span>
-              </span>
-              <span class="chip chip-accent">${surface}</span>
-            </button>
-          </li>
-        `;
+        const sp = w.top_species || {};
+        const pct = w.surface_signal != null ? `${Math.round(w.surface_signal * 100)}%` : "";
+        return streamRow({
+          reachId: w.reach_id,
+          title: escapeHtml(sp.common_name || sp.id || "Surface activity"),
+          sub: `${escapeHtml(w.stream_name || "")} · ${timeLocal(w.valid_at)}`,
+          meta: pct,
+        });
       }).join("");
-      listEl.querySelectorAll("li[data-reach]").forEach((li) => {
-        li.querySelector("button").addEventListener("click", () => showReachDetail(li.dataset.reach));
-      });
-    } catch (err) {
-      listEl.innerHTML = `<li class="error">${err.message}</li>`;
+      bindRows(listEl);
+    } catch {
+      if (group) group.classList.add("hidden");
     }
   }
 
@@ -998,7 +1008,8 @@
     const list = (items) => (items || []).map((x) => `<li>${escapeHtml(x)}</li>`).join("");
     return `
       <section class="section tactics">
-        <h3>How &amp; where to fish${whenLabel ? ` · ${escapeHtml(whenLabel)}` : ""} ${helpButton("season_and_tactics")}</h3>
+        <h3>How to fish it ${helpButton("season_and_tactics")}</h3>
+        ${whenLabel ? `<p class="section-sub">${escapeHtml(whenLabel)}</p>` : ""}
         <p class="tactic-method"><strong>${escapeHtml(t.method)}</strong></p>
         <div class="tactic-grid">
           ${t.flies && t.flies.length ? `<div class="tactic-block"><span class="tactic-k">Tie on</span><ul class="tactic-flies">${list(t.flies.slice(0, 6))}</ul></div>` : ""}
@@ -1035,17 +1046,16 @@
         listEl.innerHTML = rows.map((r) => {
           const today = r.today || {};
           const tmrw = r.tomorrow || {};
-          return `<li><button type="button" class="window-row" data-reach="${r.reach_id}">
-              <span class="vchip v-${today.verdict || "closed"}">${escapeHtml(today.verdict_label || "—")}</span>
-              <span class="window-main">
-                <span class="window-name">${escapeHtml(r.stream_name)}<span class="state">${r.distance_mi} mi</span></span>
-                <span class="window-sub">${escapeHtml(today.advice || "")}</span>
-                ${tmrw.verdict ? `<span class="window-reason">Tomorrow: ${escapeHtml(tmrw.verdict_label)} ${tmrw.verdict === "closed" ? "" : escapeHtml(tmrw.best_window.label)}</span>` : ""}
-              </span>
-            </button></li>`;
+          const win = today.verdict && today.verdict !== "closed" ? today.best_window.label : "";
+          const tm = tmrw.verdict ? `Tomorrow ${tmrw.verdict_label.toLowerCase()}` : "";
+          return streamRow({
+            reachId: r.reach_id,
+            title: `${escapeHtml(r.stream_name)}<span class="row-state">${r.distance_mi} mi</span>`,
+            sub: [win && `Best ${win}`, tm].filter(Boolean).map(escapeHtml).join(" · "),
+            chip: `<span class="vchip v-${today.verdict || "closed"}">${escapeHtml(today.verdict_label || "—")}</span>`,
+          });
         }).join("");
-        listEl.querySelectorAll("button[data-reach]").forEach((b) =>
-          b.addEventListener("click", () => showReachDetail(b.dataset.reach)));
+        bindRows(listEl);
       } catch (err) {
         show(err.message);
       }
@@ -1055,6 +1065,7 @@
 
   async function showReachDetail(reachId, opts = {}) {
     currentDetailReachId = reachId;
+    focusReach(reachId);
     setView("detail", { silent: true });
     if (!opts.silent) writeHash(`#/reach/${reachId}`);
     // On mobile the sheet is collapsed by default; opening detail should pop it up.
@@ -1130,7 +1141,7 @@
       const tacticsHour = tacticsHourFor(hours, fc.days);
       const tacticsHTML = renderTactics(
         tacticsHour.tactics,
-        tacticsHour === now ? "right now" : `today's best window ${(fc.days && fc.days[0] && fc.days[0].best_window.label) || ""}`,
+        tacticsHour === now ? "For right now" : `For today's best window, ${(fc.days && fc.days[0] && fc.days[0].best_window.label) || ""}`,
       );
 
       const seasonChip = fc.season
@@ -1222,6 +1233,7 @@
       }
       if (scrubber) scrubber.classList.toggle("scrubber-empty", n < 2);
       updateScrubLabel();
+      renderAllStreams();
     } catch (err) {
       markScrubUnavailable();
     }
@@ -2109,6 +2121,42 @@
   function closeDetail() {
     setView(currentView === "detail" ? "windows" : currentView);
     currentDetailReachId = null;
+    focusReach(null);
+  }
+
+  // Selected stream: zoom to it, draw it on top and dim the rest.
+  let focusedReachId = null;
+  let pendingFly = false;
+  function focusReach(reachId, noFly = false) {
+    focusedReachId = reachId;
+    Object.entries(markersByReach).forEach(([id, { line, halo, reach }]) => {
+      if (!line.setStyle || line instanceof L.CircleMarker) return;
+      const base = styleForReach(reach);
+      const haloOpacity = isClosed(reach) ? 0.6 : 0.95;
+      if (!reachId) {
+        line.setStyle(base);
+        if (halo) halo.setStyle({ opacity: haloOpacity });
+        return;
+      }
+      if (id === reachId) {
+        if (halo) { halo.setStyle({ opacity: 1, weight: base.weight + 7 }); halo.bringToFront(); }
+        line.setStyle({ ...base, weight: base.weight + 3, opacity: 1 });
+        line.bringToFront();
+      } else {
+        line.setStyle({ ...base, opacity: 0.22 });
+        if (halo) halo.setStyle({ opacity: 0.15 });
+      }
+    });
+    if (!reachId || noFly) return;
+    const m = markersByReach[reachId];
+    if (!m || !m.line.getBounds) { pendingFly = true; return; }
+    pendingFly = false;
+    const desktop = window.innerWidth > 720;
+    map.flyToBounds(m.line.getBounds(), {
+      paddingTopLeft: desktop ? [460, 80] : [30, 80],
+      paddingBottomRight: desktop ? [80, 100] : [30, Math.round(window.innerHeight * 0.55)],
+      maxZoom: 12, duration: 0.6,
+    });
   }
 
   function shortSpeciesName(name) {
@@ -2242,6 +2290,13 @@
   // Offline shell + last-good forecast (web/sw.js). Same-origin prod only.
   if ("serviceWorker" in navigator && API_BASE === "") {
     window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js").catch(() => {}));
+  }
+  const searchEl = document.getElementById("stream-search");
+  if (searchEl) {
+    searchEl.addEventListener("input", () => {
+      if (currentView !== "windows") setView("windows");
+      renderAllStreams();
+    });
   }
   const nearBtn = document.getElementById("near-me-btn");
   if (nearBtn) nearBtn.addEventListener("click", loadNearMe);
