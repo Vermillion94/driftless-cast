@@ -5,7 +5,7 @@ from typing import Dict, Optional
 import requests
 
 BASE_URL = "https://api.weather.gov"
-USER_AGENT = "driftless-cast/0.1 (contact: hello@example.com)"
+from src.ingest.identity import USER_AGENT
 LOG = logging.getLogger(__name__)
 
 HEADERS = {

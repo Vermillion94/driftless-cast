@@ -2,7 +2,7 @@
 Per-observation DD calculation for calibration.
 
 For each iNat observation (date, lat, lon) we:
-  1. Fetch Jan 1 → observation date daily-mean air temp from Open-Meteo archive
+  1. Fetch Jan 1 → observation date daily-mean air temp from NOAA ACIS
   2. Run Mohseni to get daily-mean water temp
   3. Accumulate DD at the species' base temperature
   4. Return the DD-C value on the observation date

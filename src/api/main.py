@@ -1,4 +1,5 @@
 import logging
+import mimetypes
 import os
 import random
 import threading
@@ -14,6 +15,9 @@ from src.jobs.forecast_refresh import trigger_forecast_refresh
 
 LOG = logging.getLogger(__name__)
 
+# The PWA manifest needs its proper type; Python's mimetypes doesn't know it.
+mimetypes.add_type("application/manifest+json", ".webmanifest")
+
 app = FastAPI(title="Driftless Cast")
 app.add_middleware(
     CORSMiddleware,
@@ -22,6 +26,49 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(routes.router)
+
+
+# Security headers on every response. The CSP lists exactly the third-party
+# hosts the page uses: Leaflet (unpkg), Google Fonts, and the two basemaps.
+# 'unsafe-inline' for styles only — the UI sets per-element colors inline.
+CSP = "; ".join([
+    "default-src 'self'",
+    "script-src 'self' https://unpkg.com",
+    "style-src 'self' 'unsafe-inline' https://unpkg.com https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: https://basemap.nationalmap.gov https://unpkg.com",
+    "connect-src 'self'",
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+])
+SECURITY_HEADERS = {
+    "Content-Security-Policy": CSP,
+    "X-Content-Type-Options": "nosniff",
+    "Referrer-Policy": "strict-origin-when-cross-origin",
+    "Permissions-Policy": "geolocation=(self), camera=(), microphone=()",
+    "X-Frame-Options": "DENY",
+}
+
+
+@app.middleware("http")
+async def _security_headers(request, call_next):
+    response = await call_next(request)
+    for k, v in SECURITY_HEADERS.items():
+        response.headers.setdefault(k, v)
+    if request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https":
+        response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+    return response
+
+
+@app.get("/healthz", include_in_schema=False)
+async def healthz() -> dict:
+    """Liveness for the Fly health check. Async and dependency-free so it
+    answers even while a forecast rebuild is saturating the shared CPU
+    (the old check hit /openapi.json and timed out mid-rebuild)."""
+    return {"ok": True}
 
 # Serve the static frontend from the same process when SERVE_STATIC=1 (or when
 # the web/ directory is alongside the source). This makes single-port hosting
@@ -33,7 +80,7 @@ if _WEB_DIR.exists() and os.getenv("SERVE_STATIC", "1") != "0":
     app.mount("/", StaticFiles(directory=str(_WEB_DIR), html=True), name="web")
 
 # Forecast refresh cadence. NWS hourly forecast updates ~hourly; QPF and
-# Open-Meteo pressure similarly. 60 min is the natural sync interval. Jitter
+# USGS flows similarly. 60 min is the natural sync interval. Jitter
 # stops multiple instances from stampeding USGS / NWS at exactly :00.
 REBUILD_INTERVAL_SECONDS = int(os.getenv("DC_REBUILD_INTERVAL_SECONDS", "3600"))
 REBUILD_JITTER_SECONDS = 120

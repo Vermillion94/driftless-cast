@@ -29,6 +29,8 @@ jobs:
         run: python -m src.scripts.bootstrap_reaches
       - name: Run acceptance tests
         run: python -m pytest tests/ -q
+      - name: Check frontend JS syntax
+        run: node --check web/map.js && node --check web/sw.js
 
   backtest:
     name: Hindcast against USGS + Mohseni

@@ -49,10 +49,10 @@ primary_region = "ord"          # Chicago — closest to the Driftless region
 
   [[http_service.checks]]
     interval = "30s"
-    timeout = "5s"
-    grace_period = "20s"
+    timeout = "10s"
+    grace_period = "30s"
     method = "get"
-    path = "/openapi.json"
+    path = "/healthz"
 
 [[mounts]]
   source = "dc_data"

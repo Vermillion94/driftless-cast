@@ -1,11 +1,16 @@
+import hmac
 import json
 import logging
+import os
+import threading
+import time
+from collections import defaultdict, deque
 from pathlib import Path
 
 import requests
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
 
 from src.db import (
@@ -570,6 +575,9 @@ def get_hatch_calendar(reach_id: Optional[str] = None) -> dict:
             "first_present": first_active["day"] if first_active else None,
             "last_present": last_active["day"] if last_active else None,
             "fly_patterns": sp.get("fly_patterns") or [],
+            # Regional abundance (1.0 = full weight). <0.2 means "documented
+            # elsewhere but not a meaningful Driftless hatch" (Hex, Isonychia).
+            "driftless_weight": float(sp.get("driftless_weight", 1.0)),
             "samples": sampled,
         })
     return {
@@ -616,24 +624,62 @@ def get_education_topic(topic_id: str) -> dict:
 
 
 class CatchLogPayload(BaseModel):
-    reach_id: str
-    fished_at: str = Field(description="ISO8601 timestamp of when the trip happened")
+    reach_id: str = Field(max_length=80)
+    fished_at: str = Field(max_length=40, description="ISO8601 timestamp of when the trip happened")
     success: int = Field(ge=0, le=3, description="0 skunked, 1 a few, 2 solid, 3 great")
-    reporter_name: Optional[str] = None
-    method: Optional[str] = None
-    session_window: Optional[str] = None
+    reporter_name: Optional[str] = Field(default=None, max_length=60)
+    method: Optional[str] = Field(default=None, max_length=60)
+    session_window: Optional[str] = Field(default=None, max_length=40)
     topwater_level: Optional[int] = Field(default=None, ge=0, le=3)
-    insect_activity: Optional[str] = None
-    species_caught: Optional[str] = None
-    worked: Optional[str] = None
-    didnt_work: Optional[str] = None
-    notes: Optional[str] = None
-    fly_used: Optional[str] = None
-    water_temp_f: Optional[float] = None
+    insect_activity: Optional[str] = Field(default=None, max_length=300)
+    species_caught: Optional[str] = Field(default=None, max_length=300)
+    worked: Optional[str] = Field(default=None, max_length=1000)
+    didnt_work: Optional[str] = Field(default=None, max_length=1000)
+    notes: Optional[str] = Field(default=None, max_length=2000)
+    fly_used: Optional[str] = Field(default=None, max_length=200)
+    water_temp_f: Optional[float] = Field(default=None, ge=28.0, le=95.0)
+
+
+# Per-client trip-report rate limit (in-process; single machine). Generous for
+# a real angler, tight enough to make scripted spam pointless.
+CATCH_LOG_LIMIT = 12
+CATCH_LOG_WINDOW_S = 3600
+_catch_log_hits: Dict[str, deque] = defaultdict(deque)
+_catch_log_lock = threading.Lock()
+
+
+def _client_key(request: Request) -> str:
+    # Fly's proxy puts the real client address in Fly-Client-IP.
+    return (request.headers.get("fly-client-ip")
+            or (request.client.host if request.client else "unknown"))
+
+
+def _rate_limited(key: str) -> bool:
+    now = time.monotonic()
+    with _catch_log_lock:
+        q = _catch_log_hits[key]
+        while q and now - q[0] > CATCH_LOG_WINDOW_S:
+            q.popleft()
+        if len(q) >= CATCH_LOG_LIMIT:
+            return True
+        q.append(now)
+        if len(_catch_log_hits) > 5000:
+            _catch_log_hits.clear()
+        return False
 
 
 @router.post("/catch-log")
-def post_catch_log(payload: CatchLogPayload) -> dict:
+def post_catch_log(payload: CatchLogPayload, request: Request) -> dict:
+    if _rate_limited(_client_key(request)):
+        raise HTTPException(status_code=429, detail="Too many reports from this connection — try again later")
+    try:
+        fished = datetime.fromisoformat(payload.fished_at.replace("Z", "+00:00"))
+    except ValueError:
+        raise HTTPException(status_code=422, detail="fished_at must be an ISO8601 timestamp")
+    if fished.tzinfo is None:
+        fished = fished.replace(tzinfo=timezone.utc)
+    if fished > datetime.now(timezone.utc) + timedelta(days=1):
+        raise HTTPException(status_code=422, detail="fished_at is in the future")
     if not get_reach(payload.reach_id):
         raise HTTPException(status_code=404, detail="Unknown reach")
     entry = payload.model_dump()
@@ -669,12 +715,28 @@ def get_residuals() -> dict:
     return {"reaches": reach_residuals()}
 
 
+# A full rebuild makes ~10 upstream calls per reach (USGS, NWS, NOAA). The
+# in-process loop already rebuilds hourly, so public callers may only kick a
+# rebuild when the last one is at least this old. DC_ADMIN_TOKEN (sent as the
+# X-Admin-Token header) bypasses the cooldown for operators.
+REFRESH_COOLDOWN_MINUTES = 20
+
+
 @router.post("/refresh")
-def refresh_forecast() -> dict:
-    # Manual/scheduled kick for the forecast pipeline. Keep this non-blocking
-    # so waking a sleeping Fly machine does not turn into a long request-path
-    # rebuild that the proxy reports as 503.
+def refresh_forecast(x_admin_token: Optional[str] = Header(default=None)) -> dict:
+    # Non-blocking: the rebuild runs in a background thread.
     from src.jobs.forecast_refresh import refresh_state, trigger_forecast_refresh
-    started = trigger_forecast_refresh()
+    admin = os.getenv("DC_ADMIN_TOKEN")
+    is_admin = bool(admin) and x_admin_token is not None and hmac.compare_digest(admin, x_admin_token)
     state = refresh_state()
-    return {"started": started, **state}
+    if not is_admin and state.get("last_started_at"):
+        try:
+            last = datetime.fromisoformat(str(state["last_started_at"]))
+            age_min = (datetime.now(timezone.utc) - last).total_seconds() / 60.0
+        except ValueError:
+            age_min = REFRESH_COOLDOWN_MINUTES
+        if age_min < REFRESH_COOLDOWN_MINUTES:
+            return {"started": False, "reason": "cooldown",
+                    "retry_after_minutes": round(REFRESH_COOLDOWN_MINUTES - age_min, 1), **state}
+    started = trigger_forecast_refresh()
+    return {"started": started, **refresh_state()}
