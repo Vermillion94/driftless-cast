@@ -1,0 +1,352 @@
+[
+ {
+  "name": "Rochester",
+  "state": "MN",
+  "tier": 1,
+  "lat": 44.0143,
+  "lon": -92.4786
+ },
+ {
+  "name": "La Crosse",
+  "state": "WI",
+  "tier": 1,
+  "lat": 43.8251,
+  "lon": -91.2246
+ },
+ {
+  "name": "Winona",
+  "state": "MN",
+  "tier": 1,
+  "lat": 44.0513,
+  "lon": -91.6681
+ },
+ {
+  "name": "Decorah",
+  "state": "IA",
+  "tier": 1,
+  "lat": 43.3016,
+  "lon": -91.7848
+ },
+ {
+  "name": "Eau Claire",
+  "state": "WI",
+  "tier": 1,
+  "lat": 44.8183,
+  "lon": -91.4948
+ },
+ {
+  "name": "Dubuque",
+  "state": "IA",
+  "tier": 1,
+  "lat": 42.4989,
+  "lon": -90.7073
+ },
+ {
+  "name": "Red Wing",
+  "state": "MN",
+  "tier": 1,
+  "lat": 44.5813,
+  "lon": -92.605
+ },
+ {
+  "name": "Prairie du Chien",
+  "state": "WI",
+  "tier": 1,
+  "lat": 43.0416,
+  "lon": -91.1354
+ },
+ {
+  "name": "Lanesboro",
+  "state": "MN",
+  "tier": 2,
+  "lat": 43.7151,
+  "lon": -91.9702
+ },
+ {
+  "name": "Preston",
+  "state": "MN",
+  "tier": 2,
+  "lat": 43.6726,
+  "lon": -92.0828
+ },
+ {
+  "name": "Chatfield",
+  "state": "MN",
+  "tier": 2,
+  "lat": 43.8445,
+  "lon": -92.1829
+ },
+ {
+  "name": "Caledonia",
+  "state": "MN",
+  "tier": 2,
+  "lat": 43.6341,
+  "lon": -91.5004
+ },
+ {
+  "name": "Houston",
+  "state": "MN",
+  "tier": 2,
+  "lat": 43.7539,
+  "lon": -91.5713
+ },
+ {
+  "name": "Rushford",
+  "state": "MN",
+  "tier": 2,
+  "lat": 43.8134,
+  "lon": -91.7538
+ },
+ {
+  "name": "Spring Grove",
+  "state": "MN",
+  "tier": 2,
+  "lat": 43.5608,
+  "lon": -91.637
+ },
+ {
+  "name": "Harmony",
+  "state": "MN",
+  "tier": 2,
+  "lat": 43.554,
+  "lon": -92.0075
+ },
+ {
+  "name": "Elba",
+  "state": "MN",
+  "tier": 2,
+  "lat": 44.0867,
+  "lon": -92.0169
+ },
+ {
+  "name": "St. Charles",
+  "state": "MN",
+  "tier": 2,
+  "lat": 43.9688,
+  "lon": -92.0599
+ },
+ {
+  "name": "Wabasha",
+  "state": "MN",
+  "tier": 2,
+  "lat": 44.3713,
+  "lon": -92.0458
+ },
+ {
+  "name": "Lake City",
+  "state": "MN",
+  "tier": 2,
+  "lat": 44.4457,
+  "lon": -92.2809
+ },
+ {
+  "name": "Zumbrota",
+  "state": "MN",
+  "tier": 2,
+  "lat": 44.2952,
+  "lon": -92.6729
+ },
+ {
+  "name": "Viroqua",
+  "state": "WI",
+  "tier": 2,
+  "lat": 43.5606,
+  "lon": -90.8862
+ },
+ {
+  "name": "Westby",
+  "state": "WI",
+  "tier": 2,
+  "lat": 43.6529,
+  "lon": -90.8582
+ },
+ {
+  "name": "Coon Valley",
+  "state": "WI",
+  "tier": 2,
+  "lat": 43.7019,
+  "lon": -91.0114
+ },
+ {
+  "name": "Cashton",
+  "state": "WI",
+  "tier": 2,
+  "lat": 43.7412,
+  "lon": -90.7866
+ },
+ {
+  "name": "La Farge",
+  "state": "WI",
+  "tier": 2,
+  "lat": 43.5782,
+  "lon": -90.6383
+ },
+ {
+  "name": "Readstown",
+  "state": "WI",
+  "tier": 2,
+  "lat": 43.4487,
+  "lon": -90.7591
+ },
+ {
+  "name": "Richland Center",
+  "state": "WI",
+  "tier": 2,
+  "lat": 43.3396,
+  "lon": -90.3834
+ },
+ {
+  "name": "Sparta",
+  "state": "WI",
+  "tier": 2,
+  "lat": 43.9382,
+  "lon": -90.8127
+ },
+ {
+  "name": "Arcadia",
+  "state": "WI",
+  "tier": 2,
+  "lat": 44.2486,
+  "lon": -91.4916
+ },
+ {
+  "name": "Mondovi",
+  "state": "WI",
+  "tier": 2,
+  "lat": 44.5703,
+  "lon": -91.6669
+ },
+ {
+  "name": "River Falls",
+  "state": "WI",
+  "tier": 2,
+  "lat": 44.8609,
+  "lon": -92.6257
+ },
+ {
+  "name": "Ellsworth",
+  "state": "WI",
+  "tier": 2,
+  "lat": 44.7362,
+  "lon": -92.4802
+ },
+ {
+  "name": "Menomonie",
+  "state": "WI",
+  "tier": 2,
+  "lat": 44.8892,
+  "lon": -91.9098
+ },
+ {
+  "name": "Durand",
+  "state": "WI",
+  "tier": 2,
+  "lat": 44.6285,
+  "lon": -91.9558
+ },
+ {
+  "name": "Alma",
+  "state": "WI",
+  "tier": 2,
+  "lat": 44.34,
+  "lon": -91.9185
+ },
+ {
+  "name": "Black River Falls",
+  "state": "WI",
+  "tier": 2,
+  "lat": 44.3003,
+  "lon": -90.8369
+ },
+ {
+  "name": "Gays Mills",
+  "state": "WI",
+  "tier": 2,
+  "lat": 43.3301,
+  "lon": -90.8462
+ },
+ {
+  "name": "Soldiers Grove",
+  "state": "WI",
+  "tier": 2,
+  "lat": 43.3923,
+  "lon": -90.7734
+ },
+ {
+  "name": "Ontario",
+  "state": "WI",
+  "tier": 2,
+  "lat": 43.7219,
+  "lon": -90.5932
+ },
+ {
+  "name": "Boscobel",
+  "state": "WI",
+  "tier": 2,
+  "lat": 43.1471,
+  "lon": -90.7049
+ },
+ {
+  "name": "Fennimore",
+  "state": "WI",
+  "tier": 2,
+  "lat": 42.9857,
+  "lon": -90.6532
+ },
+ {
+  "name": "Plum City",
+  "state": "WI",
+  "tier": 2,
+  "lat": 44.6356,
+  "lon": -92.1917
+ },
+ {
+  "name": "Waukon",
+  "state": "IA",
+  "tier": 2,
+  "lat": 43.2685,
+  "lon": -91.4785
+ },
+ {
+  "name": "Elkader",
+  "state": "IA",
+  "tier": 2,
+  "lat": 42.8574,
+  "lon": -91.4028
+ },
+ {
+  "name": "McGregor",
+  "state": "IA",
+  "tier": 2,
+  "lat": 43.0283,
+  "lon": -91.1857
+ },
+ {
+  "name": "Cresco",
+  "state": "IA",
+  "tier": 2,
+  "lat": 43.3717,
+  "lon": -92.1163
+ },
+ {
+  "name": "Postville",
+  "state": "IA",
+  "tier": 2,
+  "lat": 43.0844,
+  "lon": -91.5678
+ },
+ {
+  "name": "Guttenberg",
+  "state": "IA",
+  "tier": 2,
+  "lat": 42.7886,
+  "lon": -91.1088
+ },
+ {
+  "name": "Lansing",
+  "state": "IA",
+  "tier": 2,
+  "lat": 43.3598,
+  "lon": -91.2229
+ }
+]

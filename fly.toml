@@ -63,4 +63,6 @@ primary_region = "ord"          # Chicago — closest to the Driftless region
 
 [[vm]]
   size = "shared-cpu-1x"
-  memory = "256mb"
+  # 512 MB: at 256 MB a forecast rebuild plus a few concurrent page loads
+  # was OOM-killing uvicorn (Oct 2026). ~$1.30/mo more.
+  memory = "512mb"
