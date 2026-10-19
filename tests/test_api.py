@@ -137,3 +137,42 @@ def test_fishery_metadata_roundtrips_through_upsert_and_summary():
     assert summary["region"] == "Driftless"
     assert summary["fishery"]["tier"] == "premier"
     assert summary["fishery"]["wild_population"] is True
+
+
+# ── Hardening ──────────────────────────────────────────────────────────────
+
+def test_healthz_is_trivial():
+    client = TestClient(app)
+    assert client.get("/healthz").json() == {"ok": True}
+
+
+def test_refresh_respects_cooldown(monkeypatch):
+    from datetime import datetime, timezone
+    import src.jobs.forecast_refresh as fr
+    started = []
+    monkeypatch.setattr(fr, "trigger_forecast_refresh", lambda: started.append(1) or True)
+    recent = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+    monkeypatch.setattr(fr, "refresh_state", lambda: {"running": False, "last_started_at": recent})
+    monkeypatch.delenv("DC_ADMIN_TOKEN", raising=False)
+    client = TestClient(app)
+    body = client.post("/refresh").json()
+    assert body["started"] is False and body["reason"] == "cooldown"
+    assert not started
+    # Operator token bypasses the cooldown.
+    monkeypatch.setenv("DC_ADMIN_TOKEN", "s3cret")
+    body = client.post("/refresh", headers={"X-Admin-Token": "s3cret"}).json()
+    assert body["started"] is True and started
+
+
+def test_catch_log_rate_limit_and_validation(monkeypatch):
+    monkeypatch.setattr(routes, "get_reach", lambda rid: {"reach_id": rid})
+    monkeypatch.setattr(routes, "insert_catch_log", lambda entry: 1)
+    monkeypatch.setattr(routes, "CATCH_LOG_LIMIT", 2)
+    routes._catch_log_hits.clear()
+    client = TestClient(app)
+    ok = {"reach_id": "x", "fished_at": "2026-10-18T15:00:00-05:00", "success": 2}
+    assert client.post("/catch-log", json=ok).status_code == 200
+    assert client.post("/catch-log", json={**ok, "fished_at": "not a date"}).status_code == 422
+    assert client.post("/catch-log", json=ok).status_code == 429  # 3rd hit in window
+    routes._catch_log_hits.clear()
+    assert client.post("/catch-log", json={**ok, "notes": "x" * 5000}).status_code == 422
