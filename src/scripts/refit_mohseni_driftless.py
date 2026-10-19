@@ -24,7 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -168,12 +168,15 @@ def main() -> int:
         }
         LOG.info("POOLED %-9s n=%d fit=%s rmse=%s", klass, len(pairs), classes[klass]["fit"], classes[klass]["rmse_f"])
 
-    OUT_PATH.write_text(json.dumps({
-        "generated": datetime.utcnow().isoformat(timespec="seconds"),
+    payload = {
+        "generated": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "method": "grid-search Mohseni on 7-day rolling air mean (Open-Meteo archive) vs USGS daily water temp",
         "sites": per_site,
         "classes": classes,
-    }, indent=2) + "\n", encoding="utf-8")
+    }
+    # newline="\n": the repo is LF-only; write_text would emit CRLF on Windows.
+    with OUT_PATH.open("w", encoding="utf-8", newline="\n") as fh:
+        fh.write(json.dumps(payload, indent=2) + "\n")
     LOG.info("wrote %s", OUT_PATH)
     return 0
 
