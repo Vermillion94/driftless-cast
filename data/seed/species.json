@@ -8,8 +8,8 @@
     "base_temp_c": 5.0,
     "dd_threshold_mean": 260.0,
     "dd_threshold_sd": 40.0,
-    "emergence_hr_start": 12,
-    "emergence_hr_end": 15,
+    "emergence_hr_start": 13,
+    "emergence_hr_end": 16,
     "weather_prefs": {
       "clouds": "any",
       "wind": "<15"
@@ -30,7 +30,10 @@
         "size": 14,
         "stage": "spinner"
       }
-    ]
+    ],
+    "driftless_weight": 0.45,
+    "min_water_f": 46.0,
+    "_driftless_note": "Declined in the Driftless (Freund, Coulee Region TU); none in Driftless Angler April reports 2024-26. Timing kept, abundance down-weighted."
   },
   {
     "species_id": "bwo-spring",
@@ -42,7 +45,7 @@
     "dd_threshold_mean": 203.1,
     "dd_threshold_sd": 95.0,
     "emergence_hr_start": 11,
-    "emergence_hr_end": 16,
+    "emergence_hr_end": 15,
     "weather_prefs": {
       "clouds": "high",
       "wind": "<10"
@@ -63,18 +66,21 @@
         "size": 18,
         "stage": "nymph"
       }
-    ]
+    ],
+    "min_water_f": 40.0,
+    "driftless_weight": 1.0,
+    "_driftless_note": "Most dependable Driftless hatch. First sightings Mar 13 2024 / Mar 21 2025 (Driftless Angler); best overcast/drizzle; midday in spring."
   },
   {
     "species_id": "sulphur",
     "common_name": "Sulphur / PMD",
-    "scientific_name": "Ephemerella spp.",
+    "scientific_name": "Ephemerella invaria / E. dorothea",
     "taxon_group": "mayfly",
     "timing_profile": "evening_mayfly",
     "base_temp_c": 7.0,
     "dd_threshold_mean": 289.0,
     "dd_threshold_sd": 64.3,
-    "emergence_hr_start": 16,
+    "emergence_hr_start": 18,
     "emergence_hr_end": 21,
     "weather_prefs": {
       "clouds": "low",
@@ -96,21 +102,24 @@
         "size": 14,
         "stage": "nymph"
       }
-    ]
+    ],
+    "driftless_weight": 0.7,
+    "min_water_f": 50.0,
+    "_driftless_note": "invaria from ~May 20 (mid-afternoon at first, then evening); dorothea late May - early Jul, 7-9pm. Sparse in recent years."
   },
   {
     "species_id": "grannom-caddis",
-    "common_name": "Grannom (Mother's Day Caddis)",
-    "scientific_name": "Brachycentrus spp.",
+    "common_name": "Grannom / Black Caddis",
+    "scientific_name": "Brachycentrus americanus",
     "taxon_group": "caddis",
-    "timing_profile": "dusk_caddis",
+    "timing_profile": "default",
     "base_temp_c": 6.0,
     "dd_threshold_mean": 481.0,
     "dd_threshold_sd": 183.8,
-    "emergence_hr_start": 15,
-    "emergence_hr_end": 19,
+    "emergence_hr_start": 11,
+    "emergence_hr_end": 15,
     "weather_prefs": {
-      "clouds": "any",
+      "clouds": "low",
       "wind": "<15"
     },
     "fly_patterns": [
@@ -129,7 +138,10 @@
         "size": 14,
         "stage": "nymph"
       }
-    ]
+    ],
+    "min_water_f": 44.0,
+    "driftless_weight": 1.0,
+    "_driftless_note": "The Driftless 'black' or 'Coulee' caddis - not the western Mother's Day caddis (B. occidentalis). Mid-April in SW WI, late Apr-May in SE MN; 11am-3pm, best on sunny days (Freund; Driftless Angler)."
   },
   {
     "species_id": "trico",
@@ -140,7 +152,7 @@
     "base_temp_c": 8.0,
     "dd_threshold_mean": 1240,
     "dd_threshold_sd": 200,
-    "emergence_hr_start": 6,
+    "emergence_hr_start": 7,
     "emergence_hr_end": 10,
     "weather_prefs": {
       "clouds": "low",
@@ -163,7 +175,10 @@
         "stage": "dun"
       }
     ],
-    "_calibration_note": "manually accepted observed median; literature prior superseded"
+    "_calibration_note": "manually accepted observed median; literature prior superseded",
+    "driftless_weight": 0.9,
+    "min_water_f": 52.0,
+    "_driftless_note": "Jul-Sep; spinner fall at daybreak or when air reaches ~68F, moving later through the season; calm mornings. Whitewater, Rush, lower Kinni are strong trico streams."
   },
   {
     "species_id": "hex",
@@ -196,7 +211,10 @@
         "size": 14,
         "stage": "nymph"
       }
-    ]
+    ],
+    "driftless_weight": 0.05,
+    "min_water_f": 64.0,
+    "_driftless_note": "Not a meaningful Driftless hatch: absent from the MN DNR SE chart; needs silt/marl and >=66-68F water that spring creeks rarely reach."
   },
   {
     "species_id": "bwo-fall",
@@ -207,8 +225,8 @@
     "base_temp_c": 3.0,
     "dd_threshold_mean": 2200,
     "dd_threshold_sd": 600,
-    "emergence_hr_start": 11,
-    "emergence_hr_end": 15,
+    "emergence_hr_start": 14,
+    "emergence_hr_end": 18,
     "weather_prefs": {
       "clouds": "high",
       "wind": "<10"
@@ -240,7 +258,10 @@
         "stage": "nymph"
       }
     ],
-    "_calibration_note": "manually accepted observed median; literature prior superseded"
+    "_calibration_note": "manually accepted observed median; literature prior superseded",
+    "min_water_f": 40.0,
+    "driftless_weight": 1.0,
+    "_driftless_note": "Fall olives come in the last few hours of daylight (Driftless Angler Oct 8 2026); overcast/drizzle days best."
   },
   {
     "species_id": "hopper",
@@ -251,8 +272,8 @@
     "base_temp_c": 0,
     "dd_threshold_mean": 0,
     "dd_threshold_sd": 1,
-    "emergence_hr_start": 11,
-    "emergence_hr_end": 18,
+    "emergence_hr_start": 10,
+    "emergence_hr_end": 17,
     "weather_prefs": {
       "clouds": "any",
       "wind": "<25"
@@ -283,7 +304,9 @@
         "size": 14,
         "stage": "adult"
       }
-    ]
+    ],
+    "min_water_f": 0.0,
+    "_driftless_note": "Mid-Jul to mid-Oct; active once the dew dries. Sun on low clear water suppresses the afternoon bite more than temperature (Driftless Angler Aug 2026)."
   },
   {
     "species_id": "ant",
@@ -316,7 +339,8 @@
         "size": 18,
         "stage": "adult"
       }
-    ]
+    ],
+    "min_water_f": 0.0
   },
   {
     "species_id": "beetle",
@@ -349,7 +373,8 @@
         "size": 14,
         "stage": "adult"
       }
-    ]
+    ],
+    "min_water_f": 0.0
   },
   {
     "species_id": "cricket",
@@ -377,7 +402,8 @@
         "size": 12,
         "stage": "adult"
       }
-    ]
+    ],
+    "min_water_f": 0.0
   },
   {
     "species_id": "isonychia",
@@ -411,7 +437,9 @@
         "stage": "nymph"
       }
     ],
-    "_calibration_note": "manually accepted observed median; literature prior superseded"
+    "_calibration_note": "manually accepted observed median; literature prior superseded",
+    "driftless_weight": 0.12,
+    "_driftless_note": "No Driftless-specific evidence (not on MN DNR SE chart); documented on northern WI freestones."
   },
   {
     "species_id": "tan-caddis",
@@ -423,7 +451,7 @@
     "dd_threshold_mean": 667.9,
     "dd_threshold_sd": 291.6,
     "emergence_hr_start": 18,
-    "emergence_hr_end": 23,
+    "emergence_hr_end": 22,
     "weather_prefs": {
       "clouds": "any",
       "wind": "<15"
@@ -449,19 +477,22 @@
         "size": 14,
         "stage": "nymph"
       }
-    ]
+    ],
+    "driftless_weight": 0.9,
+    "min_water_f": 50.0,
+    "_driftless_note": "Hydropsyche: dependable from early/mid May through summer; morning and late evening; egg-layers dive."
   },
   {
     "species_id": "early-black-stone",
     "common_name": "Early Black Stonefly",
-    "scientific_name": "Allocapnia spp.",
+    "scientific_name": "Allocapnia / Paracapnia (Capniidae)",
     "taxon_group": "stonefly",
     "timing_profile": "crawler",
     "base_temp_c": 1.0,
     "dd_threshold_mean": 35.0,
     "dd_threshold_sd": 25.0,
-    "emergence_hr_start": 12,
-    "emergence_hr_end": 16,
+    "emergence_hr_start": 11,
+    "emergence_hr_end": 15,
     "weather_prefs": {
       "clouds": "any",
       "wind": "<15"
@@ -483,6 +514,189 @@
         "stage": "adult"
       }
     ],
-    "_calibration_note": "Capniidae adults walk to streamside vegetation Feb-Mar; one of the only winter aquatic emergences in the Driftless"
+    "_calibration_note": "Capniidae adults walk to streamside vegetation Feb-Mar; one of the only winter aquatic emergences in the Driftless",
+    "min_water_f": 33.0,
+    "driftless_weight": 0.5,
+    "_driftless_note": "Jan-Apr; adults crawl on snow; sunny midday hours in high-30s water (Driftless Angler Feb 2026)."
+  },
+  {
+    "species_id": "midge",
+    "base_temp_c": 5.0,
+    "dd_threshold_mean": 0,
+    "dd_threshold_sd": 1,
+    "weather_prefs": {
+      "clouds": "any",
+      "wind": "<10"
+    },
+    "common_name": "Midges",
+    "scientific_name": "Chironomidae",
+    "taxon_group": "midge",
+    "timing_profile": "default",
+    "emergence_hr_start": 11,
+    "emergence_hr_end": 15,
+    "min_water_f": 33.0,
+    "driftless_weight": 0.35,
+    "fly_patterns": [
+      {
+        "pattern": "Griffith's Gnat",
+        "size": 20,
+        "stage": "adult"
+      },
+      {
+        "pattern": "Zebra Midge",
+        "size": 20,
+        "stage": "nymph"
+      },
+      {
+        "pattern": "Midge Pupa / Top Secret Midge",
+        "size": 22,
+        "stage": "emerger"
+      }
+    ],
+    "_driftless_note": "Year-round; the winter staple (French et al. 2014-17: winter brown trout diet dominated by Chironomidae, Brachycentrus, Gammarus, snails). Midday in winter. Surface weight kept low: most winter midge feeding is subsurface (larvae/pupae); dries are a calm, sunny-midday bonus."
+  },
+  {
+    "species_id": "cranefly",
+    "base_temp_c": 5.0,
+    "dd_threshold_mean": 0,
+    "dd_threshold_sd": 1,
+    "weather_prefs": {
+      "clouds": "any",
+      "wind": "<15"
+    },
+    "common_name": "Crane Fly",
+    "scientific_name": "Antocha (Limoniidae) / Tipulidae",
+    "taxon_group": "fly",
+    "timing_profile": "default",
+    "emergence_hr_start": 12,
+    "emergence_hr_end": 17,
+    "min_water_f": 50.0,
+    "driftless_weight": 0.6,
+    "fly_patterns": [
+      {
+        "pattern": "Coulee Crane Fly (skittered)",
+        "size": 14,
+        "stage": "adult"
+      },
+      {
+        "pattern": "Brush Hog (larva)",
+        "size": 18,
+        "stage": "nymph"
+      },
+      {
+        "pattern": "Partridge & Orange",
+        "size": 16,
+        "stage": "emerger"
+      }
+    ],
+    "_driftless_note": "One of the better and longer-lived Driftless hatches, late Apr-Jul, more common than in the past (Freund)."
+  },
+  {
+    "species_id": "cahill",
+    "base_temp_c": 7.0,
+    "dd_threshold_mean": 0,
+    "dd_threshold_sd": 1,
+    "weather_prefs": {
+      "clouds": "any",
+      "wind": "<15"
+    },
+    "common_name": "March Brown / Light Cahill",
+    "scientific_name": "Maccaffertium vicarium / M. ithaca",
+    "taxon_group": "mayfly",
+    "timing_profile": "evening_mayfly",
+    "emergence_hr_start": 18,
+    "emergence_hr_end": 21,
+    "min_water_f": 52.0,
+    "driftless_weight": 0.4,
+    "fly_patterns": [
+      {
+        "pattern": "Light Cahill Parachute",
+        "size": 14,
+        "stage": "dun"
+      },
+      {
+        "pattern": "Hare's Ear",
+        "size": 12,
+        "stage": "nymph"
+      },
+      {
+        "pattern": "Cahill Spinner",
+        "size": 14,
+        "stage": "spinner"
+      }
+    ],
+    "_driftless_note": "June - mid-Jul (MN DNR); sporadic; cahills in the last light alongside sulphurs."
+  },
+  {
+    "species_id": "autumn-sedge",
+    "base_temp_c": 5.0,
+    "dd_threshold_mean": 0,
+    "dd_threshold_sd": 1,
+    "weather_prefs": {
+      "clouds": "any",
+      "wind": "<15"
+    },
+    "common_name": "Autumn Mottled Sedge",
+    "scientific_name": "Neophylax concinnus",
+    "taxon_group": "caddis",
+    "timing_profile": "default",
+    "emergence_hr_start": 14,
+    "emergence_hr_end": 18,
+    "min_water_f": 44.0,
+    "driftless_weight": 0.35,
+    "fly_patterns": [
+      {
+        "pattern": "Elk Hair Caddis (dark)",
+        "size": 14,
+        "stage": "adult"
+      },
+      {
+        "pattern": "Caddis Pupa",
+        "size": 14,
+        "stage": "emerger"
+      },
+      {
+        "pattern": "Cased Caddis",
+        "size": 14,
+        "stage": "nymph"
+      }
+    ],
+    "_driftless_note": "October; a handful of caddis alongside fall olives (Driftless Angler Sep 2025)."
+  },
+  {
+    "species_id": "tiny-olive",
+    "base_temp_c": 3.0,
+    "dd_threshold_mean": 0,
+    "dd_threshold_sd": 1,
+    "weather_prefs": {
+      "clouds": "high",
+      "wind": "<10"
+    },
+    "common_name": "Tiny Olives (summer Baetidae)",
+    "scientific_name": "Plauditus / Acentrella spp.",
+    "taxon_group": "mayfly",
+    "timing_profile": "morning",
+    "emergence_hr_start": 8,
+    "emergence_hr_end": 11,
+    "min_water_f": 45.0,
+    "driftless_weight": 0.35,
+    "fly_patterns": [
+      {
+        "pattern": "CDC Olive Emerger",
+        "size": 22,
+        "stage": "emerger"
+      },
+      {
+        "pattern": "Parachute BWO",
+        "size": 22,
+        "stage": "dun"
+      },
+      {
+        "pattern": "Pheasant Tail",
+        "size": 20,
+        "stage": "nymph"
+      }
+    ],
+    "_driftless_note": "Mid-Jun to Sep, mornings - the low summer baseline between the spring and fall Baetis peaks."
   }
 ]

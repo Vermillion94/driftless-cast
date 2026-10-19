@@ -168,11 +168,14 @@ def score_species_surface(
     water_temp_f: Optional[float],
     is_terrestrial: bool = False,
     terrestrial_air_factor: float = 1.0,
+    min_water_f: float = 45.0,
 ) -> float:
     """Single production rule for one species' surface (dry/hatch) probability.
 
     Multiplies the independent readiness signals and applies two hard gates:
-      * water below 45°F → 0 (aquatic emergence effectively stops on icy water)
+      * water below the species' `min_water_f` → 0. Defaults to 45°F, but
+        midges and winter stoneflies emerge in 33–40°F water and Baetis from
+        ~40°F, so a single global 45°F gate erased every winter hatch.
       * terrestrials → scaled by how warm the air is, since there are no
         beetles in the grass on a 50°F morning.
 
@@ -182,7 +185,7 @@ def score_species_surface(
     and the served path could silently disagree. Keeping the math in one tested
     helper closes that gap.
     """
-    temp_gate = 0.0 if (water_temp_f is not None and water_temp_f < 45) else 1.0
+    temp_gate = 0.0 if (water_temp_f is not None and water_temp_f < min_water_f) else 1.0
     air_gate = terrestrial_air_factor if is_terrestrial else 1.0
     return max(
         0.0,

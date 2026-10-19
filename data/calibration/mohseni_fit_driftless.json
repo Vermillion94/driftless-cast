@@ -1,0 +1,330 @@
+{
+  "generated": "2026-10-19T19:29:36",
+  "method": "grid-search Mohseni on 7-day rolling air mean (Open-Meteo archive) vs USGS daily water temp",
+  "sites": [
+    {
+      "site_no": "05378183",
+      "name": "Joos Valley Creek nr Fountain City WI",
+      "lat": 44.1641,
+      "lon": -91.6715,
+      "first": "1993-06-25",
+      "last": "2007-09-29",
+      "n_pairs": 2920,
+      "class": "freestone",
+      "p05_f": 32.9,
+      "p95_f": 68.0,
+      "swing_f": 35.1,
+      "fit": {
+        "mu_f": 32,
+        "alpha_f": 72,
+        "beta_f": 52,
+        "gamma": 0.08,
+        "rmse_f": 3.13
+      },
+      "production_spring_rmse_f": 4.25,
+      "production_freestone_rmse_f": 4.26
+    },
+    {
+      "site_no": "05378185",
+      "name": "Eagle Creek nr Fountain City WI",
+      "lat": 44.1594,
+      "lon": -91.6896,
+      "first": "1993-04-29",
+      "last": "2007-09-29",
+      "n_pairs": 2920,
+      "class": "freestone",
+      "p05_f": 32.9,
+      "p95_f": 65.3,
+      "swing_f": 32.4,
+      "fit": {
+        "mu_f": 34,
+        "alpha_f": 68,
+        "beta_f": 52,
+        "gamma": 0.1,
+        "rmse_f": 2.88
+      },
+      "production_spring_rmse_f": 3.51,
+      "production_freestone_rmse_f": 4.98
+    },
+    {
+      "site_no": "053793305",
+      "name": "Traverse Valley Cr N trib nr Independence WI",
+      "lat": 44.3714,
+      "lon": -91.4199,
+      "first": "2001-09-01",
+      "last": "2008-09-29",
+      "n_pairs": 2586,
+      "class": "mixed",
+      "p05_f": 34.7,
+      "p95_f": 57.2,
+      "swing_f": 22.5,
+      "fit": {
+        "mu_f": 34,
+        "alpha_f": 60,
+        "beta_f": 48,
+        "gamma": 0.08,
+        "rmse_f": 2.12
+      },
+      "production_spring_rmse_f": 4.73,
+      "production_freestone_rmse_f": 9.17
+    },
+    {
+      "site_no": "053793306",
+      "name": "Traverse Valley Cr S trib nr Independence WI",
+      "lat": 44.3681,
+      "lon": -91.4202,
+      "first": "2001-10-01",
+      "last": "2008-09-29",
+      "n_pairs": 2375,
+      "class": "spring",
+      "p05_f": 36.5,
+      "p95_f": 54.5,
+      "swing_f": 18.0,
+      "fit": {
+        "mu_f": 36,
+        "alpha_f": 60,
+        "beta_f": 56,
+        "gamma": 0.06,
+        "rmse_f": 2.28
+      },
+      "production_spring_rmse_f": 6.23,
+      "production_freestone_rmse_f": 11.07
+    },
+    {
+      "site_no": "05409870",
+      "name": "Nederlo Creek nr Gays Mills WI",
+      "lat": 43.3175,
+      "lon": -90.8696,
+      "first": "1974-04-12",
+      "last": "1978-10-05",
+      "n_pairs": 1228,
+      "class": "mixed",
+      "p05_f": 34.0,
+      "p95_f": 64.4,
+      "swing_f": 30.4,
+      "fit": {
+        "mu_f": 34,
+        "alpha_f": 72,
+        "beta_f": 56,
+        "gamma": 0.06,
+        "rmse_f": 3.37
+      },
+      "production_spring_rmse_f": 3.5,
+      "production_freestone_rmse_f": 6.93
+    },
+    {
+      "site_no": "05409860",
+      "name": "South Fork Nederlo Creek nr Gays Mills WI",
+      "lat": 43.3108,
+      "lon": -90.8771,
+      "first": "1974-05-23",
+      "last": "1978-05-23",
+      "n_pairs": 1306,
+      "class": "mixed",
+      "p05_f": 32.5,
+      "p95_f": 61.0,
+      "swing_f": 28.4,
+      "fit": {
+        "mu_f": 32,
+        "alpha_f": 68,
+        "beta_f": 52,
+        "gamma": 0.06,
+        "rmse_f": 2.87
+      },
+      "production_spring_rmse_f": 3.98,
+      "production_freestone_rmse_f": 7.57
+    },
+    {
+      "site_no": "05409842",
+      "name": "North Fork Nederlo Cr at mouth nr Gays Mills WI",
+      "lat": 43.3205,
+      "lon": -90.874,
+      "first": "1974-05-23",
+      "last": "1978-05-23",
+      "n_pairs": 1296,
+      "class": "spring",
+      "p05_f": 37.0,
+      "p95_f": 56.8,
+      "swing_f": 19.8,
+      "fit": {
+        "mu_f": 36,
+        "alpha_f": 60,
+        "beta_f": 48,
+        "gamma": 0.06,
+        "rmse_f": 2.07
+      },
+      "production_spring_rmse_f": 4.25,
+      "production_freestone_rmse_f": 9.0
+    },
+    {
+      "site_no": "05413449",
+      "name": "Rattlesnake Creek nr North Andover WI",
+      "lat": 42.8169,
+      "lon": -90.9524,
+      "first": "1988-04-23",
+      "last": "1996-06-29",
+      "n_pairs": 2920,
+      "class": "freestone",
+      "p05_f": 32.0,
+      "p95_f": 74.3,
+      "swing_f": 42.3,
+      "fit": {
+        "mu_f": 32,
+        "alpha_f": 76,
+        "beta_f": 52,
+        "gamma": 0.1,
+        "rmse_f": 3.78
+      },
+      "production_spring_rmse_f": 6.58,
+      "production_freestone_rmse_f": 3.78
+    },
+    {
+      "site_no": "054134435",
+      "name": "Kuenster Creek nr North Andover WI",
+      "lat": 42.8336,
+      "lon": -90.9346,
+      "first": "1991-10-05",
+      "last": "1996-06-30",
+      "n_pairs": 1637,
+      "class": "freestone",
+      "p05_f": 32.0,
+      "p95_f": 73.4,
+      "swing_f": 41.4,
+      "fit": {
+        "mu_f": 32,
+        "alpha_f": 76,
+        "beta_f": 52,
+        "gamma": 0.1,
+        "rmse_f": 4.03
+      },
+      "production_spring_rmse_f": 6.7,
+      "production_freestone_rmse_f": 4.03
+    },
+    {
+      "site_no": "05382255",
+      "name": "Stillwell Creek nr Tomah WI",
+      "lat": 43.9939,
+      "lon": -90.6572,
+      "first": "2018-09-24",
+      "last": "2026-10-18",
+      "n_pairs": 2920,
+      "class": "mixed",
+      "p05_f": 34.9,
+      "p95_f": 63.0,
+      "swing_f": 28.1,
+      "fit": {
+        "mu_f": 34,
+        "alpha_f": 68,
+        "beta_f": 52,
+        "gamma": 0.08,
+        "rmse_f": 2.19
+      },
+      "production_spring_rmse_f": 2.38,
+      "production_freestone_rmse_f": 5.74
+    },
+    {
+      "site_no": "05382257",
+      "name": "Stillwell Creek at Yard Rd nr Tomah WI",
+      "lat": 44.0006,
+      "lon": -90.6811,
+      "first": "2018-10-14",
+      "last": "2026-10-18",
+      "n_pairs": 2920,
+      "class": "mixed",
+      "p05_f": 37.6,
+      "p95_f": 67.8,
+      "swing_f": 30.2,
+      "fit": {
+        "mu_f": 34,
+        "alpha_f": 76,
+        "beta_f": 56,
+        "gamma": 0.06,
+        "rmse_f": 3.11
+      },
+      "production_spring_rmse_f": 3.2,
+      "production_freestone_rmse_f": 5.96
+    },
+    {
+      "site_no": "05382284",
+      "name": "Silver Creek nr Angelo WI",
+      "lat": 43.9672,
+      "lon": -90.765,
+      "first": "2017-01-21",
+      "last": "2026-10-18",
+      "n_pairs": 2920,
+      "class": "mixed",
+      "p05_f": 34.3,
+      "p95_f": 64.9,
+      "swing_f": 30.6,
+      "fit": {
+        "mu_f": 34,
+        "alpha_f": 68,
+        "beta_f": 52,
+        "gamma": 0.08,
+        "rmse_f": 2.7
+      },
+      "production_spring_rmse_f": 3.04,
+      "production_freestone_rmse_f": 5.83
+    },
+    {
+      "site_no": "05387500",
+      "name": "Upper Iowa River at Decorah IA",
+      "lat": 43.3047,
+      "lon": -91.7957,
+      "first": "1975-06-24",
+      "last": "1983-09-29",
+      "n_pairs": 2920,
+      "class": "freestone",
+      "p05_f": 32.0,
+      "p95_f": 76.0,
+      "swing_f": 44.0,
+      "fit": {
+        "mu_f": 32,
+        "alpha_f": 80,
+        "beta_f": 56,
+        "gamma": 0.1,
+        "rmse_f": 3.7
+      },
+      "production_spring_rmse_f": 6.95,
+      "production_freestone_rmse_f": 3.89
+    }
+  ],
+  "classes": {
+    "spring": {
+      "n_pairs": 3671,
+      "fit": {
+        "mu_f": 36,
+        "alpha_f": 60,
+        "beta_f": 52,
+        "gamma": 0.06
+      },
+      "rmse_f": 2.41,
+      "production_spring_rmse_f": 5.62,
+      "production_freestone_rmse_f": 10.38
+    },
+    "mixed": {
+      "n_pairs": 13880,
+      "fit": {
+        "mu_f": 34,
+        "alpha_f": 64,
+        "beta_f": 48,
+        "gamma": 0.08
+      },
+      "rmse_f": 3.28,
+      "production_spring_rmse_f": 3.47,
+      "production_freestone_rmse_f": 6.84
+    },
+    "freestone": {
+      "n_pairs": 13317,
+      "fit": {
+        "mu_f": 32,
+        "alpha_f": 80,
+        "beta_f": 56,
+        "gamma": 0.08
+      },
+      "rmse_f": 3.91,
+      "production_spring_rmse_f": 5.68,
+      "production_freestone_rmse_f": 4.23
+    }
+  }
+}

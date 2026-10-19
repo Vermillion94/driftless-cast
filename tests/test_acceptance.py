@@ -37,34 +37,37 @@ from src.models.runoff_risk import assess_runoff_risk
 
 # ─── Temperature plateau curve ──────────────────────────────────────────────
 
-def test_temperature_below_42_is_zero():
-    """Below 42°F trout are lethargic and refuse — score must be 0."""
-    assert temperature_score(35.0) == 0.0
-    assert temperature_score(41.0) == 0.0
-    assert temperature_score(42.0) == 0.0
+def test_temperature_cold_water_is_slow_not_dead():
+    """Driftless creeks run 34–38°F in Dec–Feb (USGS daily records) and the SE MN
+    winter creel still measured ~1.4 trout/hr. Cold must be a slow bite, never 0."""
+    assert 0.2 <= temperature_score(33.0) <= 0.35
+    assert 0.3 <= temperature_score(37.0) <= 0.5
+    assert temperature_score(41.0) < temperature_score(46.0) < temperature_score(51.0)
 
 
-def test_temperature_plateau_full_credit_52_to_64():
-    """Plateau zone (Wehrly 2007 active feeding range) — score is 1.0."""
-    for t in (52.0, 55.0, 58.0, 61.0, 64.0):
+def test_temperature_plateau_full_credit_52_to_62():
+    """Peak feeding/growth band (Elliott: max growth ~13°C/55°F) — score is 1.0."""
+    for t in (52.0, 55.0, 58.0, 61.0, 62.0):
         assert temperature_score(t) == 1.0, f"plateau expected 1.0 at {t}°F"
 
 
 def test_temperature_51_was_the_bug_fix():
-    """Pinning the regression we hit: 51°F should give ~0.9, not the old
+    """Pinning the regression we hit: 51°F must sit near full credit, not the old
     Gaussian's 0.51 which made every cool spring day read 'Skip'."""
-    assert temperature_score(51.0) == 0.9
-    assert temperature_score(50.0) == 0.8
-    assert temperature_score(47.0) == 0.5
+    assert temperature_score(51.0) >= 0.9
+    assert abs(temperature_score(50.0) - 0.9) < 1e-9
 
 
 def test_temperature_warning_threshold_at_68():
-    """The 68°F catch-and-release ethics threshold (Wilkie 1996) — half credit."""
-    assert temperature_score(68.0) == 0.5
+    """Past the Keep Fish Wet brown-trout angling threshold (66°F) and at the
+    traditional 68°F ethics line the score is roughly half credit."""
+    assert abs(temperature_score(68.0) - 0.55) < 1e-9
+    assert temperature_score(66.0) < 0.85
 
 
-def test_temperature_lethal_above_75():
-    """Above 75°F is lethal-stress territory — zero score."""
+def test_temperature_lethal_above_73():
+    """At/above 73°F (MT FWP hoot-owl line) is lethal-stress territory — zero."""
+    assert temperature_score(73.0) == 0.0
     assert temperature_score(75.0) == 0.0
     assert temperature_score(80.0) == 0.0
 
@@ -158,13 +161,18 @@ def test_nymph_score_bounded_to_unit_interval():
 
 
 def test_nymph_score_temperature_dominates():
-    """Temperature is THE dominant factor; even perfect flow can't rescue
-    sub-42°F lethargy."""
-    perfect_flow = compute_nymph_score(
-        temp_f=40.0, flow_percentile=0.50, recent_flows=[100, 90, 80],
-        valid_at="2026-05-02T13:00:00Z", dd_current=0.0, species_thresholds=[],
+    """Temperature is THE dominant factor; perfect flow can't lift ice-cold
+    water into good territory, and can't rescue lethal-warm water at all."""
+    cold = compute_nymph_score(
+        temp_f=34.0, flow_percentile=0.50, recent_flows=[100, 90, 80],
+        valid_at="2026-01-15T13:00:00-06:00", dd_current=0.0, species_thresholds=[],
     )
-    assert perfect_flow < 0.20, f"sub-42°F must collapse score, got {perfect_flow:.3f}"
+    assert cold < 0.40, f"34°F water must stay a slow bite, got {cold:.3f}"
+    hot = compute_nymph_score(
+        temp_f=74.0, flow_percentile=0.50, recent_flows=[100, 90, 80],
+        valid_at="2026-07-15T07:00:00-05:00", dd_current=0.0, species_thresholds=[],
+    )
+    assert hot < 0.10
 
 
 def test_diel_activity_uses_driftless_local_time():

@@ -32,6 +32,21 @@ def _loads_json(value: Any) -> Any:
     return value
 
 
+# Hard-stop regimes cap every displayed lane. One table so the aggression,
+# lane and headline paths cannot drift apart.
+REGIME_CAPS = {
+    "CLOSED": 0.0,
+    "LIGHTNING": 0.05,
+    "BLOWOUT": 0.10,
+    "HAZARD": 0.12,
+    "HEAT_STRESS": 0.15,
+}
+
+
+def regime_cap(regime: Any) -> float | None:
+    return REGIME_CAPS.get(_regime_code(regime) or "")
+
+
 def _compress_high_end(score: float, ceiling: float) -> float:
     """Leave low/mid scores alone, squeeze the saturated top band."""
     s = max(0.0, min(1.0, score))
@@ -48,7 +63,10 @@ def _nymph_only_ceiling(aggression: float) -> float:
     headline score is a best-window promise. Without hatch/surface activity,
     broad spring-creek nymph plateaus should read as solid, not peak.
     """
-    return 0.68 + 0.10 * max(0.0, min(1.0, aggression))
+    # 0.66 base (was 0.68): when light protection took over pressure's weight
+    # in aggression_score the typical nymph-only aggression rose ~0.05, so the
+    # base drops to keep nymph-only hours below real surface windows.
+    return 0.66 + 0.10 * max(0.0, min(1.0, aggression))
 
 
 def _top_species_probability(active_species: Any) -> float:
@@ -124,13 +142,13 @@ def aggression_score(
     flow_change = (flow_trend - 0.70) / 0.30
 
     pressure = _breakdown_value(score_breakdown, "pressure_factor", 1.0)
-    if pressure >= 1.05:
+    if pressure >= 1.03:
         pressure_change = 1.0
-    elif pressure >= 1.02:
+    elif pressure >= 1.01:
         pressure_change = 0.75
     elif pressure >= 1.0:
         pressure_change = 0.45
-    elif pressure >= 0.92:
+    elif pressure >= 0.98:
         pressure_change = 0.15
     else:
         pressure_change = 0.05
@@ -142,19 +160,19 @@ def aggression_score(
     # on low aggression days, but "hot" usually needs bugs/risers or a strong
     # change signal.
     surface_component = min(1.0, surface / 0.35)
+    # Weights follow Stoner (2004): temperature, light, current and prey drive
+    # catchability; pressure has no controlled support, so it gets a token 5%.
     score = (
         0.45 * surface_component
-        + 0.20 * flow_change
-        + 0.20 * pressure_change
-        + 0.15 * light_protection
+        + 0.25 * flow_change
+        + 0.05 * pressure_change
+        + 0.25 * light_protection
     )
     score *= 0.60 + 0.40 * nymph
 
-    code = _regime_code(regime)
-    if code == "BLOWOUT":
-        score = min(score, 0.10)
-    elif code == "HEAT_STRESS":
-        score = min(score, 0.15)
+    cap = regime_cap(regime)
+    if cap is not None:
+        score = min(score, cap)
 
     return max(0.0, min(1.0, score))
 
@@ -292,12 +310,7 @@ def score_lanes(
         activation = max(activation, 0.30 + 0.55 * aggression)
     activation = max(0.0, min(1.0, activation))
 
-    code = _regime_code(regime)
-    cap = None
-    if code == "BLOWOUT":
-        cap = 0.10
-    elif code == "HEAT_STRESS":
-        cap = 0.15
+    cap = regime_cap(regime)
     if cap is not None:
         baseline_nymph = min(baseline_nymph, cap)
         surface_window = min(surface_window, cap)
@@ -339,11 +352,9 @@ def headline_score(
             _nymph_only_ceiling(aggression),
         )
 
-    code = _regime_code(regime)
-    if code == "BLOWOUT":
-        score = min(score, 0.10)
-    elif code == "HEAT_STRESS":
-        score = min(score, 0.15)
+    cap = regime_cap(regime)
+    if cap is not None:
+        score = min(score, cap)
 
     return max(0.0, min(1.0, score))
 
@@ -373,7 +384,7 @@ def headline_breakdown(
     if surface_signal < 0.15 and score <= _nymph_only_ceiling(aggression):
         source = "nymph_capped"
     code = _regime_code(regime)
-    if code in {"BLOWOUT", "HEAT_STRESS"}:
+    if code in REGIME_CAPS:
         source = code.lower()
     return {
         "score": score,

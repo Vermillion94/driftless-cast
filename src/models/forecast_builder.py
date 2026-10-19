@@ -38,7 +38,7 @@ from src.ingest import (
     fetch_latest_nwps,
     parse_hourly_forecast,
 )
-from src.models.solar import bright_sun_dry_penalty, sun_altitude_deg
+from src.models.solar import seasonal_sun_factors, sun_altitude_deg
 from src.ingest.openmeteo import fetch_archive_daily_mean_f, fetch_hourly_pressure_hpa
 from src.models import anomaly as anomaly_mod
 from src.models import dd_pipeline
@@ -54,6 +54,7 @@ from src.models.recession import (
 )
 from src.models.runoff_risk import assess_runoff_risk
 from src.models.seasonal import TERRESTRIAL_SPECIES, seasonal_activity
+from src.models.tactics import SURFACE_CLARITY_FACTOR, estimate_clarity
 from src.models.temp_estimator import estimate_water_series_f
 from src.models import thermal_profile
 
@@ -103,6 +104,8 @@ class ReachSignals:
     hatch_shift_days: float = 0.0
     dd_by_base_c: Optional[Dict[float, float]] = None
     thermal_profile: thermal_profile.ThermalProfile = thermal_profile.DEFAULT_PROFILE
+    state: Optional[str] = None
+    season_override: Optional[str] = None
 
 
 def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[float]) -> ReachSignals:
@@ -245,7 +248,8 @@ def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[fl
             start = end - timedelta(days=9)
             rows = fetch_archive_daily_mean_f(lat, lon, start, end)
             air_daily_f = [t for _d, t in rows]
-            t_f = temp_estimator.estimate_current_water_f(air_daily_f, spring_influenced)
+            t_f = temp_estimator.estimate_current_water_f(
+                air_daily_f, spring_influenced, reach_thermal_profile.spring_curve)
             if t_f is not None:
                 t_f = thermal_profile.apply_profile(t_f, reach_thermal_profile)
                 water_temp_c = (t_f - 32.0) * 5.0 / 9.0
@@ -280,6 +284,8 @@ def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[fl
         hatch_shift_days=shift,
         dd_by_base_c=dd_by_base,
         thermal_profile=reach_thermal_profile,
+        state=str(reach.get("state") or "") or None,
+        season_override=reach.get("season_override") if isinstance(reach.get("season_override"), str) else None,
     )
 
 
@@ -316,9 +322,13 @@ def _fetch_pressure_by_hour(lat: float, lon: float) -> Dict[str, float]:
 def _pressure_trend_factor(pressure_map: Optional[Dict[str, float]], valid_at: datetime) -> Tuple[float, Optional[str]]:
     """6-hour pressure trend at `valid_at`. Returns (multiplier, optional explanation note).
 
-    Anglers consistently report falling barometer = great fishing right before a
-    front, rising barometer post-frontal = slow recovery for ~24h. Magnitudes
-    here are calibrated against guide consensus, not peer-reviewed lit.
+    Anglers widely report falling barometer = pre-front feeding and rising
+    barometer = post-frontal slump, but there is no controlled evidence that
+    pressure itself changes trout feeding (Stoner 2004 catchability review;
+    a frontal swing is equivalent to ~2–3 in of water depth). The real
+    drivers — cloud, light, rain, hatch timing — are scored separately, so this
+    multiplier is kept deliberately small to avoid double counting. It mostly
+    exists so the UI can show the trend. See docs/REFERENCES.md#stoner_2004.
     """
     if not pressure_map:
         return 1.0, None
@@ -331,13 +341,13 @@ def _pressure_trend_factor(pressure_map: Optional[Dict[str, float]], valid_at: d
     # Open-Meteo returns hPa (= mb) directly, no Pa→mb conversion.
     delta_mb = p_now - p_then
     if delta_mb <= -4:
-        return 1.05, "barometer falling fast (pre-front feeding window)"
+        return 1.03, "barometer falling fast (front approaching)"
     if delta_mb <= -1.5:
-        return 1.02, "barometer falling"
+        return 1.01, "barometer falling"
     if delta_mb >= 4:
-        return 0.82, "barometer rising sharply (post-frontal slump)"
+        return 0.95, "barometer rising sharply (post-frontal)"
     if delta_mb >= 1.5:
-        return 0.92, "barometer rising"
+        return 0.98, "barometer rising"
     return 1.0, None
 
 
@@ -385,6 +395,39 @@ DIURNAL_PEAK_HOUR_LOCAL = 17
 # no beetles in the grass. Ramp 45°F → 65°F linearly, full credit above.
 TERRESTRIAL_AIR_FLOOR_F = 45.0
 TERRESTRIAL_AIR_FULL_F  = 65.0
+
+# Driftless spring creeks are mostly open pasture/meadow streams: in Valley
+# Creek, MN terrestrials were ~3% of drift and ~10% of brown/rainbow trout diet
+# (USGS, Jun–Aug 2003), far below the ~50% figure from forested western
+# streams. Terrestrials are a real prospecting play (hopper-dropper) but should
+# not read like a full-blown aquatic hatch. See docs/REFERENCES.md#valley_creek_2003.
+TERRESTRIAL_SURFACE_WEIGHT = 0.6
+
+# NWS hourly wind is a gridpoint value; Driftless coulees are sheltered, so the
+# wind on the water is usually well below the forecast. Heuristic.
+COULEE_WIND_SHELTER = 0.75
+
+
+def _wind_factors(wind_mph: Optional[float]) -> Tuple[float, float]:
+    """(dry, nymph) casting/presentation factor from effective wind on the water.
+
+    Guide consensus on fly-casting difficulty: a light breeze helps on clear
+    water (surface chop hides the angler), a steady 10+ mph takes the shine off,
+    15–20 mph wrecks accuracy, ~25 mph is a common personal cut-off. Dries and
+    light tippets suffer first; a weighted nymph rig is far more wind-tolerant.
+    """
+    if wind_mph is None:
+        return 1.0, 1.0
+    w = max(0.0, float(wind_mph)) * COULEE_WIND_SHELTER
+    if w < 5:
+        return 0.97, 1.0
+    if w <= 12:
+        return 1.0, 1.0
+    if w <= 18:
+        return 0.85, 0.95
+    if w <= 25:
+        return 0.6, 0.8
+    return 0.3, 0.5
 
 
 def _flow_percentile_for_hour(
@@ -588,7 +631,8 @@ def _build_water_temp_by_date(
         air_series.append(last_known)
         d += timedelta(days=1)
 
-    water_series = estimate_water_series_f(air_series, signals.spring_influenced)
+    water_series = estimate_water_series_f(
+        air_series, signals.spring_influenced, spring_curve=signals.thermal_profile.spring_curve)
     water_series = thermal_profile.apply_profile_series(water_series, signals.thermal_profile)
     return dict(zip(contiguous, water_series))
 
@@ -803,7 +847,13 @@ def _score_hour(
             water_temp_f=water_temp_f,
             is_terrestrial=is_terrestrial,
             terrestrial_air_factor=terrestrial_air,
+            min_water_f=float(sp.get("min_water_f") or 45.0),
         )
+        # Regional abundance: some textbook hatches are sparse or absent on
+        # Driftless spring creeks (Hex, Isonychia, declining Hendricksons).
+        score *= float(sp.get("driftless_weight", 1.0))
+        if is_terrestrial:
+            score *= TERRESTRIAL_SURFACE_WEIGHT
         if score > 0.0:
             active_species_payload.append({
                 "id": sp_id,
@@ -845,6 +895,7 @@ def _score_hour(
         length_km=signals.length_km,
         flow_percentile=percentile,
     )
+    wind_dry, wind_nymph = _wind_factors(wind_mph)
     nymph = compute_nymph_score(
         temp_f=water_temp_f,
         flow_percentile=percentile,
@@ -865,7 +916,7 @@ def _score_hour(
     breakdown_temp_score = _temp_score(water_temp_f) if water_temp_f is not None else 0.0
     breakdown_flow_pct_score = _flow_pct_score(percentile)
     breakdown_flow_trend_score = _flow_trend_score(signals.recent_flows)
-    breakdown_diel_score = _diel_activity_factor(valid_at.isoformat())
+    breakdown_diel_score = _diel_activity_factor(valid_at.isoformat(), water_temp_f)
     breakdown_top_species = None
     if active_species_payload:
         top = max(active_species_payload, key=lambda s: s.get("probability") or 0)
@@ -883,17 +934,31 @@ def _score_hour(
 
     flies = recommend_flies(active_species_payload, species_by_id, valid_hour)
 
-    # ── Bright-sun penalty on dry score: clear-water Driftless trout get spooky
-    # under bright high-angle sun. Cloud cover or low sun angle removes the penalty.
+    # ── Sunlight: in warm clear water bright high sun shuts surface feeding
+    # down; in cold water the same sun warms the shallows and is a plus.
     sun_alt = sun_altitude_deg(signals.lat, signals.lon, valid_at)
-    sun_factor = bright_sun_dry_penalty(sun_alt, cloud_cover)
+    sun_factor, sun_nymph_factor = seasonal_sun_factors(sun_alt, cloud_cover, water_temp_f)
     best_dry *= sun_factor
+    best_dry *= wind_dry
+    nymph = max(0.0, min(1.0, nymph * sun_nymph_factor * wind_nymph))
 
     # Dry score didn't previously care about warm water — a hatch coded for
     # 1pm on 71°F water still scored full credit. Mirror the nymph plateau
     # slope so the dry score also falls past 68°F (Wilkie 1996 C&R threshold).
     warm_water_factor = _dry_warm_water_factor(water_temp_f)
     best_dry *= warm_water_factor
+
+    # Stained or muddy water kills the rise long before it stops the nymph
+    # bite: apply the clarity factor to the dry lane and to each species'
+    # surface probability, so a BWO "hatch" can't carry a muddy day.
+    clarity = estimate_clarity(percentile, runoff.risk_level)
+    clarity_factor = SURFACE_CLARITY_FACTOR.get(clarity, 1.0)
+    if clarity_factor < 1.0:
+        best_dry *= clarity_factor
+        for s in active_species_payload:
+            s["probability"] = (s.get("probability") or 0.0) * clarity_factor
+            s["clarity_factor"] = clarity_factor
+        active_species_payload = [s for s in active_species_payload if (s.get("probability") or 0) > 0.05]
 
     # ── Barometric pressure trend factor on combined score (pre-front bump,
     # post-front slump). Whole bite is affected, not just surface. Clamp the
@@ -919,6 +984,11 @@ def _score_hour(
         length_km=signals.length_km,
         qpf_map=signals.qpf_mm_by_hour,
         active_species=active_species_payload,
+        state=signals.state,
+        season_override=signals.season_override,
+        wind_mph=wind_mph,
+        short_forecast=short_forecast,
+        precip_prob=precip_prob,
     )
 
     # The headline score (and its BLOWOUT / HEAT_STRESS caps) is computed at
@@ -1005,6 +1075,11 @@ def _score_hour(
             "diel_activity":   round(breakdown_diel_score, 3),
             "pressure_factor": round(pressure_factor, 3),
             "sun_factor":      round(sun_factor, 3),
+            "sun_nymph_factor": round(sun_nymph_factor, 3),
+            "wind_factor_dry": round(wind_dry, 3),
+            "clarity": clarity,
+            "clarity_factor_dry": round(clarity_factor, 3),
+            "wind_factor_nymph": round(wind_nymph, 3),
             "top_species":     breakdown_top_species,
             "percentile_used": round(percentile, 3) if percentile is not None else None,
             "flow_tau_hours":  round(tau_hours, 1) if tau_hours is not None else None,

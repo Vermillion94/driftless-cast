@@ -15,6 +15,16 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from src.models.runoff_risk import assess_runoff_risk
+from src.models.regulations import season_status
+
+# Hard-stop thresholds. Hours that hit these are capped in
+# score_calibration.REGIME_CAPS regardless of how good the bite would be.
+LETHAL_WATER_F = 73.0          # MT FWP hoot-owl / brown-trout lethal-stress zone
+COLD_HAZARD_AIR_F = 10.0       # ice in the guides within minutes, frostbite risk
+COLD_WINDY_AIR_F = 20.0        # …or below 20°F with real wind
+COLD_WINDY_WIND_MPH = 15.0
+HIGH_WIND_MPH = 25.0           # sustained; casting a fly line becomes futile
+THUNDER_MIN_PRECIP_PROB = 30.0 # NWS PoP (%) when the hour's forecast mentions thunder
 
 
 @dataclass
@@ -38,6 +48,11 @@ def classify(
     length_km: Optional[float],
     qpf_map: Optional[Dict[str, float]],
     active_species: List[Dict[str, object]],
+    state: Optional[str] = None,
+    season_override: Optional[str] = None,
+    wind_mph: Optional[float] = None,
+    short_forecast: Optional[str] = None,
+    precip_prob: Optional[float] = None,
 ) -> Regime:
     """Return the dominant regime. Order matters — first match wins.
 
@@ -56,6 +71,49 @@ def classify(
         flow_percentile=pct,
     )
 
+    # 0a) CLOSED — the state season is closed for this reach. Legal before biology.
+    if state:
+        season = season_status(state, valid_at.date(), season_override)
+        if season.is_closed:
+            reopen = f" — reopens {season.next_change}" if season.next_change else ""
+            return Regime(
+                code="CLOSED",
+                label="Closed season",
+                detail=f"{season.detail}{reopen}",
+                fly_hint="Iowa streams are open year-round",
+                severity="alert",
+            )
+
+    # 0b) LIGHTNING — a fly rod in a valley stream is a classic strike exposure.
+    # NWS: "when thunder roars, go indoors"; wait 30 min after the last thunder.
+    text = (short_forecast or "").lower()
+    if "thunder" in text and (precip_prob is None or precip_prob >= THUNDER_MIN_PRECIP_PROB):
+        return Regime(
+            code="LIGHTNING",
+            label="Thunderstorms",
+            detail="thunderstorms forecast this hour — get off the water; wait 30 min after the last thunder",
+            severity="alert",
+        )
+
+    # 0c) HAZARD — dangerous cold or wind. Not a fish problem; an angler one.
+    if air_temp_f is not None and (
+        air_temp_f < COLD_HAZARD_AIR_F
+        or (air_temp_f < COLD_WINDY_AIR_F and (wind_mph or 0) > COLD_WINDY_WIND_MPH)
+    ):
+        return Regime(
+            code="HAZARD",
+            label="Too cold to fish",
+            detail=f"air {air_temp_f:.0f}°F{f', wind {wind_mph:.0f} mph' if wind_mph else ''} — guides ice up in minutes; wait for a 25°F+ afternoon",
+            severity="alert",
+        )
+    if wind_mph is not None and wind_mph > HIGH_WIND_MPH:
+        return Regime(
+            code="HAZARD",
+            label="Blowing too hard",
+            detail=f"sustained wind ~{wind_mph:.0f} mph — casting is futile; look for a sheltered coulee or wait",
+            severity="alert",
+        )
+
     # 1) BLOWOUT — heavy rain + high flow = unsafe + unfishable. Hard stop.
     if runoff.risk_level == "blowout" and pct >= 0.78:
         return Regime(
@@ -70,6 +128,14 @@ def classify(
     # `air_temp_f` was previously dead in this function; this is the regime
     # behind the "0 action until 6pm" guidance the model used to miss.
     local_hour = valid_at.hour
+    if water_temp_f is not None and water_temp_f >= LETHAL_WATER_F:
+        return Regime(
+            code="HEAT_STRESS",
+            label="Lethal water temperature",
+            detail=f"water ~{water_temp_f:.0f}°F — at or past the lethal-stress line for trout; don't fish",
+            fly_hint="find a spring-fed tributary or go after smallmouth",
+            severity="alert",
+        )
     if (
         air_temp_f is not None and air_temp_f >= 88
         and water_temp_f is not None and water_temp_f >= 68

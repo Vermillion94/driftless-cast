@@ -85,6 +85,22 @@ MOHSENI_VALIDATION_GAUGES = [
         "lon": -92.24,
         "spring_influenced": False,  # freestone class
     },
+    # Active Driftless spring-influenced gauges — validate the Driftless-fit
+    # "mixed" curve (src/scripts/refit_mohseni_driftless.py) on live data.
+    {
+        "gauge_id": "05382255",
+        "label": "Stillwell Creek near Tomah, WI",
+        "lat": 43.9939,
+        "lon": -90.6572,
+        "spring_influenced": True,
+    },
+    {
+        "gauge_id": "05382284",
+        "label": "Silver Creek near Angelo, WI",
+        "lat": 43.9672,
+        "lon": -90.765,
+        "spring_influenced": True,
+    },
 ]
 
 

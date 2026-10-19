@@ -71,8 +71,8 @@ def test_estimate_current_water_uses_recent_window():
 # ─── Seasonal hatch calendar ────────────────────────────────────────────────
 
 def test_seasonal_activity_peaks_at_calendar_peak():
-    # Sulphur peaks ~June 1 in the Driftless seed calendar.
-    peak = seasonal_activity("sulphur", date(2026, 6, 1))
+    # Sulphur peaks ~June 5 in the Driftless seed calendar (MN DNR SE chart).
+    peak = seasonal_activity("sulphur", date(2026, 6, 5))
     shoulder = seasonal_activity("sulphur", date(2026, 5, 1))
     offseason = seasonal_activity("sulphur", date(2026, 11, 1))
     assert peak == 1.0
@@ -165,3 +165,9 @@ def test_forward_dd_never_subtracts_on_cold_days():
     out = _forward_dd_by_base_by_date({5.0: 50.0}, water_by_date, archive_end, [5.0])
     assert out[5.0][date(2026, 3, 2)] == 50.0
     assert out[5.0][date(2026, 3, 3)] == 50.0
+
+
+def test_midge_never_reads_absent():
+    # Midges are a year-round food; the seasonal floor keeps them in play in July.
+    assert seasonal_activity("midge", date(2026, 7, 15)) >= 0.35
+    assert seasonal_activity("midge", date(2026, 1, 25)) == 1.0

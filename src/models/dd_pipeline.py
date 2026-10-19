@@ -78,7 +78,7 @@ def build_for_reach(
 
     dates = [d for d, _t in rows]
     air_f = [t for _d, t in rows]
-    water_f = estimate_water_series_f(air_f, spring_influenced)
+    water_f = estimate_water_series_f(air_f, spring_influenced, spring_curve=thermal_profile.spring_curve)
     water_f = apply_profile_series(water_f, thermal_profile)
     water_c = _f_to_c_series(water_f)
 
