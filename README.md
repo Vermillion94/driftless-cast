@@ -29,21 +29,23 @@ All public, no-key APIs:
 - **USGS Water Data** — instantaneous flow + stage; daily-statistics percentiles by day-of-year
 - **NWS API** — hourly forecast (air temp, wind, cloud, precip-prob) + raw gridpoint QPF
 - **NOAA NWPS** — gauges that don't have USGS, plus short-range streamflow forecasts
-- **Open-Meteo** — historical daily air temp + forecasted hourly air temp + surface pressure
+- **NOAA ACIS** (Regional Climate Centers) — historical daily air temperature, ~1-day lag
 - **USGS NHDPlus High-Resolution** — real stream centerlines (one-off, run via script)
 - **iNaturalist + GBIF + iDigBio** — degree-day calibration for selected species (one-off)
 - **WI / MN / IA DNR** — trout-stream classifications (one-off)
 
 ## How it computes a score
 
-**Nymph** (subsurface): `temperature × flow_percentile × flow_trend + drift-window-bonus + prehatch-bonus`. Then multiplied by a barometric-pressure factor.
+**Nymph** (subsurface): `temperature × flow_percentile × flow_trend × season-aware diel rhythm + drift-window bonus`, then light (cold-water sun bonus) and wind/casting factors.
 
-**Dry** (surface): `max over species of (seasonal × DD-readiness × weather-match × emergence-hour-window)`. Then multiplied by pressure and a sun-angle penalty for clear-water shyness.
+**Dry** (surface): `max over species of (seasonal × DD-readiness × weather-match × emergence-hour × Driftless abundance)`, then season-aware sun, wind, water-clarity and warm-water factors.
 
 **Headline** = a calibrated display score derived from nymph, dry, active
 hatch probability, and hard safety regimes. A nymph-only 1.0 is compressed
 below "drop everything" territory; true hatch/surface alignment can rank
 higher. BLOWOUT and HEAT_STRESS regimes cap the headline score.
+
+Technical docs: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · [`docs/DATA_SOURCES.md`](docs/DATA_SOURCES.md) (licensing) · [`docs/OPERATIONS.md`](docs/OPERATIONS.md) (runbook).
 
 The October 2026 field-guide review — what was wrong, the research behind each change, and what's still open — is in [`docs/FIELD_GUIDE_REVIEW.md`](docs/FIELD_GUIDE_REVIEW.md).
 
@@ -55,7 +57,7 @@ The full math is documented in `data/seed/education.json` (rendered as the in-ap
 src/
   api/             FastAPI app, routes, static-mount of web/
   db/              SQLite schema + queries
-  ingest/          USGS, NWS, NOAA NWPS, Open-Meteo, iNat, GBIF, iDigBio, WI DNR
+  ingest/          USGS, NWS, NOAA NWPS, NOAA ACIS (+ research-only iNat, GBIF, iDigBio, WI DNR)
   models/          forecast_builder, regime, nymph_score, dry_score,
                    degree_days, mohseni temp_estimator, fly_recommender
   scripts/         bootstrap_reaches, fetch_nhdplus_geometry, backtest,
@@ -64,7 +66,7 @@ data/
   seed/            reaches.json, species.json, gauges.json, education.json
   calibration/     model artifacts (mohseni_fit.json, dd_fit_diagnostics.json)
 web/               index.html, map.js, styles.css — vanilla, no build step
-tests/             test_acceptance.py — 29 pinned synthetic cases
+tests/             117 pytest cases — model curves, regimes, legality, tactics, verdicts, API
 docs/              REFERENCES.md (master bibliography), DEPLOYMENT.md
 ```
 
@@ -100,10 +102,13 @@ python serve_static.py     # serves web/ on :8080
 Three independent paths, all wired:
 
 ```bash
-# Hindcast against historical USGS + Open-Meteo data — flow recession + Mohseni
+# Hindcast against historical USGS + NOAA ACIS data — flow recession + Mohseni
 python -m src.scripts.backtest
 
-# Synthetic acceptance suite — 29 pinned model facts (no pytest needed)
+# Full test suite
+python -m pytest tests/
+
+# Synthetic acceptance suite only
 python -m tests.test_acceptance
 
 # Reliability dashboard (live in the Learn tab) — calibrates against accumulated trip reports
