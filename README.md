@@ -13,7 +13,11 @@ For each of 39 trout streams, every hour out to 7 days, computes:
 
 - **Headline score** (0–1) shown as Go / Fair / Skip on the map
 - **Nymph and dry-fly scores** as separate components, with full audit-trail multipliers
-- **Active hatches** (BWO, Hendrickson, Sulphur, Caddis, Hex, Trico, Iso, terrestrials, early-black stones)
+- **Should I go?** — a per-day verdict (Go / Worth it / Slow / Skip / Closed) with the best 3-hour window, the reasons, and "go Tuesday 4–6pm instead" when a later day is clearly better
+- **How & where to fish** — technique, rig, water types, flies, approach and which part of the watershed, from season × water clarity × time of day × weather × hatch
+- **Season legality** — MN / WI / IA inland trout seasons (closed, catch-and-release, open) plus a fall spawning advisory; hard stops for lightning, dangerous cold/wind and lethal water temps
+- **Near me** — `/near?lat&lon` ranks nearby open water with today's and tomorrow's call
+- **Active hatches** — 19 Driftless food sources from the MN DNR SE MN hatch chart: midges, winter stones, BWOs, grannom (black caddis), tan caddis, craneflies, sulphurs, cahills, tricos, autumn sedge, terrestrials (Hex/Isonychia kept near zero — not meaningful Driftless hatches)
 - **Recommended flies** keyed to the dominant species and time of day
 - **Fishing regime** — STREAMER / HATCH / TERRESTRIAL / MIDGE / SCUD / NORMAL — so a "low score" day still tells you what gear to bring
 - **Honest disclosure** — every signal links to a Learn topic that explains how it's computed and cites the underlying paper
@@ -40,6 +44,8 @@ All public, no-key APIs:
 hatch probability, and hard safety regimes. A nymph-only 1.0 is compressed
 below "drop everything" territory; true hatch/surface alignment can rank
 higher. BLOWOUT and HEAT_STRESS regimes cap the headline score.
+
+The October 2026 field-guide review — what was wrong, the research behind each change, and what's still open — is in [`docs/FIELD_GUIDE_REVIEW.md`](docs/FIELD_GUIDE_REVIEW.md).
 
 The full math is documented in `data/seed/education.json` (rendered as the in-app Learn tab) and every reference traces to `docs/REFERENCES.md`.
 

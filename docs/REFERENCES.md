@@ -348,6 +348,102 @@ influence on the score, not a peer-reviewed multiplier.
 
 ---
 
+## Field-guide layer (added Oct 2026) — thermal biology, catchability, diet, regulations
+
+**`elliott_hurley_1999`**
+Elliott, J. M., & Hurley, M. A. (1999 and companion papers). Brown trout
+bioenergetics and growth models (Freshwater Biology; UCLan repository
+https://clok.uclan.ac.uk/17432). Summarised in UK Environment Agency (2008)
+*Thermal biology of brown trout and Atlantic salmon*
+https://assets.publishing.service.gov.uk/government/uploads/system/uploads/attachment_data/file/291742/scho1008boue-e-e.pdf
+- Growth from ~3.5 °C to 19.5 °C, maximum ~13 °C; feeding continues to
+  0–1 °C; intake rises roughly exponentially toward ~17.8 °C.
+- Basis for the cold-water floor in `nymph_score.TEMPERATURE_KNOTS` (cold is
+  a slow bite, not no bite) and the 52–62 °F plateau.
+
+**`snook_dieterman_2013`**
+Snook, V. & Dieterman, D. (2013). Southeast Minnesota winter stream-trout
+creel survey, Jan–Mar 2013. MN DNR Lanesboro.
+https://files.dnr.state.mn.us/areas/fisheries/lanesboro/2013-wi-creel.pdf
+- ~1.4 trout per angler-hour in winter; weekend ≈ weekday catch rates; air
+  temperature explained ~2 % of catch variance.
+- Ground truth that Driftless winter fishing is productive, contradicting the
+  old "0 below 42 °F" temperature curve.
+
+**`keep_fish_wet_2024`**
+Keep Fish Wet (Madden, Cooke & Danylchuk), 2024 angling-threshold guidance:
+61 °F (16 °C) brook/rainbow, 66 °F (19 °C) brown trout.
+https://midcurrent.com/2024/07/02/new-fish-handling-best-practices/
+- Disagrees with Boyd et al. 2010 (NAJFM; ~4 % brown-trout C&R mortality at
+  ≥23 °C on the Smith River) and the traditional 68 °F rule; the app warns at
+  ≥66–68 °F and hard-stops at 73 °F (Montana FWP hoot-owl line).
+
+**`stoner_2004`**
+Stoner, A. W. (2004). Effects of environmental variables on fish feeding
+ecology: implications for the performance of baited fishing gear and stock
+assessment. *Journal of Fish Biology*, 65, 1445–1471.
+- Temperature, light, current and prey density move catch rates by up to
+  ~10×; there are no controlled studies isolating barometric pressure. Basis
+  for shrinking `_pressure_trend_factor` to ±5 % and giving pressure 5 %
+  weight in `aggression_score`.
+
+**`valley_creek_2003`**
+Laudon, M. C., Vondracek, B., & Zimmerman, J. K. H. (2005). Prey selection by
+trout in a spring-fed stream: terrestrial versus aquatic invertebrates.
+USGS / Western North American Naturalist. https://pubs.usgs.gov/publication/70027419
+- Valley Creek, MN (Jun–Aug 2003): *Gammarus* ~75 % of brown trout diet by
+  biomass; terrestrials ~3 % of drift and ~10 % of diet by number.
+- Basis for `TERRESTRIAL_SURFACE_WEIGHT` and for treating scuds as the
+  year-round staple in `tactics.py`.
+
+**`french_winter_diet`**
+French, W. E., Vondracek, B., Ferrington, L. C., Finlay, J. C., & Dieterman,
+D. J. (2014–2017). Winter diet and growth of brown trout in
+groundwater-dominated SE Minnesota streams. https://pubs.usgs.gov/publication/70173474
+- Winter diets dominated by Chironomidae, *Brachycentrus*, *Gammarus* and
+  snails; growth rises with groundwater influence. Basis for the `midge`
+  species and the winter tactics.
+
+**`mn_dnr_se_hatch_chart`**
+Snook, V. (MN DNR Lanesboro). *Hatch Chart for Southeast Minnesota Trout
+Streams*. https://files.dnr.state.mn.us/areas/fisheries/lanesboro/se_mn_hatches_080405.pdf
+- Species-level windows Jan–Oct; no *Hexagenia*; Isonychia absent. Primary
+  source for `seasonal.DRIFTLESS_PEAKS`, cross-checked against Driftless
+  Angler (Viroqua) daily reports 2024–26 and Coulee Region TU (J. Freund).
+  Those two are guide/practitioner sources and are labeled as such.
+
+**`mn_dnr_clarity_scale`**
+MN DNR Lanesboro stream conditions page — CLEAR ≥2 ft, OFF 6 in–2 ft, MUDDY
+<6 in ("unfishable for most anglers"); streams commonly clear in 24–48 h.
+https://www.dnr.state.mn.us/areas/fisheries/lanesboro/stream_conditions.html
+- Basis for the clarity classes in `tactics.estimate_clarity` (thresholds in
+  flow-percentile space are heuristic).
+
+**`state_trout_seasons_2026`**
+MN Rule 6262.0200 (2026) https://www.revisor.mn.gov/rules/6262.0200/ ;
+WI DNR inland trout seasons and the 2026 April-opener change
+https://dnr.wisconsin.gov/topic/fishing/seasons/trout.html ,
+https://dnr.wisconsin.gov/newsroom/release/120206 ; Iowa DNR trout streams
+(open year-round) https://www.iowadnr.gov/fishing/trout-fishing
+- Encoded in `src/models/regulations.py`. General seasons only; stream-specific
+  special regulations are not modeled.
+
+**`nws_lightning`**
+NWS lightning safety — "When thunder roars, go indoors"; wait 30 minutes after
+the last thunder. https://www.weather.gov/wrn/lightning-sm
+- Basis for the LIGHTNING regime hard stop.
+
+**`driftless_mohseni_fit`**
+This project's fit (`src/scripts/refit_mohseni_driftless.py`,
+`data/calibration/mohseni_fit_driftless.json`) of Mohseni (1998) curves to
+historical USGS daily water temperature on Driftless trout streams (Joos
+Valley, Eagle, Traverse Valley N/S, Nederlo + forks, Rattlesnake, Kuenster,
+Stillwell, Silver, Upper Iowa) paired with Open-Meteo archive air temps.
+- Pooled spring class RMSE 2.4 °F vs 4.3–6.2 °F for the previous region-wide
+  "spring/mixed" curve on the same sites.
+
+---
+
 ## Public data sources (no-key APIs we live-fetch)
 
 - **USGS Water Data Services** — instantaneous values, daily values, daily

@@ -29,6 +29,13 @@ from typing import List, Optional
 LOG = logging.getLogger(__name__)
 
 FIT_OVERRIDE_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "calibration" / "mohseni_fit.json"
+DRIFTLESS_FIT_PATH = Path(__file__).resolve().parent.parent.parent / "data" / "calibration" / "mohseni_fit_driftless.json"
+
+# Only short, strongly spring-fed headwater reaches use the Driftless "spring"
+# curve (see thermal_profile.from_reach). Spring dominance fades downstream, so
+# long Class I mainstems keep the previous curve.
+STRONG_SPRING_STRENGTH = 0.80
+STRONG_SPRING_MAX_KM = 12.0
 
 
 # Mohseni coefficients in °F (converted from °C literature values).
@@ -78,12 +85,46 @@ if _FIT_OVERRIDE:
     LOG.info("Mohseni override loaded for classes: %s", sorted(_FIT_OVERRIDE))
 
 
-def params_for_reach(spring_influenced: bool) -> MohseniParams:
-    # Prefer an override from the USGS-fit curve. For spring-influenced reaches,
-    # "spring" is the ideal match; if the fit dataset didn't have any strictly
-    # spring-regime gauges, fall back to "mixed" (moderate dampening) before
-    # resorting to the literature constants.
+def _load_driftless_fit() -> dict:
+    """Curves fit on historical USGS daily water temp from Driftless trout
+    streams (src/scripts/refit_mohseni_driftless.py). Preferred over the
+    region-wide fit, which is dominated by large and urban rivers."""
+    if not DRIFTLESS_FIT_PATH.exists():
+        return {}
+    try:
+        data = json.loads(DRIFTLESS_FIT_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        LOG.warning("driftless mohseni fit read failed: %s", exc)
+        return {}
+    out = {}
+    for klass, entry in (data.get("classes") or {}).items():
+        fit = (entry or {}).get("fit")
+        if fit and all(k in fit for k in ("mu_f", "alpha_f", "beta_f", "gamma")):
+            out[klass] = MohseniParams(float(fit["mu_f"]), float(fit["alpha_f"]),
+                                       float(fit["beta_f"]), float(fit["gamma"]))
+    return out
+
+
+DRIFTLESS_FIT = _load_driftless_fit()
+# Only the "spring" class is adopted from the Driftless fit. On the last 90
+# days of live data (Stillwell, Silver, Eau Galle sentinels, Oct 2026) the
+# Driftless "mixed" and "freestone" curves — fit mostly on 1970s–2008 records —
+# ran 1.4–3.7°F cool and lost to the region-wide curves, so those stay. The
+# spring class is different in kind: on genuinely spring-fed sites the
+# region-wide curve misses by 4.3–6.2°F RMSE vs 2.1–2.3°F for the Driftless fit.
+DRIFTLESS_SPRING = DRIFTLESS_FIT.get("spring")
+
+
+def params_for_reach(spring_influenced: bool, spring_curve: bool = False) -> MohseniParams:
+    """Mohseni curve for a reach.
+
+    `spring_curve=True` (set by thermal_profile for short, strongly spring-fed
+    headwaters) selects the Driftless-fit spring curve. Otherwise: region-wide
+    USGS fit → literature constants, by spring influence.
+    """
     if spring_influenced:
+        if spring_curve and DRIFTLESS_SPRING is not None:
+            return DRIFTLESS_SPRING
         return (_FIT_OVERRIDE.get("spring")
                 or _FIT_OVERRIDE.get("mixed")
                 or SPRING_INFLUENCED)
@@ -105,18 +146,20 @@ def rolling_mean(series: List[float], window: int) -> List[float]:
     return out
 
 
-def estimate_water_series_f(air_daily_f: List[float], spring_influenced: bool, window: int = 7) -> List[float]:
+def estimate_water_series_f(air_daily_f: List[float], spring_influenced: bool, window: int = 7,
+                            spring_curve: bool = False) -> List[float]:
     """Convert a daily-mean air-temp °F series to daily-mean water-temp °F."""
-    p = params_for_reach(spring_influenced)
+    p = params_for_reach(spring_influenced, spring_curve)
     smoothed = rolling_mean(air_daily_f, window)
     return [mohseni(t, p) for t in smoothed]
 
 
-def estimate_current_water_f(recent_air_daily_f: List[float], spring_influenced: bool) -> Optional[float]:
+def estimate_current_water_f(recent_air_daily_f: List[float], spring_influenced: bool,
+                             spring_curve: bool = False) -> Optional[float]:
     """Current-day water-temp estimate from the last ~7 days of air temp."""
     if not recent_air_daily_f:
         return None
-    p = params_for_reach(spring_influenced)
+    p = params_for_reach(spring_influenced, spring_curve)
     window = recent_air_daily_f[-7:]
     avg = sum(window) / len(window)
     return mohseni(avg, p)

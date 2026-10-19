@@ -208,13 +208,42 @@
       ]
     },
 
+    "season_and_tactics": {
+      "title": "Seasons, \"should I go?\", and how-to-fish advice",
+      "body": [
+        "Every reach carries three layers on top of the hourly score:",
+        "* **Season status** — open, catch-and-release only, or closed, from the general MN / WI / IA inland trout seasons (WI's harvest opener moved to the 1st Saturday of April in 2026). A spawning advisory runs late September through November: stay off gravel redds in pool tailouts and leave paired fish alone.",
+        "* **Should I go?** — each day gets a verdict (Go / Worth it / Slow / Skip / Closed) from its best 3-hour window, the reasons behind it and, when a day in the next three is clearly better (≥ 12 points), a pointer to that day. A Skip names what killed the day — thunderstorms, muddy water, heat, cold, or a closed season.",
+        "* **How & where to fish** — a technique, rig, water types, flies and approach for the best window, picked from season, estimated clarity (MN DNR scale: clear ≥ 2 ft, off-color 6 in–2 ft, muddy < 6 in), time of day and weather. Winter is slow-and-deep midges and scuds near springs from 10am–3pm; stained water is worm, leech and streamer; summer is dawn tricos, shaded-bank hopper-droppers and evening caddis.",
+        "**Honest disclosure.** Season dates are agency rules; spawning timing comes from MN DNR work; the tactics are guide-derived practice distilled from a season of Driftless Angler (Viroqua) daily reports plus Coulee Region TU, Trout Fool, Midwest Outdoors and TU writing. A strong starting point, not a measurement — your trip reports are how we tune it."
+      ],
+      "references": [
+        {
+          "id": "state_trout_seasons_2026",
+          "text": "MN Rule 6262.0200 (2026); WI DNR inland trout seasons incl. the 2026 April opener; Iowa DNR (trout streams open year-round)."
+        },
+        {
+          "id": "mn_dnr_clarity_scale",
+          "text": "MN DNR Lanesboro stream conditions — clear / off / muddy visibility scale. https://www.dnr.state.mn.us/areas/fisheries/lanesboro/stream_conditions.html"
+        },
+        {
+          "id": "driftless_angler_guide",
+          "text": "Driftless Angler shop reports (Viroqua, WI) — guide reference, not peer-reviewed. https://www.driftlessangler.com"
+        }
+      ]
+    },
+
     "regimes": {
       "title": "How we classify the day's regime",
       "body": [
         "The score answers \"how good is fishing right now?\" — but two days that both score 0.30 can call for completely different gear. A blown-out chocolate-milk day at 0.30 needs a streamer; a bluebird August afternoon at 0.30 needs a hopper. The regime label says **what to fish**, separately from the verdict.",
         "We compute regime in priority order — first match wins:",
+        "* **CLOSED** — the general state inland-trout season is closed for this reach (MN Oct 16–Dec 31; WI Oct 16 to the 1st Saturday of January; Iowa never closes). Caps the score at 0 — legality before biology. Stream-specific special regulations are not modeled; always check current regs.",
+        "* **LIGHTNING** — the NWS hourly forecast mentions thunder and precipitation probability is ≥ 30%. A fly rod in a valley stream is a lightning rod; wait 30 minutes after the last thunder. Caps the score at 0.05.",
+        "* **HAZARD** — air below 10°F, below 20°F with >15 mph wind (guides ice up in minutes), or sustained wind above 25 mph. Caps the score at 0.12.",
         "* **BLOWOUT** — ≥ 25 mm (≈1\") rain in the preceding 24h *and* projected flow ≥ 85th percentile. Caps the displayed combined score at 0.10. Wading is dangerous; even bait fishing is questionable.",
         "* **STREAMER** — projected flow ≥ 78th percentile, OR cold-water (42–50°F) elevated water (≥ 55th pct), OR (rain ≥ 0.5\" *and* flow ≥ 65th pct). Stained but wadeable water; fish are looking up for big silhouettes.",
+        "* **HEAT_STRESS** — water ≥ 73°F at any hour (lethal-stress line), or air ≥ 88°F with water ≥ 68°F at midday. Caps the score at 0.15; fish dawn only or go to a spring-fed tributary.",
         "* **HATCH** — best dry-fly score ≥ 0.30 *and* at least one species at ≥ 30% emergence probability. Match-the-hatch mode; defer to species-specific patterns.",
         "* **TERRESTRIAL** — months 7–9 *and* water ≥ 58°F *and* dry score < 0.20. Summer terrestrials when no aquatic emergence is firing.",
         "* **MIDGE** — water < 50°F *and* dry score < 0.15 *and* no active hatch. Winter / very cold water; trout still feed on midges and micros.",
@@ -288,7 +317,7 @@
         "**Barometric pressure multipliers are guide-derived, not literature-derived.** Peer-reviewed work on barometric effects on freshwater trout feeding is thin and inconsistent.",
         "**Sun-angle penalty is heuristic.** No observational study quantifies sun-altitude → rise-rate; the −35% maximum penalty is calibrated to feel right vs. typical angler expectation.",
         "**Hopper / terrestrial seasonal model is just a calendar.** No air-temp gating, no wind activation, no precip suppression. If you fish hoppers regularly and the model is way off, tell us.",
-        "**No accounting for:** angler pressure, recent stocking, reach-specific structure (riffles vs runs vs pools), spawning closures, ice-out timing on the gauge data feed, wind direction (just speed), water clarity / turbidity beyond the QPF proxy.",
+        "**No accounting for:** angler pressure, recent stocking, reach-specific structure (riffles vs runs vs pools), stream-specific special regulations, ice-out timing on the gauge data feed, wind direction (just speed), water clarity / turbidity beyond the QPF proxy.",
         "Master bibliography: see `docs/REFERENCES.md`. Every quantitative claim above traces to a specific entry there, or is labeled 'guide-derived' / 'heuristic' as appropriate."
       ],
       "references": []

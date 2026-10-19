@@ -145,38 +145,6 @@ def get_reach(reach_id: str) -> Optional[Dict[str, Any]]:
     return dict(row) if row else None
 
 
-# NHDPlus High-Res centerlines ship with ~14 decimal places of coordinate
-# precision (sub-nanometer) — pointless on a map and the bulk of the /reaches
-# payload. Rounding to 5 places is ~1m precision, invisible at any zoom, and
-# cuts the raw geometry ~50% (and far more after gzip, since fewer unique
-# digits compress better). Geometry never changes within a process, so the
-# rounded string is cached per reach.
-_GEOM_PRECISION = 5
-_ROUNDED_GEOM_CACHE: Dict[str, str] = {}
-
-
-def _round_geojson(geojson_str: str) -> str:
-    cached = _ROUNDED_GEOM_CACHE.get(geojson_str)
-    if cached is not None:
-        return cached
-
-    def _rnd(o: Any) -> Any:
-        if isinstance(o, float):
-            return round(o, _GEOM_PRECISION)
-        if isinstance(o, list):
-            return [_rnd(x) for x in o]
-        if isinstance(o, dict):
-            return {k: _rnd(v) for k, v in o.items()}
-        return o
-
-    try:
-        rounded = json.dumps(_rnd(json.loads(geojson_str)), separators=(",", ":"))
-    except (ValueError, TypeError):
-        rounded = geojson_str
-    _ROUNDED_GEOM_CACHE[geojson_str] = rounded
-    return rounded
-
-
 def list_reach_summaries() -> List[Dict[str, Any]]:
     # Joined with the most recent prediction per reach so the map can color
     # markers without a second round trip.
@@ -208,8 +176,6 @@ def list_reach_summaries() -> List[Dict[str, Any]]:
     summaries = []
     for row in rows:
         d = dict(row)
-        if d.get("geometry_geojson"):
-            d["geometry_geojson"] = _round_geojson(d["geometry_geojson"])
         nymph = d.pop("nymph_score", None)
         dry = d.pop("dry_score", None)
         active_species = d.pop("active_species", None)

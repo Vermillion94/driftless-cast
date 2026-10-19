@@ -1337,3 +1337,27 @@ html, body {
   .scrub-label { min-width: 0; font-size: 0.74rem; }
   .scrubber { gap: 6px; }
 }
+
+/* -- Field guide: near me, season, trip call, tactics ---------------------- */
+.near-panel { display: flex; flex-direction: column; gap: 8px; }
+.near-btn {
+  width: 100%; padding: 10px 12px; border: 1px solid #8ab9c2; border-radius: 8px;
+  background: #ffffff; color: #264653; font: inherit; font-weight: 600; cursor: pointer; text-align: left;
+}
+.near-btn:hover { background: #fbfdfe; border-color: #2a9d8f; }
+.near-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.near-list:empty { display: none; }
+.small { font-size: 0.78rem; }
+.warning-banner.season-closed { background: #f3f4f6; border-color: #6b7280; color: #1f2933; }
+.trip-call .trip-advice { margin: 4px 0 6px; }
+.trip-reasons { margin: 0 0 8px; padding-left: 18px; color: #52606d; font-size: 0.85rem; }
+.trip-days { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.trip-day { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 0.72rem; min-width: 0; }
+.trip-wd { color: #52606d; font-weight: 600; }
+.trip-verdict { width: 100%; text-align: center; border-radius: 4px; padding: 2px 0; color: #1f2933; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trip-window { color: #52606d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.tactics .tactic-method { margin: 4px 0 6px; }
+.tactics ul { margin: 2px 0 8px; padding-left: 18px; font-size: 0.86rem; }
+.tactic-k { display: inline-block; min-width: 64px; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: #52606d; font-weight: 700; }
+.tactic-block .tactic-k { display: block; }
+.tactic-rig, .tactic-where { font-size: 0.86rem; margin: 4px 0; }

@@ -18,6 +18,10 @@ class ThermalProfile:
     swing_damping: float
     diurnal_amp_factor: float
     label: str
+    # True → use the Driftless-fit spring Mohseni curve (short, strongly
+    # spring-fed headwater). The curve already encodes groundwater damping, so
+    # the mean offsets above are zero for these reaches.
+    spring_curve: bool = False
 
 
 DEFAULT_PROFILE = ThermalProfile(
@@ -53,6 +57,23 @@ def from_reach(reach: Mapping[str, object]) -> ThermalProfile:
     if 0 < length <= 8.0:
         strength += 0.10
     strength = max(0.0, min(1.0, strength))
+
+    from src.models.temp_estimator import DRIFTLESS_SPRING, STRONG_SPRING_MAX_KM, STRONG_SPRING_STRENGTH
+    if (DRIFTLESS_SPRING is not None and strength >= STRONG_SPRING_STRENGTH
+            and 0 < length <= STRONG_SPRING_MAX_KM):
+        # Short, strongly spring-fed headwater: the Driftless-fit spring curve
+        # already captures groundwater damping, so applying these offsets too
+        # would double-count. Keep only the diurnal damping, which a
+        # daily-mean fit cannot see.
+        return ThermalProfile(
+            spring_strength=strength,
+            warm_season_cooling_f=0.0,
+            cold_season_warming_f=0.0,
+            swing_damping=0.0,
+            diurnal_amp_factor=1.0 - 0.35 * strength,
+            label=f"Driftless spring-headwater fit (strength {strength:.2f})",
+            spring_curve=True,
+        )
 
     return ThermalProfile(
         spring_strength=strength,

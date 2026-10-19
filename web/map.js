@@ -763,8 +763,8 @@
       else if (sb.diel_activity <= 0.86) chips.push("midday/overnight drag");
     }
     if (sb.pressure_factor != null) {
-      if (sb.pressure_factor >= 1.02) chips.push("falling barometer");
-      else if (sb.pressure_factor <= 0.92) chips.push("rising barometer");
+      if (sb.pressure_factor >= 1.01) chips.push("falling barometer");
+      else if (sb.pressure_factor <= 0.98) chips.push("rising barometer");
     }
     if (sb.sun_factor != null && sb.sun_factor < 0.90) chips.push("bright-sun drag");
     if (model.surface_signal >= 0.15) chips.push("surface signal");
@@ -841,6 +841,105 @@
         </div>
       </div>
     `;
+  }
+
+  // ── Field guide: season, trip call, tactics, near me ─────────────────────
+  const VERDICT_COLORS = {
+    go: "#1a9850", good: "#91cf60", slow: "#fee08b", skip: "#d73027", closed: "#9aa5b1",
+  };
+
+  function renderSeasonBanner(season) {
+    if (!season) return "";
+    const link = season.source_url
+      ? ` <a href="${season.source_url}" target="_blank" rel="noopener">regs</a>` : "";
+    let html = "";
+    if (season.status === "closed") {
+      html += `<div class="warning-banner season-closed">⛔ <strong>${escapeHtml(season.label)}</strong>${season.next_change ? ` — reopens ${escapeHtml(season.next_change)}` : ""}. ${escapeHtml(season.detail || "")}${link}</div>`;
+    } else if (season.status === "catch_and_release") {
+      html += `<div class="warning-banner soft">↺ <strong>${escapeHtml(season.label)}</strong>${season.next_change ? ` until ${escapeHtml(season.next_change)}` : ""}. Gear rules vary by stream.${link}</div>`;
+    }
+    if (season.spawning_advisory && season.status !== "closed") {
+      html += `<div class="warning-banner soft">🥚 ${escapeHtml(season.spawning_advisory)}</div>`;
+    }
+    return html;
+  }
+
+  function renderTripCall(days) {
+    if (!days || !days.length) return "";
+    const today = days[0];
+    const cells = days.slice(0, 7).map((d) => `
+      <li class="trip-day" title="${escapeHtml(d.advice || "")}">
+        <span class="trip-wd">${escapeHtml(d.weekday)}</span>
+        <span class="trip-verdict" style="background:${VERDICT_COLORS[d.verdict] || "#9aa5b1"}">${escapeHtml(d.verdict_label)}</span>
+        <span class="trip-window">${d.verdict === "closed" ? "—" : escapeHtml(d.best_window.label)}</span>
+      </li>`).join("");
+    const reasons = (today.reasons || []).map((r) => `<li>${escapeHtml(r)}</li>`).join("");
+    return `
+      <section class="section trip-call">
+        <h3>Should I go?</h3>
+        <p class="trip-advice"><strong>${escapeHtml(today.advice || "")}</strong></p>
+        ${reasons ? `<ul class="trip-reasons">${reasons}</ul>` : ""}
+        <ol class="trip-days">${cells}</ol>
+      </section>`;
+  }
+
+  function renderTactics(t, whenLabel) {
+    if (!t) return "";
+    const list = (items) => (items || []).map((x) => `<li>${escapeHtml(x)}</li>`).join("");
+    return `
+      <section class="section tactics">
+        <h3>How &amp; where to fish${whenLabel ? ` · ${escapeHtml(whenLabel)}` : ""}</h3>
+        <p class="tactic-method"><strong>${escapeHtml(t.method)}</strong> <span class="muted small">· ${escapeHtml(t.clarity_label || "")} water</span></p>
+        ${t.rig && t.rig !== "—" ? `<p class="tactic-rig"><span class="tactic-k">Rig</span> ${escapeHtml(t.rig)}</p>` : ""}
+        ${t.water && t.water.length ? `<div class="tactic-block"><span class="tactic-k">Fish</span><ul>${list(t.water)}</ul></div>` : ""}
+        ${t.flies && t.flies.length ? `<div class="tactic-block"><span class="tactic-k">Flies</span><ul class="tactic-flies">${list(t.flies.slice(0, 6))}</ul></div>` : ""}
+        ${t.approach && t.approach.length ? `<div class="tactic-block"><span class="tactic-k">Approach</span><ul>${list(t.approach)}</ul></div>` : ""}
+        ${t.where ? `<p class="tactic-where"><span class="tactic-k">Where</span> ${escapeHtml(t.where)}</p>` : ""}
+        <p class="muted small">Guide-derived practice from Driftless fly-shop reports and agency guidance — a starting point, not gospel.</p>
+      </section>`;
+  }
+
+  function tacticsHourFor(hours, days) {
+    const start = days && days[0] && days[0].best_window && days[0].best_window.start;
+    const hit = start ? hours.find((h) => h.valid_at === start) : null;
+    return hit || hours[0];
+  }
+
+  async function loadNearMe() {
+    const statusEl = document.getElementById("near-status");
+    const listEl = document.getElementById("near-list");
+    const show = (msg) => { statusEl.textContent = msg; statusEl.classList.remove("hidden"); };
+    if (!navigator.geolocation) { show("Location isn't available in this browser."); return; }
+    show("Finding streams near you…");
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      try {
+        const { latitude, longitude } = pos.coords;
+        const resp = await fetch(`${API_BASE}/near?lat=${latitude.toFixed(3)}&lon=${longitude.toFixed(3)}&max_km=120&limit=6`);
+        if (!resp.ok) throw new Error(resp.status === 422 ? "You look to be outside the Driftless region." : `HTTP ${resp.status}`);
+        const data = await resp.json();
+        const rows = data.reaches || [];
+        if (!rows.length) { show("No modeled streams within ~75 miles."); listEl.innerHTML = ""; return; }
+        statusEl.classList.add("hidden");
+        listEl.innerHTML = rows.map((r) => {
+          const today = r.today || {};
+          const tmrw = r.tomorrow || {};
+          const color = VERDICT_COLORS[today.verdict] || "#9aa5b1";
+          return `<li><button type="button" class="window-row" data-reach="${r.reach_id}">
+              <span class="score-pill" style="background:${color}">${escapeHtml(today.verdict_label || "—")}</span>
+              <span class="window-main">
+                <span class="window-name">${escapeHtml(r.stream_name)} <span class="muted small">${r.distance_mi} mi</span></span>
+                <span class="window-sub">${escapeHtml(today.advice || "")}</span>
+                ${tmrw.verdict ? `<span class="window-reason">Tomorrow: ${escapeHtml(tmrw.verdict_label)} ${tmrw.verdict === "closed" ? "" : escapeHtml(tmrw.best_window.label)}</span>` : ""}
+              </span>
+            </button></li>`;
+        }).join("");
+        listEl.querySelectorAll("button[data-reach]").forEach((b) =>
+          b.addEventListener("click", () => showReachDetail(b.dataset.reach)));
+      } catch (err) {
+        show(err.message);
+      }
+    }, () => show("Location permission was declined — pick a stream on the map instead."),
+       { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 });
   }
 
   async function showReachDetail(reachId, opts = {}) {
@@ -928,10 +1027,18 @@
         ? `<p class="best-window">Best ahead: <strong>${formatWindowRange(bestWindow.start, bestWindow.end)}</strong> · ${Math.round(bestWindow.score * 100)}/100</p>`
         : "";
       const planHTML = renderFishingPlan(hours, now, bestWindow);
+      const seasonHTML = renderSeasonBanner(fc.season);
+      const tripHTML = renderTripCall(fc.days);
+      const tacticsHour = tacticsHourFor(hours, fc.days);
+      const tacticsHTML = renderTactics(
+        tacticsHour.tactics,
+        tacticsHour === now ? "right now" : `today's best window ${(fc.days && fc.days[0] && fc.days[0].best_window.label) || ""}`,
+      );
 
       body.innerHTML = `
         <h2>${fc.stream_name}</h2>
         <p class="segment">${fc.segment_name || ""}</p>
+        ${seasonHTML}
         ${stressBanner}
         ${caveatBanner}
         <div class="verdict" style="border-left-color:${scoreColor(nowScore)}">
@@ -945,6 +1052,8 @@
           <p class="explanation">${now.explanation || ""}</p>
           ${bestWindowHTML}
         </div>
+        ${tripHTML}
+        ${tacticsHTML}
         ${planHTML}
         <section class="section">
           <h3>7-day outlook</h3>
@@ -1125,7 +1234,7 @@
   let educationTopics = null;
   let educationCache = {};
   const LEARN_CATEGORIES = [
-    { id: "score",   title: "The score",          icon: "🎯", ids: ["score_overview", "regimes", "validation", "honest_limits"] },
+    { id: "score",   title: "The score",          icon: "🎯", ids: ["score_overview", "regimes", "season_and_tactics", "validation", "honest_limits"] },
     { id: "water",   title: "Water & temp",       icon: "💧", ids: ["water_temp_zone", "fish_stress", "mohseni"] },
     { id: "flow",    title: "Flow",               icon: "🌊", ids: ["flow_percentile", "flow_trend", "flow_recession"] },
     { id: "hatch",   title: "Hatches & timing",   icon: "🪰", ids: ["degree_days", "emergence_hour", "anomaly_shift", "drift_window"] },
@@ -1953,6 +2062,8 @@
     b.addEventListener("click", () => setView(b.dataset.view));
   });
   attachScrubber();
+  const nearBtn = document.getElementById("near-me-btn");
+  if (nearBtn) nearBtn.addEventListener("click", loadNearMe);
   // Residuals first so the very first paint of /reaches uses the calibrated
   // score; the call is cheap (one row per reach with >=3 reports).
   loadResiduals().then(() => {

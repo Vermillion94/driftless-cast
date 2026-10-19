@@ -1,44 +1,58 @@
 from datetime import datetime, timedelta
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Optional
 from zoneinfo import ZoneInfo
 
 
 DRIFTLESS_TZ = ZoneInfo("America/Chicago")
 
 
+# (water °F, score) knots, linearly interpolated. See temperature_score.
+TEMPERATURE_KNOTS = (
+    (32.0, 0.25),
+    (36.0, 0.35),
+    (40.0, 0.50),
+    (45.0, 0.70),
+    (50.0, 0.90),
+    (52.0, 1.00),
+    (62.0, 1.00),
+    (65.0, 0.85),
+    (68.0, 0.55),
+    (73.0, 0.00),
+)
+
+
 def temperature_score(temp_f: float) -> float:
-    """Plateau model anchored to the literature on brown-trout feeding range.
+    """Brown-trout feeding opportunity vs water temperature, 0..1.
 
-    Replaces the previous Gaussian (peak 58°F, σ=6) which collapsed to ~0.5 at
-    51°F — a temperature where Driftless spring-creek browns are actively
-    feeding. The Gaussian disagreed with both Wehrly et al. (2007) and our own
-    `_format_water_clause` copy, which both treat 50–65°F as the active band.
+    Piecewise-linear over TEMPERATURE_KNOTS:
+      32→36°F  0.25→0.35  cold: slow, deep, small flies — but trout DO feed
+      36→52°F  ramps to 1.0 as intake rises roughly exponentially with temp
+      52→62°F  1.0        peak feeding / growth band
+      62→68°F  1.0→0.55   warm side; ≥66°F is the Keep Fish Wet brown-trout
+                          angling threshold where C&R mortality risk climbs
+      68→73°F  0.55→0     stress; ≥73°F is a hard stop (MT FWP hoot-owl)
 
-    Curve:
-      < 42°F           → 0.0   (lethargic, refusing presentations)
-      42°F → 52°F      → linear ramp 0 → 1
-      52°F → 64°F      → 1.0   (peak feeding zone)
-      64°F → 68°F      → linear ramp 1.0 → 0.5  (warm but still feeding)
-      68°F → 75°F      → linear ramp 0.5 → 0    (stress; ethics threshold ≥68°F)
-      ≥ 75°F           → 0.0   (lethal-stress zone)
+    The previous curve returned 0 below 42°F, which zeroed every Driftless
+    winter hour: USGS daily records on Driftless creeks (Joos Valley, Eagle,
+    Nederlo, Traverse Valley) average 34–38°F in Dec–Feb, yet the SE MN winter
+    creel (Snook & Dieterman, Jan–Mar 2013) measured ~1.4 trout/angler-hour.
+    Elliott & Hurley's bioenergetics show feeding down to 0–1°C with growth
+    from ~3.5°C (38°F), so cold water is a *slow* bite, not *no* bite.
 
-    Sources: docs/REFERENCES.md#wehrly_2007 (brown trout active feeding 50–65°F),
-    #elliott_1981 (thermal stress), #wilkie_1996 (catch-and-release mortality
-    above 68°F).
+    Sources: docs/REFERENCES.md#elliott_hurley_1999, #snook_dieterman_2013,
+    #keep_fish_wet_2024, #wehrly_2007.
     """
     if temp_f is None:
         return 0.0
     t = float(temp_f)
-    if t < 42.0:
+    knots = TEMPERATURE_KNOTS
+    if t <= knots[0][0]:
+        return knots[0][1]
+    if t >= knots[-1][0]:
         return 0.0
-    if t < 52.0:
-        return (t - 42.0) / 10.0
-    if t <= 64.0:
-        return 1.0
-    if t <= 68.0:
-        return 1.0 - (t - 64.0) * (0.5 / 4.0)  # 64→1.0, 68→0.5
-    if t <= 75.0:
-        return 0.5 - (t - 68.0) * (0.5 / 7.0)  # 68→0.5, 75→0
+    for (t0, s0), (t1, s1) in zip(knots, knots[1:]):
+        if t0 <= t <= t1:
+            return s0 + (s1 - s0) * (t - t0) / (t1 - t0)
     return 0.0
 
 
@@ -113,29 +127,25 @@ def _local_hour(valid_at: str) -> int:
     return dt.astimezone(DRIFTLESS_TZ).hour
 
 
-def drift_window_bonus(valid_at: str) -> float:
-    hour = _local_hour(valid_at)
-    if hour in {6, 7, 19, 20}:
-        return 0.08
-    if hour in {5, 8, 18, 21}:
-        return 0.04
-    return 0.0
+# Below COLD_DIEL_F the feeding window is the warmest part of the day; above
+# WARM_DIEL_F it is the low-light dawn/dusk drift peak; in between we blend.
+COLD_DIEL_F = 48.0
+WARM_DIEL_F = 56.0
 
 
-def diel_activity_factor(valid_at: str) -> float:
-    """Local-time feeding rhythm for nymph/streamer opportunity.
+def _warm_weight(water_temp_f: Optional[float]) -> float:
+    """0 = cold-season (midday) rhythm, 1 = warm-season (dawn/dusk) rhythm."""
+    if water_temp_f is None:
+        return 1.0
+    t = float(water_temp_f)
+    if t <= COLD_DIEL_F:
+        return 0.0
+    if t >= WARM_DIEL_F:
+        return 1.0
+    return (t - COLD_DIEL_F) / (WARM_DIEL_F - COLD_DIEL_F)
 
-    Water temperature and flow remain the hard gates. This factor only breaks
-    the broad "comfortable water + normal flow" plateau into practical fishing
-    windows: low-light morning/evening periods get the best drift/cover
-    advantage, overnight is workable but less visually/presentation friendly,
-    and high midday light is slightly damped.
 
-    The mechanism is trout light sensitivity and crepuscular feeding behavior;
-    the exact magnitude is intentionally small because it is a behavioral
-    product calibration, not a lab-derived constant.
-    """
-    hour = _local_hour(valid_at)
+def _warm_diel(hour: int) -> float:
     if hour in {6, 7, 19, 20}:
         return 1.00
     if hour in {5, 8, 18, 21}:
@@ -145,6 +155,52 @@ def diel_activity_factor(valid_at: str) -> float:
     if hour <= 3 or hour >= 23:
         return 0.82
     return 0.91
+
+
+def _cold_diel(hour: int) -> float:
+    """Cold water: the 10am–3pm warm-up is the window (Driftless Angler daily
+    reports, TCTU winter guidance: "fish 10–2 during rising temperatures").
+    Dawn is the coldest water of the day; after dark is a non-starter."""
+    if 11 <= hour <= 15:
+        return 1.00
+    if hour in {10, 16}:
+        return 0.94
+    if hour in {9, 17}:
+        return 0.84
+    if hour in {8, 18}:
+        return 0.74
+    if 5 <= hour <= 20:
+        return 0.66
+    return 0.55
+
+
+def drift_window_bonus(valid_at: str, water_temp_f: Optional[float] = None) -> float:
+    """Dawn/dusk behavioral-drift bonus (Waters 1972). Fades out in cold water,
+    where trout are not feeding hard at the coldest hours of the day."""
+    hour = _local_hour(valid_at)
+    if hour in {6, 7, 19, 20}:
+        bonus = 0.08
+    elif hour in {5, 8, 18, 21}:
+        bonus = 0.04
+    else:
+        bonus = 0.0
+    return bonus * _warm_weight(water_temp_f)
+
+
+def diel_activity_factor(valid_at: str, water_temp_f: Optional[float] = None) -> float:
+    """Local-time feeding rhythm for nymph/streamer opportunity.
+
+    Water temperature and flow remain the hard gates. This factor breaks the
+    broad "comfortable water + normal flow" plateau into practical windows.
+
+    Season-aware: in warm water (≥56°F) low-light dawn/dusk periods carry the
+    drift peak and bright midday is damped; in cold water (≤48°F) the midday
+    warm-up is prime and dawn/dusk are the coldest, slowest hours. A single
+    year-round dawn/dusk curve made the model recommend 7pm on January nights.
+    """
+    hour = _local_hour(valid_at)
+    w = _warm_weight(water_temp_f)
+    return w * _warm_diel(hour) + (1.0 - w) * _cold_diel(hour)
 
 
 def drift_window_bonus_utc_legacy(valid_at: str) -> float:
@@ -175,7 +231,7 @@ def compute_nymph_score(
     temp_score = temperature_score(temp_f)
     flow_score = flow_percentile_score(flow_percentile)
     trend_score = flow_trend_score(recent_flows)
-    diel = diel_activity_factor(valid_at)
-    bonus = drift_window_bonus(valid_at) + prehatch_bonus(dd_current, species_thresholds)
+    diel = diel_activity_factor(valid_at, temp_f)
+    bonus = drift_window_bonus(valid_at, temp_f) + prehatch_bonus(dd_current, species_thresholds)
     score = temp_score * flow_score * trend_score * diel + bonus
     return max(0.0, min(1.0, score))

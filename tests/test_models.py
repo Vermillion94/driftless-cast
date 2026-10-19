@@ -291,7 +291,7 @@ def test_proxy_reach_displays_local_noaa_flow_when_no_forecast():
     assert 0.25 < pct < 0.75
 
 
-def test_spring_creek_thermal_profile_cools_warm_water_and_damps_diurnal():
+def test_spring_creek_thermal_profile_damps_diurnal():
     profile = from_reach({
         "spring_influenced": 1,
         "trout_class": "I",
@@ -299,9 +299,34 @@ def test_spring_creek_thermal_profile_cools_warm_water_and_damps_diurnal():
         "length_km": 7.0,
     })
     assert profile.spring_strength > 0.85
-    assert apply_profile(62.0, profile) < 60.0
-    assert apply_profile(42.0, profile) > 42.0
     assert profile.diurnal_amp_factor < 0.75
+    if profile.spring_curve:
+        # The Driftless-fit spring curve already encodes groundwater damping;
+        # the profile must not shift the daily mean a second time.
+        assert apply_profile(62.0, profile) == 62.0
+    else:
+        assert apply_profile(62.0, profile) < 60.0
+        assert apply_profile(42.0, profile) > 42.0
+
+
+def test_long_class_i_mainstem_does_not_get_headwater_curve():
+    profile = from_reach({
+        "spring_influenced": 1, "trout_class": "I", "mean_gradient": 5.1, "length_km": 71.4,
+    })
+    assert not profile.spring_curve
+    assert apply_profile(62.0, profile) < 62.0  # previous damping still applies
+
+
+def test_strong_spring_creek_uses_driftless_spring_curve():
+    from src.models.temp_estimator import DRIFTLESS_SPRING, mohseni, params_for_reach
+    if DRIFTLESS_SPRING is None:
+        return
+    strong = params_for_reach(True, spring_curve=True)
+    weak = params_for_reach(True, spring_curve=False)
+    # Measured Driftless spring creeks top out ~60F in July and sit ~36F in Jan.
+    assert mohseni(75.0, strong) < 62.0
+    assert mohseni(75.0, strong) < mohseni(75.0, weak)
+    assert 34.0 <= mohseni(15.0, strong) <= 39.0
 
 
 def test_freestone_thermal_profile_is_neutral():

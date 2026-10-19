@@ -55,3 +55,25 @@ def bright_sun_dry_penalty(sun_alt_deg: float, cloud_cover: float) -> float:
     """
     b = surface_brightness_factor(sun_alt_deg, cloud_cover)
     return 1.0 - 0.35 * b
+
+
+def seasonal_sun_factors(sun_alt_deg: float, cloud_cover: float, water_temp_f: float | None) -> tuple[float, float]:
+    """(dry_factor, nymph_factor) for sunlight, depending on water temperature.
+
+    Sun means opposite things across the Driftless year:
+      * warm, low, clear water (≥56°F): bright high sun makes trout spooky and
+        shuts surface feeding down ("fish early, fish late, avoid the midday
+        sun" — Driftless Angler summer reports). Dry penalty up to 0.65.
+      * cold water (≤48°F): sun warms the shallows a degree or two and switches
+        on midges and early stones — "sunny days are your best bet in winter"
+        (TCTU; Wet Fly Swing / PJ Smith). No dry penalty, small nymph bonus.
+    Between the two we blend linearly.
+    """
+    b = surface_brightness_factor(sun_alt_deg, cloud_cover)
+    if water_temp_f is None:
+        warm = 1.0
+    else:
+        warm = max(0.0, min(1.0, (float(water_temp_f) - 48.0) / 8.0))
+    dry = 1.0 - 0.35 * b * warm
+    nymph = 1.0 + 0.10 * b * (1.0 - warm)
+    return dry, nymph
