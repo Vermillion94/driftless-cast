@@ -196,3 +196,25 @@ def test_simplify_keeps_endpoints_and_drops_collinear_points():
     assert simplify(line) == [(0.0, 0.0), (0.003, 0.0)]
     bent = [(0.0, 0.0), (0.001, 0.01), (0.002, 0.0)]
     assert len(simplify(bent)) == 3
+
+
+def test_private_trip_report_strips_free_text_and_hides_from_feed(monkeypatch):
+    saved = {}
+    monkeypatch.setattr(routes, "get_reach", lambda rid: {"reach_id": rid})
+    monkeypatch.setattr(routes, "insert_catch_log", lambda entry: saved.update(entry) or 7)
+    routes._catch_log_hits.clear()
+    client = TestClient(app)
+    body = {"reach_id": "x", "fished_at": "2026-10-18T15:00:00-05:00", "success": 3,
+            "reporter_name": "Ben", "notes": "big brown under the willow", "fly_used": "Pink Squirrel #14",
+            "conditions": {"water_temp_f": 56, "verdict": "good"}}
+    assert client.post("/catch-log", json=body).status_code == 200
+    assert saved["is_public"] == 0
+    assert saved["notes"] is None and saved["reporter_name"] is None
+    assert saved["fly_used"] == "Pink Squirrel #14"          # anonymous, useful
+    assert '"water_temp_f": 56' in saved["conditions"]
+
+
+def test_community_summary_is_anonymous():
+    from src.db.queries import community_summary
+    out = community_summary(14)
+    assert set(out) == {"days", "trips", "good_share", "top_flies", "top_methods"}

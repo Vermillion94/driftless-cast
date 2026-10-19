@@ -184,54 +184,49 @@ def recommend_tactics(
         kw["flies"] = _dedupe(kw.get("flies", []))
         return Tactics(**kw)
 
+    # Copy style: field-guide terse. Method ≤ 4 words, tips are short
+    # imperatives, at most three; the "why" lives in the Learn tab.
+
     # ── Hard stops: still tell the angler something useful ──────────────
     if regime_code == "CLOSED":
         return t(method="Season closed", rig="—",
-                 approach=["Iowa trout streams are open year-round — NE Iowa spring creeks are the winter play",
-                           "Use the time to tie scuds, Pink Squirrels and midges for the opener"],
+                 approach=["Iowa streams stay open all winter", "Tie scuds and midges for the opener"],
                  where="an open-season stream")
     if regime_code == "LIGHTNING":
         return t(method="Off the water", rig="—",
-                 approach=["Wait 30 minutes after the last thunder before wading back in",
-                           "The first rise as the water colors after the storm can be the best big-fish window of the day"])
+                 approach=["Wait 30 min after the last thunder", "The first rise after a storm can fish well"])
     if regime_code == "HAZARD":
-        return t(method="Wait for a warmer, calmer window", rig="—",
-                 approach=["Below ~20°F air the guides ice up in minutes",
-                           "The 10am–2pm warm-up on a 25°F+ day is the realistic winter window"])
+        return t(method="Too cold or windy", rig="—",
+                 approach=["Guides ice up below ~20°F", "Aim for a 25°F+ day, 10am–2pm"])
     if regime_code == "HEAT_STRESS" or (water_temp_f is not None and water_temp_f >= 68):
         return t(method="Rest the fish", rig="—",
-                 approach=["Water is past the catch-and-release safety line — fish dawn until ~10am only, land fish fast, keep them wet",
-                           "Or go to a small, cold, spring-fed tributary"],
-                 where="small spring-fed headwater creeks (coldest water in the system)")
+                 approach=["Fish dawn to 10am only", "Land fish fast, keep them wet"],
+                 where="small spring-fed headwaters")
 
     # ── Muddy: skip the main stem, find clear water ───────────────────────
     if clarity == MUDDY:
         return t(method="Find clearer water",
-                 rig="0X–2X, heavy tungsten or split shot if you fish it at all",
-                 water=["soft inside seams and slow edges", "tail of the slowest pools"],
-                 flies=["Squirmy / San Juan Worm #10–12", "black or olive leech", "Woolly Bugger #6–8"],
-                 approach=["Muddy (<6 in visibility) is unfishable for most anglers",
-                           "Small spring-fed headwaters clear first — often within 24–48 h — scout by driving valley to valley"],
-                 where="short spring-fed headwater tributaries; skip lower main stems for 2–5 days")
+                 rig="0X–2X, heavy weight",
+                 water=["Soft inside edges", "Slow pool tails"],
+                 flies=["San Juan Worm #10–12", "Black leech", "Woolly Bugger #6–8"],
+                 approach=["Mainstems need 2–5 days to clear", "Small spring creeks clear in 24–48 h"],
+                 where="short spring-fed headwater tributaries")
 
     # ── Stained / off-color: worm, leech, streamer; big-fish window ───────
     if clarity in (STAINED, OFF) and not (surface_signal >= 0.30 and clarity == OFF):
         streamer = season in (SPRING, FALL) or (water_temp_f is not None and 48 <= water_temp_f <= 65)
-        flies_ = ["Squirmy Worm #12", "micro leech", "orange or tan scud #14", "Pink Squirrel #14"]
+        flies_ = ["Squirmy Worm #12", "Micro leech", "Tan scud #14", "Pink Squirrel #14"]
         if streamer:
-            flies_ = ["olive or black sculpin / articulated streamer 2–4 in", "Woolly Bugger #6–8"] + flies_
-        approach = ["Stained water lowers trout wariness — big browns feed more boldly",
-                    "Fish heavier, thicker, flashier patterns than on clear days"]
+            flies_ = ["Sculpin streamer 2–4\"", "Woolly Bugger #6–8"] + flies_
+        approach = ["Go bigger and flashier than usual"]
         if streamer:
-            approach.append("Strip-pause streamers tight to banks; go deeper and pause longer once the sun comes out")
-        if cold_water:
-            approach.append("Below 50°F slow everything down — dead-drift or crawl it along the bottom")
-        return t(method="Streamer or worm-and-leech nymphing" if streamer else "Worm & leech nymphing",
-                 rig="3X–4X, indicator or tight-line, weight to tick bottom",
-                 water=["soft inside seams", "undercut banks and current edges", "heads of riffles and slots"],
+            approach.append("Strip-pause tight to the banks")
+        approach.append("Slow it down below 50°F" if cold_water else "Big browns feed boldly in stain")
+        return t(method="Streamers & worms" if streamer else "Worm & leech nymphing",
+                 rig="3X–4X, weight to tick bottom",
+                 water=["Soft inside seams", "Undercut banks", "Heads of riffles"],
                  flies=flies_, approach=approach,
-                 where="the lower and middle main stem — 'read the high water as a new river'" if clarity == OFF
-                       else "middle reaches as they clear; headwaters if the main stem is still coffee-colored")
+                 where="main stem" if clarity == OFF else "middle reaches as they clear")
 
     # ── Active aquatic hatch ──────────────────────────────────────────────
     # Winter midges and stones are eaten mostly subsurface; a modest surface
@@ -242,84 +237,75 @@ def recommend_tactics(
         and surface_signal < 0.5
     )
     if surface_signal >= 0.30 and hatch_name and not is_terrestrial and not winter_micro:
-        approach = [f"{hatch_name} window — watch for rises before you commit to dries",
-                    "Fish the emerger in the film first; switch to the dun when you see fish taking off the top",
-                    "Even during hatches many fish keep eating subsurface — a dropper is cheap insurance"]
-        if bright:
-            approach.append("Bright sun: work shaded banks and riffle seams; fish are spooky on flat water")
+        approach = ["Watch for rises before switching to dries", "Start with the emerger in the film",
+                    "Fish shade on bright days" if bright else "Keep a dropper on — many eat below"]
         return t(method=f"Match the hatch — {hatch_name}",
-                 rig="9–12 ft leader to 5X–6X; dry-dropper with a small emerger or soft hackle",
-                 water=["riffle tailouts and seams where duns collect", "slick water below riffles", "foam lines and eddies"],
-                 flies=hatch_flies + ["Partridge & Orange soft hackle #16", "Pheasant Tail #16–18"],
+                 rig="9–12 ft leader to 5X–6X",
+                 water=["Riffle tailouts", "Slick water below riffles", "Foam lines"],
+                 flies=hatch_flies + ["Partridge & Orange #16", "Pheasant Tail #16–18"],
                  approach=approach,
-                 where="meadow / Class I reaches with long, smooth glides")
+                 where="meadow reaches with long glides")
 
     # ── Winter ───────────────────────────────────────────────────────────
     if season == WINTER or cold_water:
-        approach = ["Fish slow and deep — trout are holding, not chasing",
-                    "Best window is 10am–3pm as the water warms a degree or two; sunny days fish best"]
-        if tod in ("morning", "evening"):
-            approach.insert(0, "Early and late are the coldest water of the day — expect a slow bite until midday")
+        approach = ["Fish slow and deep", "Best 10am–3pm, sunny days"]
         if not cloudy and tod == "midday":
-            approach.append("Sun + calm: look for midges and winter stones on the surface; a Griffith's Gnat can work")
-        return t(method="Slow, deep nymphing (midge & scud)",
-                 rig="small indicator or tight-line, 6X–7X fluorocarbon, two-fly rig",
-                 water=["deep, slow pools and the slow water just below riffles", "pool tailouts",
-                        "just downstream of springs and seeps (bright-green watercress = spring water)"],
-                 flies=["Zebra Midge #18–22", "tan or olive scud #14–18", "Pink Squirrel #14–16 (jig)",
-                        "Rainbow Warrior #18–20", "black winter stone #16–18", "Griffith's Gnat #20 (if midges are on top)"],
+            approach.append("Watch for midges on top")
+        elif tod in ("morning", "evening"):
+            approach.append("Expect a slow bite until midday")
+        return t(method="Midge & scud nymphing",
+                 rig="Small indicator, 6X–7X fluoro",
+                 water=["Deep, slow pools", "Pool tailouts", "Below springs (look for watercress)"],
+                 flies=["Zebra Midge #18–22", "Tan scud #14–18", "Pink Squirrel #14–16",
+                        "Rainbow Warrior #18–20", "Winter stone #16–18", "Griffith's Gnat #20"],
                  approach=approach,
-                 where="spring-fed reaches — the water nearest the springs is the warmest in winter")
+                 where="spring-fed reaches — warmest water in winter")
 
     # ── Summer heat / bright low-clear ──────────────────────────────────
     if season == SUMMER:
         if tod == "morning":
-            return t(method="Dawn tricos & midges, then terrestrials",
-                     rig="12 ft leader to 6X–7X for tricos; 3X–4X hopper-dropper later",
-                     water=["flat glides and pool tails for trico spinners", "riffles for the dropper"],
-                     flies=hatch_flies + ["Trico spinner #22–24", "Griffith's Gnat #20", "thin perdigon #16–18"],
-                     approach=["Spinner fall is short — be in position at first light",
-                               "Water is coolest now; the bite usually fades by 10–11am"],
-                     where="small, cold spring creeks — larger creeks can run too warm by midday")
+            return t(method="Dawn tricos, then hoppers",
+                     rig="12 ft to 6X–7X for tricos",
+                     water=["Flat glides", "Pool tails", "Riffles for the dropper"],
+                     flies=hatch_flies + ["Trico spinner #22–24", "Griffith's Gnat #20", "Perdigon #16–18"],
+                     approach=["Be on the water at first light", "Bite fades by 10–11am"],
+                     where="small, cold spring creeks")
         if tod == "evening":
             return t(method="Evening dries & caddis",
                      rig="9 ft leader to 5X",
-                     water=["riffles and riffle tails", "undercut banks as the light goes"],
-                     flies=hatch_flies + ["Elk Hair Caddis #14–16 (skitter it)", "Parachute Adams #12–14", "mouse after dark (big browns)"],
-                     approach=["Last two hours of light are the window", "After dark: swing a mouse across flat glides for the biggest browns (new moon best)"])
-        return t(method="Hopper-dropper along the banks",
-                 rig="7.5–9 ft leader to 3X–4X to turn over foam and pull out of grass",
-                 water=["undercut banks and overhanging grass", "shade lines", "riffles (beetle + bead-head)"],
-                 flies=["hopper #10–14 (Pink Morris / Chubby)", "foam ground beetle #12–14", "black ant #16",
-                        "Pheasant Tail / Spanish Bullet #16 dropper", "micro leech dropper"],
-                 approach=["Midday sun on low, clear water is the hardest fishing of the year — shade is key",
-                           "Slap the hopper tight to the bank; if it's going to eat, it eats on the first drift — move on",
-                           "Skip terrestrials when the grass is still wet from rain"] +
-                          (["Cloud cover in summer can make the whole day fish well"] if cloudy else []),
-                 where="cold spring-fed tributaries and shaded reaches")
+                     water=["Riffles and tails", "Undercut banks at dusk"],
+                     flies=hatch_flies + ["Elk Hair Caddis #14–16", "Parachute Adams #12–14", "Mouse (after dark)"],
+                     approach=["Last two hours of light fish best", "Swing a mouse after dark for big browns"])
+        return t(method="Hopper-dropper on the banks",
+                 rig="7.5–9 ft leader to 3X–4X",
+                 water=["Undercut banks", "Overhanging grass", "Shade lines"],
+                 flies=["Hopper #10–14", "Foam beetle #12–14", "Black ant #16", "Pheasant Tail #16 dropper"],
+                 approach=["Work the shade — midday sun is tough",
+                           "Slap it tight to the bank; one drift, move on",
+                           "Cloud cover can fish all day" if cloudy else "Skip hoppers if the grass is wet"],
+                 where="cold spring-fed tributaries")
 
     # ── Default by season: dry-dropper / nymphing ────────────────────────
     clear_low = clarity == CLEAR_LOW
-    thin = "thin, dark perdigon #16–18" if (tod == "morning" or clear_low) else "flashier bead-head (Pearl Jam, Rock Grinder) #14–16"
-    flies_ = hatch_flies + [thin, "Gray Coulee / tan scud #14–16", "Pink Squirrel #14–16", "Pheasant Tail #16–18"]
-    approach = []
-    if clear_low:
-        approach += ["Low clear water: stay low, keep your shadow off the water, approach from downstream",
-                     "Lengthen the leader and go down a tippet size"]
-    if bright and season in (EARLY_SUMMER, FALL):
-        approach.append("Bright sun puts fish in a 'foul mood' — keep flies tight to the banks and structure")
-    if cloudy and season in (SPRING, FALL):
-        approach.append("Overcast is BWO weather — carry #18–20 olive emergers and watch the soft seams")
-    if season == EARLY_SUMMER and tod == "evening":
-        approach.append("Sulphur and Cahill duns/spinners come in the last two hours of light")
-    if season == FALL:
-        approach.append("Spawning season: stay off gravel redds in the tailouts and leave paired fish alone")
-    if windy:
-        approach.append("Wind: shorten the leader, fish a heavier dropper, and pick sheltered coulee bends")
+    thin = "Thin perdigon #16–18" if (tod == "morning" or clear_low) else "Flashy bead-head #14–16"
+    flies_ = hatch_flies + [thin, "Tan scud #14–16", "Pink Squirrel #14–16", "Pheasant Tail #16–18"]
     if tod == "afternoon" and season in (SPRING, EARLY_SUMMER):
-        flies_.append("caddis pupa #16 / skittered Elk Hair Caddis")
-    return t(method="Dry-dropper or tight-line nymphing",
-             rig="9–10 ft leader to 5X; small foam indicator or a buoyant dry over a bead-head",
-             water=["riffles and the drop-off just below them", "seams and undercut banks", "pool heads"],
-             flies=flies_, approach=approach or ["Cover water — fish the riffle-to-pool transitions upstream"],
-             where="meadow and Class I spring-creek reaches")
+        flies_.append("Caddis pupa #16")
+    tips = []
+    if clear_low:
+        tips += ["Stay low, approach from downstream", "Longer leader, finer tippet"]
+    if bright and season in (EARLY_SUMMER, FALL):
+        tips.append("Keep flies tight to banks in sun")
+    if cloudy and season in (SPRING, FALL):
+        tips.append("Overcast — watch for BWOs")
+    if season == EARLY_SUMMER and tod == "evening":
+        tips.append("Sulphurs come in the last light")
+    if windy:
+        tips.append("Shorten the leader; find sheltered bends")
+    if season == FALL:
+        tips.append("Stay off gravel redds")
+    return t(method="Dry-dropper or nymphing",
+             rig="9–10 ft leader to 5X",
+             water=["Riffles and the drop below", "Seams and undercuts", "Pool heads"],
+             flies=flies_, approach=(tips or ["Work riffle-to-pool transitions upstream"])[:3],
+             where="meadow and Class I reaches")

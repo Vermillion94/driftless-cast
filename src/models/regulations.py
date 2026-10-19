@@ -162,7 +162,5 @@ def spawning_advisory(on_date: date) -> Optional[str]:
     start = date(on_date.year, *SPAWN_START)
     end = date(on_date.year, *SPAWN_END)
     if start <= on_date <= end:
-        return ("Trout are spawning (brook trout late Sep–Oct, browns Oct–Nov). "
-                "Stay off gravel redds — the clean, light-colored patches in pool tailouts — "
-                "and leave paired-up fish alone; fish deeper runs and pools instead.")
+        return "Spawning season — stay off gravel redds in pool tailouts."
     return None

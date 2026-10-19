@@ -38,6 +38,13 @@ def main() -> int:
             page.click("#near-list li button")
             page.wait_for_selector(".hero", timeout=20000)
             page.click("details.why > summary")
+            # Journal: log a trip from the stream page, then see it in the journal.
+            page.click("#log-card .log-btn >> nth=2")
+            page.fill("#log-fly", "Pink Squirrel #14")
+            page.click("#log-save")
+            page.wait_for_selector("#open-journal", timeout=10000)
+            page.click("#open-journal")
+            page.wait_for_selector("#reports-body .jentry", timeout=10000)
             # Calendar + species popup.
             page.click('.tab[data-view="calendar"]')
             page.wait_for_selector(".cal-row")

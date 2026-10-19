@@ -116,6 +116,8 @@ CREATE TABLE IF NOT EXISTS catch_log (
     water_temp_f    REAL,                 -- optional reported water temp
     submitted_at    TEXT NOT NULL,        -- ISO8601, when the entry was logged
     predicted_score REAL,                 -- snapshot of model's score for this hour
-    predicted_regime TEXT                 -- snapshot of regime code
+    predicted_regime TEXT,                -- snapshot of regime code
+    is_public       INTEGER DEFAULT 1,    -- 0 = private journal entry (calibration only)
+    conditions      TEXT                  -- JSON snapshot the app showed at the time
 );
 CREATE INDEX IF NOT EXISTS idx_catch_log_reach ON catch_log (reach_id, fished_at);
