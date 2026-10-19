@@ -176,3 +176,23 @@ def test_catch_log_rate_limit_and_validation(monkeypatch):
     assert client.post("/catch-log", json=ok).status_code == 429  # 3rd hit in window
     routes._catch_log_hits.clear()
     assert client.post("/catch-log", json={**ok, "notes": "x" * 5000}).status_code == 422
+
+
+def test_geometry_endpoint_is_cached_and_reaches_omit_geometry():
+    client = TestClient(app)
+    reaches = client.get("/reaches").json()
+    assert all("geometry_geojson" not in r for r in reaches)
+    first = client.get("/geometry")
+    assert first.status_code == 200
+    assert first.json()["type"] == "FeatureCollection"
+    etag = first.headers["etag"]
+    again = client.get("/geometry", headers={"If-None-Match": etag})
+    assert again.status_code == 304
+
+
+def test_simplify_keeps_endpoints_and_drops_collinear_points():
+    from src.api.geometry import simplify
+    line = [(0.0, 0.0), (0.001, 0.0), (0.002, 0.0), (0.003, 0.0)]
+    assert simplify(line) == [(0.0, 0.0), (0.003, 0.0)]
+    bent = [(0.0, 0.0), (0.001, 0.01), (0.002, 0.0)]
+    assert len(simplify(bent)) == 3

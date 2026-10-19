@@ -8,7 +8,7 @@ from collections import defaultdict, deque
 from pathlib import Path
 
 import requests
-from fastapi import APIRouter, Header, HTTPException, Query, Request
+from fastapi import APIRouter, Header, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 from datetime import datetime, timedelta, timezone
 from typing import Dict, List, Optional
@@ -58,10 +58,23 @@ _GAUGE_NAMES = _load_gauge_names()
 
 @router.get("/reaches")
 def get_reaches() -> List[dict]:
+    """Reach summaries. Stream lines are served separately by /geometry
+    (cached, simplified) — they were 99% of this payload."""
     rows = list_reach_summaries()
     for r in rows:
+        r.pop("geometry_geojson", None)
         r["season"] = _reach_season(r)
     return rows
+
+
+@router.get("/geometry")
+def get_geometry(request: Request) -> Response:
+    from src.api.geometry import geometry_payload
+    body, etag = geometry_payload()
+    headers = {"ETag": etag, "Cache-Control": "public, max-age=86400"}
+    if request.headers.get("if-none-match") == etag:
+        return Response(status_code=304, headers=headers)
+    return Response(content=body, media_type="application/json", headers=headers)
 
 
 @router.get("/reach/{reach_id}")
@@ -230,10 +243,20 @@ def _forecast_payload(reach: dict, rows: List[dict]) -> dict:
             pass
 
     season = _reach_season(reach)
+    days = build_days(hours_payload, season)
+    # Tactics feed the day verdicts (above) and the UI shows them for the
+    # current hour and each day's best window only; dropping the rest cuts
+    # the per-reach payload by ~40%.
+    keep = {hours_payload[0]["valid_at"]} if hours_payload else set()
+    for d in days:
+        keep.add(d["best_window"]["start"])
+    for h in hours_payload:
+        if h["valid_at"] not in keep:
+            h.pop("tactics", None)
     return {
         "reach_id": reach_id,
         "season": season,
-        "days": build_days(hours_payload, season),
+        "days": days,
         "stream_name": reach.get("stream_name"),
         "segment_name": reach.get("segment_name"),
         "state": reach.get("state"),
