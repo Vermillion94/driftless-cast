@@ -19,7 +19,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 import requests
 
 BASE = "https://api.inaturalist.org/v1"
-USER_AGENT = "driftless-cast/0.1 (https://github.com/local; contact: hello@example.com)"
+from src.ingest.identity import USER_AGENT
 CACHE_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "calibration" / "inat_cache"
 PER_PAGE = 200
 INTER_REQUEST_SLEEP_S = 0.6

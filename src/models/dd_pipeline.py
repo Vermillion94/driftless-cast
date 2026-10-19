@@ -2,7 +2,7 @@
 Degree-day accumulation from estimated water temperatures.
 
 Pipeline:
-  1. Fetch daily-mean air temp from Open-Meteo for Mar 1 → today.
+  1. Fetch daily-mean air temp from NOAA ACIS for Mar 1 → yesterday.
   2. Convert to daily-mean water temp via Mohseni (stream-class keyed).
   3. Accumulate DD for every species base temp (°C).
   4. Persist into the `dd_accumulation` table (keyed by reach + date + base_c).
@@ -26,7 +26,7 @@ LOG = logging.getLogger(__name__)
 
 SEASON_START_MONTH = 3   # Mar 1 — before any Driftless mayfly emergence
 SEASON_START_DAY = 1
-ARCHIVE_TRAIL_DAYS = 5   # Open-Meteo archive trails real-time by ~5 days
+ARCHIVE_TRAIL_DAYS = 1   # NOAA ACIS daily grid trails real-time by ~1 day
 
 
 def _f_to_c(t_f: float) -> float:
@@ -63,7 +63,7 @@ def build_for_reach(
     """Refresh dd_accumulation rows for `reach_id` and return current-day DD by base."""
     today = today or datetime.now(timezone.utc).date()
     start = season_start(today)
-    # Open-Meteo archive trails real-time; request up to a safe end date.
+    # ACIS trails real-time by ~1 day; request up to the last complete day.
     end = today - timedelta(days=ARCHIVE_TRAIL_DAYS)
     if end < start:
         return {b: 0.0 for b in species_base_temps_c}

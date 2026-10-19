@@ -17,6 +17,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import time
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -39,7 +41,7 @@ from src.ingest import (
     parse_hourly_forecast,
 )
 from src.models.solar import seasonal_sun_factors, sun_altitude_deg
-from src.ingest.openmeteo import fetch_archive_daily_mean_f, fetch_hourly_pressure_hpa
+from src.ingest.acis import fetch_archive_daily_mean_f
 from src.models import anomaly as anomaly_mod
 from src.models import dd_pipeline
 from src.models import regime as regime_mod
@@ -62,6 +64,7 @@ LOG = logging.getLogger(__name__)
 
 SPECIES_SEED = Path(__file__).resolve().parent.parent.parent / "data" / "seed" / "species.json"
 FORECAST_HORIZON_H = 168  # 7 days — NWS hourly forecast covers 156 hours
+BUILD_YIELD_SECONDS = float(os.getenv("DC_BUILD_YIELD_SECONDS", "0.5"))
 
 
 def load_species() -> List[Dict[str, object]]:
@@ -219,7 +222,7 @@ def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[fl
     if reach.get("gauge_is_proxy"):
         notes.append("flow from proxy gauge, not this reach")
 
-    # Thermal augmentation — Open-Meteo historical air temp → Mohseni water temp.
+    # Thermal augmentation — NOAA ACIS historical air temp → Mohseni water temp.
     anomaly: Optional[anomaly_mod.Anomaly] = None
     shift = 0.0
     dd_by_base: Optional[Dict[float, float]] = None
@@ -256,8 +259,8 @@ def _fetch_reach_signals(reach: Dict[str, object], species_base_temps_c: List[fl
                 water_temp_source = "estimate"
                 notes.append("water temp estimated from air temp (Mohseni)")
         except requests.RequestException as exc:
-            LOG.warning("openmeteo fetch failed for %s: %s", reach_id, exc)
-            notes.append("no live water temperature; no Open-Meteo fallback")
+            LOG.warning("ACIS air-temp fetch failed for %s: %s", reach_id, exc)
+            notes.append("no live water temperature; air-temp history unavailable")
 
     return ReachSignals(
         reach_id=reach_id,
@@ -303,22 +306,6 @@ def _fetch_qpf_by_hour(gridpoint: str) -> Dict[str, float]:
     return out
 
 
-def _fetch_pressure_by_hour(lat: float, lon: float) -> Dict[str, float]:
-    """Hourly surface pressure (hPa = mb) keyed by UTC ISO hour, from Open-Meteo.
-    NWS gridpoints API does not expose pressure for our region — we hit
-    Open-Meteo's forecast endpoint which carries surface_pressure cleanly."""
-    out: Dict[str, float] = {}
-    try:
-        periods = fetch_hourly_pressure_hpa(lat, lon, past_days=1, forecast_days=7)
-    except requests.RequestException as exc:
-        LOG.warning("pressure fetch failed for (%.3f, %.3f): %s", lat, lon, exc)
-        return out
-    for dt, hpa in periods:
-        hour_iso = dt.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0).isoformat()
-        out[hour_iso] = float(hpa)
-    return out
-
-
 def _pressure_trend_factor(pressure_map: Optional[Dict[str, float]], valid_at: datetime) -> Tuple[float, Optional[str]]:
     """6-hour pressure trend at `valid_at`. Returns (multiplier, optional explanation note).
 
@@ -338,7 +325,7 @@ def _pressure_trend_factor(pressure_map: Optional[Dict[str, float]], valid_at: d
     p_then = pressure_map.get(iso_6h_ago)
     if p_now is None or p_then is None:
         return 1.0, None
-    # Open-Meteo returns hPa (= mb) directly, no Pa→mb conversion.
+    # pressure_map values are hPa (= mb).
     delta_mb = p_now - p_then
     if delta_mb <= -4:
         return 1.03, "barometer falling fast (front approaching)"
@@ -573,7 +560,7 @@ def _build_water_temp_by_date(
     of air temp. The previous implementation ran this once on a historical
     window and used the result for all 168 forecast hours — so a forecasted
     warming trend never propagated to water. This builds a daily air-temp
-    series from (historical Open-Meteo + forecasted NWS hourly aggregated to
+    series from (historical NOAA ACIS + forecasted NWS hourly aggregated to
     daily) and Mohseni-projects forward day-by-day.
 
     See docs/REFERENCES.md#mohseni_1998. Per-reach Mohseni coefficients still
@@ -583,8 +570,8 @@ def _build_water_temp_by_date(
     today = now.astimezone(timezone.utc).date()
     air_by_date: Dict[date, float] = {}
 
-    # Historical daily-mean air from Open-Meteo. ARCHIVE_TRAIL_DAYS lag is
-    # because Open-Meteo's archive lags ~5 days behind realtime.
+    # Historical daily-mean air from NOAA ACIS. ARCHIVE_TRAIL_DAYS (1) covers
+    # the grid's ~1-day lag; NWS hourly forecasts fill the days after it.
     try:
         hist_end = today - timedelta(days=dd_pipeline.ARCHIVE_TRAIL_DAYS)
         hist_start = hist_end - timedelta(days=12)
@@ -646,7 +633,7 @@ def _forward_dd_by_base_by_date(
     """Continue degree-day accumulation forward across the forecast horizon.
 
     `dd_pipeline.build_for_reach` accumulates DD from season start only up to
-    the Open-Meteo archive boundary (~5 days stale). Previously that single
+    the air-temp archive boundary (~1 day stale with ACIS). Previously that single
     end-of-archive total was reused for every one of the 168 forecast hours,
     so the DD term contributed *zero* forward resolution: a hatch crossing its
     threshold three days out read identically today and in three days.
@@ -1113,8 +1100,11 @@ def build_for_reach(reach: Dict[str, object], species: List[Dict[str, object]]) 
     )
     if gridpoint:
         signals.qpf_mm_by_hour = _fetch_qpf_by_hour(gridpoint)
-    # Pressure is fetched by lat/lon (Open-Meteo) regardless of gridpoint availability.
-    signals.pressure_pa_by_hour = _fetch_pressure_by_hour(signals.lat, signals.lon)
+    # No pressure forecast source: NWS gridpoints don't carry pressure for this
+    # region and Open-Meteo's free API is non-commercial. The evidence review
+    # already cut pressure to a ±3–5% nudge (Stoner 2004), so the multiplier
+    # stays neutral until a licensed source is wired into pressure_pa_by_hour.
+    signals.pressure_pa_by_hour = None
     periods = _fetch_hourly_weather(gridpoint) if gridpoint else []
 
     now = datetime.now(timezone.utc)
@@ -1224,4 +1214,7 @@ def build_all() -> Dict[str, int]:
         except Exception:
             LOG.exception("forecast build failed for %s", reach.get("reach_id"))
             per_reach[reach["reach_id"]] = 0
+        # Yield the (single, shared) CPU between reaches so API requests and
+        # health checks stay responsive during a rebuild.
+        time.sleep(BUILD_YIELD_SECONDS)
     return per_reach

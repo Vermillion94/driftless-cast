@@ -48,7 +48,7 @@ from statistics import mean, median
 from typing import Dict, List, Optional, Tuple
 
 from src.db import load_reaches
-from src.ingest.openmeteo import fetch_archive_daily_mean_f
+from src.ingest import fetch_archive_daily_mean_f
 from src.ingest.usgs import fetch_daily, fetch_daily_stats, fetch_latest_iv
 from src.models.recession import (
     TAU_FREESTONE_H,

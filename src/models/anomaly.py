@@ -22,7 +22,7 @@ LOG = logging.getLogger(__name__)
 
 WINDOW_DAYS = 14
 BASELINE_YEARS = 5             # most recent N years as the normal
-ARCHIVE_TRAIL_DAYS = 5         # Open-Meteo archive lags real-time
+ARCHIVE_TRAIL_DAYS = 1         # NOAA ACIS daily grid lags real-time by ~1 day
 
 # Days of emergence shift per °F of 14-day air anomaly.
 #   Freestone (air-tracking water)      ~1.5 days / °F
