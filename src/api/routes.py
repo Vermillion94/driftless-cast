@@ -23,6 +23,9 @@ from src.db import (
     top_windows,
 )
 from src.ingest import fetch_latest_iv, fetch_latest_nwps
+from src.models.regulations import season_for_reach, spawning_advisory
+from src.models.tactics import recommend_tactics
+from src.models.trip_verdict import build_days
 from src.models.score_calibration import (
     confidence_score,
     headline_breakdown,
@@ -50,7 +53,10 @@ _GAUGE_NAMES = _load_gauge_names()
 
 @router.get("/reaches")
 def get_reaches() -> List[dict]:
-    return list_reach_summaries()
+    rows = list_reach_summaries()
+    for r in rows:
+        r["season"] = _reach_season(r)
+    return rows
 
 
 @router.get("/reach/{reach_id}")
@@ -98,12 +104,50 @@ def get_reach_conditions(reach_id: str) -> dict:
     return response
 
 
+def _hour_tactics(r: dict, reach: dict, regime, score_breakdown, active, flies, score_model) -> Optional[dict]:
+    try:
+        valid = datetime.fromisoformat(str(r["valid_at"]).replace("Z", "+00:00"))
+    except (KeyError, ValueError):
+        return None
+    sb = score_breakdown if isinstance(score_breakdown, dict) else {}
+    top = None
+    if active:
+        top = max(active, key=lambda s: s.get("probability") or 0)
+    return recommend_tactics(
+        valid_at=valid,
+        water_temp_f=r.get("water_temp_f"),
+        flow_percentile=sb.get("percentile_used"),
+        runoff_risk_level=sb.get("runoff_risk_level"),
+        cloud_cover=r.get("cloud_cover"),
+        wind_mph=r.get("wind_mph"),
+        air_temp_f=r.get("air_temp_f"),
+        regime_code=(regime or {}).get("code") if isinstance(regime, dict) else None,
+        top_species=top,
+        flies=flies,
+        spring_influenced=bool(reach.get("spring_influenced")),
+        surface_signal=float(score_model.get("surface_signal") or 0.0),
+    ).to_dict()
+
+
+def _reach_season(reach: dict) -> dict:
+    today = datetime.now(timezone.utc).astimezone().date()
+    season = season_for_reach(reach, today).to_dict()
+    season["spawning_advisory"] = spawning_advisory(today)
+    return season
+
+
 @router.get("/forecast/{reach_id}")
 def get_reach_forecast(reach_id: str, hours: int = Query(168, ge=1, le=168)) -> dict:
     reach = get_reach(reach_id)
     if not reach:
         raise HTTPException(status_code=404, detail="Reach not found")
     rows = get_reach_predictions(reach_id, hours)
+    payload = _forecast_payload(reach, rows)
+    return payload
+
+
+def _forecast_payload(reach: dict, rows: List[dict]) -> dict:
+    reach_id = reach["reach_id"]
     hours_payload = []
     computed_at = None
     for r in rows:
@@ -155,6 +199,7 @@ def get_reach_forecast(reach_id: str, hours: int = Query(168, ge=1, le=168)) -> 
             "regime": regime,
             "pressure_delta_mb": r.get("pressure_delta_mb"),
             "score_breakdown": score_breakdown,
+            "tactics": _hour_tactics(r, reach, regime, score_breakdown, active, flies, score_model),
         })
     try:
         dnr_summary = json.loads(reach["dnr_summary"]) if reach.get("dnr_summary") else None
@@ -179,8 +224,11 @@ def get_reach_forecast(reach_id: str, hours: int = Query(168, ge=1, le=168)) -> 
         except ValueError:
             pass
 
+    season = _reach_season(reach)
     return {
         "reach_id": reach_id,
+        "season": season,
+        "days": build_days(hours_payload, season),
         "stream_name": reach.get("stream_name"),
         "segment_name": reach.get("segment_name"),
         "state": reach.get("state"),
@@ -197,6 +245,59 @@ def get_reach_forecast(reach_id: str, hours: int = Query(168, ge=1, le=168)) -> 
         "is_stale": is_stale,
         "hours": hours_payload,
     }
+
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    from math import asin, cos, radians, sin, sqrt
+    dlat, dlon = radians(lat2 - lat1), radians(lon2 - lon1)
+    a = sin(dlat / 2) ** 2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2) ** 2
+    return 6371.0 * 2 * asin(sqrt(a))
+
+
+@router.get("/near")
+def get_near(
+    lat: float = Query(..., ge=40.0, le=48.0),
+    lon: float = Query(..., ge=-95.0, le=-88.0),
+    max_km: float = Query(80.0, ge=5.0, le=300.0),
+    limit: int = Query(8, ge=1, le=25),
+) -> dict:
+    """"I'm here — where should I fish today / tomorrow?" Nearest reaches with
+    each one's day verdicts, sorted so open, better-scoring water comes first."""
+    out = []
+    for summary in list_reach_summaries():
+        try:
+            km = _haversine_km(lat, lon, float(summary["centroid_lat"]), float(summary["centroid_lon"]))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if km > max_km:
+            continue
+        reach = get_reach(summary["reach_id"])
+        if not reach:
+            continue
+        payload = _forecast_payload(reach, get_reach_predictions(summary["reach_id"], 48))
+        days = payload.get("days") or []
+        today = days[0] if days else None
+        tomorrow = days[1] if len(days) > 1 else None
+        out.append({
+            "reach_id": summary["reach_id"],
+            "stream_name": summary.get("stream_name"),
+            "segment_name": summary.get("segment_name"),
+            "state": summary.get("state"),
+            "distance_km": round(km, 1),
+            "distance_mi": round(km * 0.621371, 1),
+            "season": payload.get("season"),
+            "today": today,
+            "tomorrow": tomorrow,
+        })
+
+    def rank(r):
+        best = max(((d or {}).get("best_window") or {}).get("score") or 0.0 for d in (r["today"], r["tomorrow"]))
+        closed = (r.get("season") or {}).get("is_closed")
+        # Prefer open water, then quality, gently penalized by drive distance.
+        return (0 if closed else 1, best - 0.002 * r["distance_km"])
+
+    out.sort(key=rank, reverse=True)
+    return {"origin": {"lat": lat, "lon": lon}, "max_km": max_km, "reaches": out[:limit]}
 
 
 @router.get("/scores-grid")
@@ -260,7 +361,10 @@ def get_best_windows(hours: int = Query(72, ge=1, le=168), limit: int = Query(10
                 "reason": _best_window_reason(r, score_model, score_breakdown, regime),
                 "explanation": r.get("explanation"),
             }
-    ordered = sorted(seen.values(), key=lambda x: x["rank_score"], reverse=True)
+    # Closed-season (and otherwise hard-stopped) reaches score 0 — they are not
+    # "windows" and should not crowd open water out of the list.
+    ordered = sorted((w for w in seen.values() if (w["score"] or 0) > 0.01),
+                     key=lambda x: x["rank_score"], reverse=True)
     return _diversify_windows_by_time(ordered, limit)
 
 
@@ -270,11 +374,14 @@ def get_hatch_windows(
     limit: int = Query(6, ge=1, le=20),
     min_surface: float = Query(0.25, ge=0.0, le=1.0),
 ) -> List[dict]:
-    rows = hatch_windows(hours, limit, min_surface)
+    # Over-fetch: closed-season reaches are dropped below.
+    rows = hatch_windows(hours, limit * 4, min_surface)
     out: List[dict] = []
     for r in rows:
         active = _loads_json(r.get("active_species"), [])
         regime = _loads_json(r.get("regime"), None)
+        if isinstance(regime, dict) and regime.get("code") == "CLOSED":
+            continue
         score_breakdown = _loads_json(r.get("score_breakdown"), None)
         score_model = headline_breakdown(
             r.get("nymph_score"), r.get("dry_score"), active, regime, score_breakdown
