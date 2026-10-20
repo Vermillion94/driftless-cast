@@ -19,6 +19,7 @@ from src.db import (
     get_reach_predictions,
     forecast_status,
     insert_catch_log,
+    community_summary,
     hatch_windows,
     list_catch_logs,
     list_reach_summaries,
@@ -661,6 +662,10 @@ class CatchLogPayload(BaseModel):
     notes: Optional[str] = Field(default=None, max_length=2000)
     fly_used: Optional[str] = Field(default=None, max_length=200)
     water_temp_f: Optional[float] = Field(default=None, ge=28.0, le=95.0)
+    # Journal entries are private by default: the server keeps only what
+    # calibrates the forecast. Set True to also post to the public feed.
+    is_public: bool = False
+    conditions: Optional[Dict[str, object]] = None
 
 
 # Per-client trip-report rate limit (in-process; single machine). Generous for
@@ -706,9 +711,25 @@ def post_catch_log(payload: CatchLogPayload, request: Request) -> dict:
     if not get_reach(payload.reach_id):
         raise HTTPException(status_code=404, detail="Unknown reach")
     entry = payload.model_dump()
+    entry["is_public"] = 1 if payload.is_public else 0
+    cond = json.dumps(payload.conditions) if payload.conditions else None
+    if cond and len(cond) > 2000:
+        raise HTTPException(status_code=422, detail="conditions snapshot too large")
+    entry["conditions"] = cond
+    if not payload.is_public:
+        # Private: no name or free text leaves the device.
+        for k in ("reporter_name", "notes", "worked", "didnt_work", "insect_activity"):
+            entry[k] = None
     entry["submitted_at"] = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
     new_id = insert_catch_log(entry)
     return {"id": new_id, "ok": True}
+
+
+@router.get("/community")
+def get_community(days: int = Query(14, ge=1, le=60)) -> dict:
+    """Anonymous region-wide pulse: trips logged, share good, flies that
+    worked. No stream names, no people."""
+    return community_summary(days)
 
 
 @router.get("/catch-log")

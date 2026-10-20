@@ -45,6 +45,6 @@ historical air temperature (now ACIS) and pressure (now disabled; see
 
 ## User data
 
-- **Trip reports** (`catch_log` table): stream, date, outcome, optional free-text and display name. Shown publicly and used for calibration. There are no accounts and no email addresses. See the in-app Privacy page.
+- **Trip reports / journal** (`catch_log` table): private by default. The journal lives in the browser's local storage; the server stores stream, date, outcome, method, fly and a conditions snapshot, with name and notes stripped (`is_public = 0`). Calibration and the anonymous `/community` totals use all rows; the public feed shows only rows the angler chose to share. There are no accounts and no email addresses.
 - **Location:** used client-side for "near me" and sent rounded to 3 decimals (~100 m). Not stored.
 - **No analytics, ads or third-party trackers.**

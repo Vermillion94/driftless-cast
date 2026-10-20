@@ -66,6 +66,10 @@ def initialize_database(db_path: Optional[Path] = None) -> None:
         "insect_activity": "TEXT",
         "worked": "TEXT",
         "didnt_work": "TEXT",
+        # Legacy rows were posted to a public feed, so they default public;
+        # the API writes 0 for private journal entries.
+        "is_public": "INTEGER DEFAULT 1",
+        "conditions": "TEXT",
     })
     conn.commit()
     conn.close()
@@ -330,14 +334,16 @@ def insert_catch_log(entry: Dict[str, Any]) -> int:
         INSERT INTO catch_log (
             reach_id, fished_at, success, reporter_name, method, session_window,
             topwater_level, insect_activity, species_caught, worked, didnt_work, notes,
-            fly_used, water_temp_f, submitted_at, predicted_score, predicted_regime
+            fly_used, water_temp_f, submitted_at, predicted_score, predicted_regime,
+            is_public, conditions
         ) VALUES (
             :reach_id, :fished_at, :success, :reporter_name, :method, :session_window,
             :topwater_level, :insect_activity, :species_caught, :worked, :didnt_work, :notes,
-            :fly_used, :water_temp_f, :submitted_at, :predicted_score, :predicted_regime
+            :fly_used, :water_temp_f, :submitted_at, :predicted_score, :predicted_regime,
+            :is_public, :conditions
         )
         """,
-        entry,
+        {"is_public": 1, "conditions": None, **entry},
     )
     conn.commit()
     new_id = cur.lastrowid
@@ -357,7 +363,7 @@ def list_catch_logs(reach_id: Optional[str] = None, limit: int = 50) -> List[Dic
                    , r.stream_name, r.segment_name
             FROM catch_log c
             LEFT JOIN reach r ON r.reach_id = c.reach_id
-            WHERE c.reach_id = ?
+            WHERE c.reach_id = ? AND COALESCE(c.is_public, 1) = 1
             ORDER BY c.fished_at DESC
             LIMIT ?
             """,
@@ -373,6 +379,7 @@ def list_catch_logs(reach_id: Optional[str] = None, limit: int = 50) -> List[Dic
                    , r.stream_name, r.segment_name
             FROM catch_log c
             LEFT JOIN reach r ON r.reach_id = c.reach_id
+            WHERE COALESCE(c.is_public, 1) = 1
             ORDER BY c.fished_at DESC
             LIMIT ?
             """,
@@ -380,6 +387,43 @@ def list_catch_logs(reach_id: Optional[str] = None, limit: int = 50) -> List[Dic
         ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def community_summary(days: int = 14) -> Dict[str, Any]:
+    """Anonymous region-wide pulse from ALL trip reports (private included):
+    counts, share of good trips, and the flies that worked — never which
+    stream or who. This is what private journals contribute back."""
+    conn = get_connection()
+    rows = conn.execute(
+        """
+        SELECT success, method, fly_used, fished_at
+        FROM catch_log
+        WHERE fished_at >= datetime('now', ?)
+        """,
+        (f"-{int(days)} days",),
+    ).fetchall()
+    conn.close()
+    n = len(rows)
+    good = sum(1 for r in rows if (r["success"] or 0) >= 2)
+    flies: Dict[str, int] = {}
+    methods: Dict[str, int] = {}
+    for r in rows:
+        if (r["success"] or 0) >= 2:
+            f = (r["fly_used"] or "").strip()
+            if f:
+                key = f.split("#")[0].strip().title()
+                flies[key] = flies.get(key, 0) + 1
+            m = (r["method"] or "").strip().lower()
+            if m:
+                methods[m] = methods.get(m, 0) + 1
+    top = lambda d: [k for k, _ in sorted(d.items(), key=lambda kv: -kv[1])[:3]]
+    return {
+        "days": days,
+        "trips": n,
+        "good_share": (good / n) if n else None,
+        "top_flies": top(flies),
+        "top_methods": top(methods),
+    }
 
 
 def reliability_diagram(bin_count: int = 5) -> Dict[str, Any]:

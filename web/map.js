@@ -13,7 +13,6 @@
   let scrubOffset = 0;     // hour index into scrubGrid.hours; 0 = "now"
   let residualsByReach = {}; // { reach_id: { residual: -.20..+.20, n: int } } from /residuals
   const REPORTER_PROFILE_KEY = "driftless-cast-reporter-profile";
-  const TOPWATER_LABELS = ["No topwater", "A few rises", "Steady eats", "Topwater popping"];
 
   function loadReporterProfile() {
     try {
@@ -23,19 +22,8 @@
     }
   }
 
-  function saveReporterProfile(profile) {
-    localStorage.setItem(REPORTER_PROFILE_KEY, JSON.stringify(profile || {}));
-  }
 
-  function topwaterLabel(level) {
-    const idx = Number(level);
-    return Number.isInteger(idx) && idx >= 0 && idx < TOPWATER_LABELS.length ? TOPWATER_LABELS[idx] : null;
-  }
 
-  function formatSessionWindow(value) {
-    if (!value) return null;
-    return value.charAt(0).toUpperCase() + value.slice(1);
-  }
 
   async function ensureSpeciesCache() {
     if (speciesById) return;
@@ -287,7 +275,7 @@
       line = "Every stream is in its closed season.";
     } else if (closedStates.length) {
       const names = closedStates.map(([st, s]) => `${st} reopens ${fmt(s.next_change)}`).join(" · ");
-      line = `${open.length} of ${reaches.length} streams are open today. ${names}.`;
+      line = `${open.length} of ${reaches.length} streams open. ${names}.`;
     } else {
       line = `${open.length} streams open${good ? ` · ${good} worth fishing right now` : ""}.`;
     }
@@ -957,11 +945,11 @@
   function flowWord(pct) {
     if (pct == null) return { v: "—", s: "no flow history" };
     const p = Math.round(pct * 100);
-    if (pct < 0.10) return { v: "Very low", s: `${p}th percentile for the date` };
-    if (pct < 0.28) return { v: "Low", s: `${p}th percentile for the date` };
-    if (pct <= 0.68) return { v: "Normal", s: `${p}th percentile for the date` };
-    if (pct <= 0.85) return { v: "High", s: `${p}th percentile for the date` };
-    return { v: "Very high", s: `${p}th percentile for the date` };
+    if (pct < 0.10) return { v: "Very low", s: `${p}th pctl for the date` };
+    if (pct < 0.28) return { v: "Low", s: `${p}th pctl for the date` };
+    if (pct <= 0.68) return { v: "Normal", s: `${p}th pctl for the date` };
+    if (pct <= 0.85) return { v: "High", s: `${p}th pctl for the date` };
+    return { v: "Very high", s: `${p}th pctl for the date` };
   }
 
   function renderConditions(h) {
@@ -970,7 +958,7 @@
     const t = h.tactics || {};
     const flow = flowWord(sb.percentile_used);
     const water = h.water_temp_f != null ? `${Math.round(h.water_temp_f)}°F` : "—";
-    const waterSrc = h.water_temp_source === "gauge" ? "measured at gauge" : "estimated from air temps";
+    const waterSrc = h.water_temp_source === "gauge" ? "measured" : "estimated";
     const cfs = h.flow_cfs != null ? ` · ${Math.round(h.flow_cfs)} cfs` : "";
     const air = h.air_temp_f != null ? `${Math.round(h.air_temp_f)}°F` : "—";
     const wind = h.wind_mph != null ? `wind ${Math.round(h.wind_mph)} mph` : "";
@@ -981,7 +969,7 @@
         <div class="tiles">
           <div class="tile"><div class="tile-k">Water ${helpButton(h.water_temp_source === "gauge" ? "water_temp_zone" : "mohseni")}</div><div class="tile-v">${water}</div><div class="tile-s">${waterSrc}</div></div>
           <div class="tile"><div class="tile-k">Flow ${helpButton("flow_percentile")}</div><div class="tile-v">${flow.v}</div><div class="tile-s">${flow.s}${cfs}</div></div>
-          <div class="tile"><div class="tile-k">Clarity</div><div class="tile-v">${escapeHtml((t.clarity_label || "—").replace(/^./, (c) => c.toUpperCase()))}</div><div class="tile-s">estimated from flow &amp; rain</div></div>
+          <div class="tile"><div class="tile-k">Clarity</div><div class="tile-v">${escapeHtml((t.clarity_label || "—").replace(/^./, (c) => c.toUpperCase()))}</div><div class="tile-s">estimated</div></div>
           <div class="tile"><div class="tile-k">Weather</div><div class="tile-v">${air}</div><div class="tile-s">${[sky, wind].filter(Boolean).join(" · ")}</div></div>
         </div>
       </section>`;
@@ -998,7 +986,7 @@
     return `
       <section class="section">
         <h3>On the water ${helpButton("emergence_hour")}</h3>
-        ${items ? `<ul class="hatches">${items}</ul>` : `<p class="muted">No meaningful hatch in this window — fish subsurface.</p>`}
+        ${items ? `<ul class="hatches">${items}</ul>` : `<p class="muted">No hatch expected — fish subsurface.</p>`}
         ${renderHatchPatternBoxes(h && h.active_species, speciesById)}
       </section>`;
   }
@@ -1015,10 +1003,9 @@
           ${t.flies && t.flies.length ? `<div class="tactic-block"><span class="tactic-k">Tie on</span><ul class="tactic-flies">${list(t.flies.slice(0, 6))}</ul></div>` : ""}
           ${t.rig && t.rig !== "—" ? `<div class="tactic-block"><span class="tactic-k">Rig</span><p class="tactic-rig">${escapeHtml(t.rig)}</p></div>` : ""}
           ${t.water && t.water.length ? `<div class="tactic-block"><span class="tactic-k">Fish</span><ul>${list(t.water)}</ul></div>` : ""}
-          ${t.approach && t.approach.length ? `<div class="tactic-block"><span class="tactic-k">Approach</span><ul>${list(t.approach)}</ul></div>` : ""}
-          ${t.where ? `<div class="tactic-block"><span class="tactic-k">Where</span><p class="tactic-where">${escapeHtml(t.where)}</p></div>` : ""}
+          ${t.approach && t.approach.length ? `<div class="tactic-block"><span class="tactic-k">Tips</span><ul>${list(t.approach)}</ul></div>` : ""}
+          ${t.where ? `<div class="tactic-block"><span class="tactic-k">Go to</span><p class="tactic-where">${escapeHtml(t.where)}</p></div>` : ""}
         </div>
-        <p class="fine-print">Guide-derived practice from Driftless fly-shop reports and agency guidance — a starting point, not gospel.</p>
       </section>`;
   }
 
@@ -1154,6 +1141,7 @@
           <h2 class="reach-title">${escapeHtml(fc.stream_name)}</h2>
           <p class="reach-sub">${escapeHtml(fc.segment_name || "")}</p>
           <div class="reach-chips">${seasonChip}${stateChip}${springChip}${fisheryChip}</div>
+          <button type="button" class="log-jump" id="log-jump">Log a trip</button>
         </header>
         ${seasonHTML}
         ${stressBanner}
@@ -1167,7 +1155,6 @@
           <h3>Hour by hour</h3>
           ${renderSparkline(hours)}
           <div id="spark-tooltip" class="spark-tooltip"></div>
-          <p class="spark-legend muted">Hover or drag across the chart for any hour.</p>
         </section>
         <details class="section why">
           <summary>Why this forecast</summary>
@@ -1181,32 +1168,17 @@
           </div>
         </details>
         ${dnrBlock}
-        <section class="section catch-log-section">
-          <h3>Trip reports
-            ${residualsByReach[fc.reach_id] && residualsByReach[fc.reach_id].n >= 3
-              ? (() => {
-                  const r = residualsByReach[fc.reach_id];
-                  const v = Math.round(r.residual * 100);
-                  const sign = v >= 0 ? "+" : "";
-                  return `<span class="residual-tag" title="Score adjusted by ${r.n} angler reports">calibrated ${sign}${v}</span>`;
-                })()
-              : ""}
-          </h3>
-          <div class="quick-rate" role="group" aria-label="One-tap trip report">
-            <span class="quick-rate-prompt">Just got off the water? Save a fast score first, then add what was hatching and what worked.</span>
-            <button class="quick-rate-btn" data-reach="${fc.reach_id}" data-v="0" title="Skunked">😶</button>
-            <button class="quick-rate-btn" data-reach="${fc.reach_id}" data-v="1" title="A few">🙂</button>
-            <button class="quick-rate-btn" data-reach="${fc.reach_id}" data-v="2" title="Solid">😄</button>
-            <button class="quick-rate-btn" data-reach="${fc.reach_id}" data-v="3" title="Great">🤩</button>
+        <section class="section log-card" id="log-card">
+          <h3>How was it?</h3>
+          <p class="section-sub">Log a trip to your private journal — conditions are saved for you.</p>
+          <div class="log-rate" role="group" aria-label="How was it?">
+            ${OUTCOMES.map((o, i) => `<button type="button" class="log-btn" data-v="${i}"><span class="log-emoji">${o.emoji}</span>${o.label}</button>`).join("")}
           </div>
-          <button id="open-catch-log" class="open-catch-log" type="button">+ Add details</button>
-          <div id="catch-log-form" class="catch-log-form hidden"></div>
-          <button id="browse-all-reports" class="open-catch-log" type="button">Browse all recent reports</button>
-          <ul id="catch-log-list" class="catch-log-list"><li class="muted small">loading recent reports…</li></ul>
+          <div id="log-form" class="log-form hidden"></div>
         </section>
       `;
       attachSparklineHover(hours);
-      attachCatchLog(fc.reach_id);
+      attachLogCard(fc, now, tacticsHour);
     } catch (err) {
       body.innerHTML = `<p class="error">Failed to load: ${err.message}</p>`;
     }
@@ -1364,8 +1336,9 @@
         <p>Driftless Cast has no accounts, no ads and no third-party trackers.</p>
         <ul>
           <li><strong>Location</strong> — "near me" uses your browser's location once, rounded to about 100 m, to sort streams by distance. It is not stored.</li>
-          <li><strong>Trip reports</strong> — what you submit (stream, date, how it went, optional notes and display name) is stored to calibrate the model and shown to other anglers. Don't include anything you wouldn't post publicly.</li>
-          <li><strong>On your device</strong> — your reporter name is remembered in your browser's local storage.</li>
+          <li><strong>Your journal</strong> — trips you log are saved on your device. We receive only the stream, date, outcome, method, fly and the conditions snapshot, with no name or notes, to tune the forecast and the anonymous "Driftless anglers" totals.</li>
+          <li><strong>Sharing</strong> — only if you tick "Share this trip publicly" are your notes posted to the public feed.</li>
+          <li><strong>Your data</strong> — export your journal as CSV any time; delete entries from the Journal tab.</li>
           <li><strong>Server logs</strong> — standard request logs (IP address, time, page) are kept briefly by our host for security and abuse prevention.</li>
         </ul>`,
     },
@@ -1582,325 +1555,209 @@
   }
 
   // ── Catch log (trip reports) ──────────────────────────────────────────────
-  function attachCatchLog(reachId) {
-    const openBtn = document.getElementById("open-catch-log");
-    const form = document.getElementById("catch-log-form");
-    if (openBtn) openBtn.addEventListener("click", () => openCatchLogForm(reachId, form, openBtn));
-    const browseBtn = document.getElementById("browse-all-reports");
-    if (browseBtn) browseBtn.addEventListener("click", () => setView("reports"));
-    // Quick-rate: one-tap submission with default fields. Bypasses the form
-    // entirely. The right reflex post-trip is "did I have a good time? tap"
-    // — anything more friction-y than that and people don't log.
-    document.querySelectorAll(`#detail-body .quick-rate-btn[data-reach="${reachId}"]`).forEach((btn) => {
-      btn.addEventListener("click", async () => {
-        const success = parseInt(btn.dataset.v, 10);
+  // ── Journal ───────────────────────────────────────────────────────────
+  // Private by default: entries live on this device. The server receives
+  // only an anonymous outcome + conditions snapshot to calibrate forecasts
+  // (names and notes are sent only when the angler chooses to share).
+  const OUTCOMES = [
+    { emoji: "😶", label: "Skunked" },
+    { emoji: "🙂", label: "A few" },
+    { emoji: "😄", label: "Good" },
+    { emoji: "🤩", label: "Great" },
+  ];
+  const JOURNAL_KEY = "driftless-cast-journal-v1";
+  const METHODS = ["Nymph", "Dry", "Streamer", "Mixed"];
+
+  function journalLoad() {
+    try { return JSON.parse(localStorage.getItem(JOURNAL_KEY) || "[]"); } catch { return []; }
+  }
+  function journalSave(list) {
+    try { localStorage.setItem(JOURNAL_KEY, JSON.stringify(list)); return true; } catch { return false; }
+  }
+
+  function conditionsSnapshot(fc, hour, tacticsHour) {
+    const today = (fc.days || [])[0] || {};
+    const sb = (hour && hour.score_breakdown) || {};
+    const top = ((hour && hour.active_species) || []).slice().sort((a, b) => (b.probability || 0) - (a.probability || 0))[0];
+    const t = (tacticsHour && tacticsHour.tactics) || (hour && hour.tactics) || {};
+    return {
+      verdict: today.verdict || null,
+      verdict_label: today.verdict_label || null,
+      window: today.best_window ? today.best_window.label : null,
+      water_temp_f: hour && hour.water_temp_f != null ? Math.round(hour.water_temp_f) : null,
+      flow: flowWord(sb.percentile_used).v,
+      clarity: t.clarity_label || null,
+      air_temp_f: hour && hour.air_temp_f != null ? Math.round(hour.air_temp_f) : null,
+      sky: hour ? hour.short_forecast || null : null,
+      hatch: top && (top.probability || 0) >= 0.2 ? (top.common_name || top.id) : null,
+      method: t.method || null,
+    };
+  }
+
+  function attachLogCard(fc, now, tacticsHour) {
+    const card = document.getElementById("log-card");
+    if (!card) return;
+    const jump = document.getElementById("log-jump");
+    if (jump) jump.addEventListener("click", () => card.scrollIntoView({ behavior: "smooth", block: "start" }));
+    const form = card.querySelector("#log-form");
+    card.querySelectorAll(".log-btn").forEach((btn) => btn.addEventListener("click", () => {
+      card.querySelectorAll(".log-btn").forEach((b) => b.classList.toggle("is-on", b === btn));
+      const v = Number(btn.dataset.v);
+      const nowLocal = new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      const localIso = `${nowLocal.getFullYear()}-${pad(nowLocal.getMonth() + 1)}-${pad(nowLocal.getDate())}T${pad(nowLocal.getHours())}:00`;
+      form.classList.remove("hidden");
+      form.innerHTML = `
+        <label class="log-field"><span>When</span><input type="datetime-local" id="log-when" value="${localIso}" max="${localIso}"></label>
+        <div class="log-field"><span>Method</span><div class="seg">${METHODS.map((m) => `<button type="button" class="seg-btn" data-m="${m.toLowerCase()}">${m}</button>`).join("")}</div></div>
+        <label class="log-field"><span>Fly that worked</span><input type="text" id="log-fly" maxlength="80" placeholder="e.g. Pink Squirrel #14"></label>
+        <label class="log-field"><span>Notes <em>private</em></span><textarea id="log-notes" rows="2" maxlength="600" placeholder="What you saw, where they were…"></textarea></label>
+        <label class="log-share"><input type="checkbox" id="log-share"> Share this trip publicly (stream, outcome, fly, notes)</label>
+        <div class="log-actions"><button type="button" class="btn-primary-sm" id="log-save">Save to journal</button></div>`;
+      let method = null;
+      form.querySelectorAll(".seg-btn").forEach((b) => b.addEventListener("click", () => {
+        method = b.classList.contains("is-on") ? null : b.dataset.m;
+        form.querySelectorAll(".seg-btn").forEach((x) => x.classList.toggle("is-on", x.dataset.m === method));
+      }));
+      form.querySelector("#log-save").addEventListener("click", async () => {
+        const when = form.querySelector("#log-when").value;
+        const fly = form.querySelector("#log-fly").value.trim();
+        const notes = form.querySelector("#log-notes").value.trim();
+        const share = form.querySelector("#log-share").checked;
+        const conditions = conditionsSnapshot(fc, now, tacticsHour);
+        const fishedAt = when ? new Date(when).toISOString() : new Date().toISOString();
+        const entry = {
+          id: `${Date.now()}`, reach_id: fc.reach_id, stream_name: fc.stream_name, segment_name: fc.segment_name,
+          fished_at: fishedAt, success: v, method, fly, notes, shared: share, conditions,
+        };
+        const list = journalLoad();
+        list.unshift(entry);
+        const stored = journalSave(list);
         const profile = loadReporterProfile();
-        btn.disabled = true;
-        const original = btn.textContent;
-        btn.textContent = "…";
         try {
-          const resp = await fetch(`${API_BASE}/catch-log`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
+          await fetch(`${API_BASE}/catch-log`, {
+            method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              reach_id: reachId,
-              fished_at: new Date().toISOString(),
-              success,
-              reporter_name: profile.name || null,
-              method: null, fly_used: null, water_temp_f: null,
-              notes: "quick-rate",
+              reach_id: fc.reach_id, fished_at: fishedAt, success: v,
+              method: method || undefined, fly_used: fly || undefined,
+              notes: share ? (notes || undefined) : undefined,
+              reporter_name: share && profile.name ? profile.name : undefined,
+              is_public: share, conditions,
             }),
           });
-          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          // Confirm + refresh the list and residuals.
-          btn.textContent = "✓";
-          setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1200);
-          await loadCatchLog(reachId);
-          await loadResiduals();
-          repaintReaches();
-        } catch (err) {
-          btn.textContent = "!";
-          setTimeout(() => { btn.textContent = original; btn.disabled = false; }, 1500);
-        }
+        } catch { /* journal entry is saved locally either way */ }
+        card.innerHTML = `
+          <h3>Saved to your journal ${OUTCOMES[v].emoji}</h3>
+          <p class="section-sub">${stored ? "" : "This browser blocked local storage, so the entry wasn't kept — "}Your trip helps tune the forecast for everyone.</p>
+          <button type="button" class="btn-secondary" id="open-journal">Open journal</button>`;
+        card.querySelector("#open-journal").addEventListener("click", () => setView("reports"));
       });
-    });
-    loadCatchLog(reachId);
-  }
-
-  function openCatchLogForm(reachId, formEl, openBtn) {
-    if (!formEl) return;
-    const profile = loadReporterProfile();
-    formEl.classList.remove("hidden");
-    if (openBtn) openBtn.classList.add("hidden");
-    const nowIso = new Date().toISOString().slice(0, 16);  // for datetime-local
-    formEl.innerHTML = `
-      <div class="catch-log-form-header">
-        <span class="catch-log-form-title">What actually happened?</span>
-        <span class="catch-log-form-sub">Capture the fishing experience, not just a score.</span>
-      </div>
-      <label class="cl-label">How was it?
-        <div class="cl-rating" role="radiogroup" aria-label="Trip success">
-          <button type="button" class="cl-rate" data-v="0" title="Skunked">😶</button>
-          <button type="button" class="cl-rate" data-v="1" title="A few">🙂</button>
-          <button type="button" class="cl-rate" data-v="2" title="Solid day">😄</button>
-          <button type="button" class="cl-rate" data-v="3" title="Great">🤩</button>
-        </div>
-      </label>
-      <div class="cl-grid">
-        <label class="cl-label">Name / alias
-          <input type="text" id="cl-name" value="${escapeHtml(profile.name || "")}" placeholder="Ben, DriftlessDan, etc." />
-        </label>
-        <label class="cl-label">When
-          <input type="datetime-local" id="cl-fished-at" value="${nowIso}" />
-        </label>
-        <label class="cl-label">Time of day
-          <select id="cl-window">
-            <option value="">—</option>
-            <option value="dawn">Dawn</option>
-            <option value="morning">Morning</option>
-            <option value="afternoon">Afternoon</option>
-            <option value="dusk">Dusk / last light</option>
-            <option value="night">After dark</option>
-          </select>
-        </label>
-        <label class="cl-label">Method
-          <select id="cl-method">
-            <option value="">—</option>
-            <option value="dry">Dry fly</option>
-            <option value="nymph">Nymph</option>
-            <option value="streamer">Streamer</option>
-            <option value="mixed">Mixed</option>
-          </select>
-        </label>
-        <label class="cl-label cl-label-wide">Topwater activity
-          <div class="cl-toggle-grid" id="cl-topwater">
-            <button type="button" class="cl-toggle" data-v="0">None</button>
-            <button type="button" class="cl-toggle" data-v="1">A few</button>
-            <button type="button" class="cl-toggle" data-v="2">Steady</button>
-            <button type="button" class="cl-toggle" data-v="3">Popping</button>
-          </div>
-        </label>
-        <label class="cl-label cl-label-wide">What bugs did you see?
-          <input type="text" id="cl-insects" placeholder="PMDs, tan caddis, stoneflies crawling, spinners, etc." />
-        </label>
-        <label class="cl-label">What worked?
-          <input type="text" id="cl-worked" placeholder="CDC sulphur, tan elk hair, hopper dropper…" />
-        </label>
-        <label class="cl-label">What didn't?
-          <input type="text" id="cl-didnt-work" placeholder="Heavy nymphs, streamers, big attractors…" />
-        </label>
-        <label class="cl-label">Fly used
-          <input type="text" id="cl-fly" placeholder="e.g. Pheasant Tail #14" />
-        </label>
-        <label class="cl-label">Water temp °F
-          <input type="number" id="cl-water" min="32" max="90" step="1" />
-        </label>
-        <label class="cl-label cl-label-wide">Notes
-          <textarea id="cl-notes" rows="3" placeholder="Fish rose only in the last 30 min. Refused duns, ate cripple and soft hackle."></textarea>
-        </label>
-      </div>
-      <div class="cl-actions">
-        <button type="button" id="cl-cancel" class="cl-btn cl-btn-ghost">Cancel</button>
-        <button type="button" id="cl-submit" class="cl-btn cl-btn-primary" disabled>Submit</button>
-      </div>
-      <p id="cl-error" class="error small hidden"></p>
-    `;
-    let chosenRating = null;
-    let chosenTopwater = null;
-    formEl.querySelectorAll(".cl-rate").forEach((b) => {
-      b.addEventListener("click", () => {
-        chosenRating = parseInt(b.dataset.v, 10);
-        formEl.querySelectorAll(".cl-rate").forEach(x => x.classList.toggle("cl-rate-on", x === b));
-        document.getElementById("cl-submit").disabled = false;
-      });
-    });
-    formEl.querySelectorAll(".cl-toggle").forEach((b) => {
-      b.addEventListener("click", () => {
-        chosenTopwater = parseInt(b.dataset.v, 10);
-        formEl.querySelectorAll(".cl-toggle").forEach(x => x.classList.toggle("cl-toggle-on", x === b));
-      });
-    });
-    document.getElementById("cl-cancel").addEventListener("click", () => closeCatchLogForm(formEl, openBtn));
-    document.getElementById("cl-submit").addEventListener("click", async () => {
-      if (chosenRating == null) return;
-      const fished = document.getElementById("cl-fished-at").value;
-      const fishedIso = fished ? new Date(fished).toISOString() : new Date().toISOString();
-      const reporterName = document.getElementById("cl-name").value.trim() || null;
-      const payload = {
-        reach_id: reachId,
-        fished_at: fishedIso,
-        success: chosenRating,
-        reporter_name: reporterName,
-        method: document.getElementById("cl-method").value || null,
-        session_window: document.getElementById("cl-window").value || null,
-        topwater_level: chosenTopwater,
-        insect_activity: document.getElementById("cl-insects").value.trim() || null,
-        worked: document.getElementById("cl-worked").value.trim() || null,
-        didnt_work: document.getElementById("cl-didnt-work").value.trim() || null,
-        fly_used: document.getElementById("cl-fly").value || null,
-        water_temp_f: parseFloat(document.getElementById("cl-water").value) || null,
-        notes: document.getElementById("cl-notes").value || null,
-      };
-      saveReporterProfile({ name: reporterName || "" });
-      const errEl = document.getElementById("cl-error");
-      const submitBtn = document.getElementById("cl-submit");
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Submitting…";
-      try {
-        const resp = await fetch(`${API_BASE}/catch-log`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        closeCatchLogForm(formEl, openBtn);
-        await loadCatchLog(reachId);
-        await loadResiduals();
-        repaintReaches();
-      } catch (err) {
-        errEl.textContent = `Couldn't save: ${err.message}`;
-        errEl.classList.remove("hidden");
-        submitBtn.disabled = false;
-        submitBtn.textContent = "Submit";
-      }
-    });
-  }
-
-  function closeCatchLogForm(formEl, openBtn) {
-    if (formEl) {
-      formEl.classList.add("hidden");
-      formEl.innerHTML = "";
-    }
-    if (openBtn) openBtn.classList.remove("hidden");
-  }
-
-  async function loadCatchLog(reachId) {
-    const list = document.getElementById("catch-log-list");
-    if (!list) return;
-    try {
-      const resp = await fetch(`${API_BASE}/catch-log?reach_id=${encodeURIComponent(reachId)}&limit=8`);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const rows = await resp.json();
-      if (!rows.length) {
-        list.innerHTML = `<li class="muted small">No reports yet — be the first.</li>`;
-        return;
-      }
-      list.innerHTML = rows.map(renderCatchLogRow).join("");
-    } catch (err) {
-      list.innerHTML = `<li class="error small">${err.message}</li>`;
-    }
-  }
-
-  function renderCatchLogRow(r, opts = {}) {
-    const emoji = ["😶", "🙂", "😄", "🤩"];
-    const when = new Date(r.fished_at).toLocaleDateString(undefined, { weekday: "short", month: "numeric", day: "numeric" });
-    const reachLabel = opts.showReach && r.stream_name
-      ? `<span class="cl-method">${escapeHtml(r.stream_name)}</span>`
-      : "";
-    const method = r.method ? `<span class="cl-method">${escapeHtml(r.method)}</span>` : "";
-    const reporter = r.reporter_name ? `<span class="cl-reporter">${escapeHtml(r.reporter_name)}</span>` : "";
-    const predicted = r.predicted_score != null ? ` <span class="cl-vs muted small">(model ${Math.round(r.predicted_score * 100)})</span>` : "";
-    const chips = [
-      r.session_window ? `<span class="report-chip">${escapeHtml(formatSessionWindow(r.session_window))}</span>` : "",
-      r.topwater_level != null ? `<span class="report-chip report-chip-topwater-${Number(r.topwater_level)}">${escapeHtml(topwaterLabel(r.topwater_level) || "Topwater")}</span>` : "",
-      r.water_temp_f ? `<span class="report-chip">${Math.round(r.water_temp_f)}°F</span>` : "",
-      r.fly_used ? `<span class="report-chip">${escapeHtml(r.fly_used)}</span>` : "",
-    ].filter(Boolean).join("");
-    const outcome = [
-      r.worked ? `<div class="cl-outcome-line"><span class="cl-outcome-label">Worked:</span>${escapeHtml(r.worked)}</div>` : "",
-      r.didnt_work ? `<div class="cl-outcome-line"><span class="cl-outcome-label">Didn't:</span>${escapeHtml(r.didnt_work)}</div>` : "",
-    ].join("");
-    const bugLine = r.insect_activity ? `<div class="cl-notes-line">Bugs: ${escapeHtml(r.insect_activity)}</div>` : "";
-    const notes = r.notes && r.notes !== "quick-rate" ? `<div class="cl-notes-line">${escapeHtml(r.notes)}</div>` : "";
-    return `
-      <li class="cl-row">
-        <div class="cl-row-head">
-          <span class="cl-emoji">${emoji[r.success] || ""}</span>
-          <span class="cl-when">${when}</span>
-          ${reporter}${reachLabel}${method}${predicted}
-        </div>
-        ${chips ? `<div class="report-entry-chips">${chips}</div>` : ""}
-        ${bugLine}
-        ${outcome}
-        ${notes}
-      </li>
-    `;
+    }));
   }
 
   async function loadReports() {
     const body = document.getElementById("reports-body");
     if (!body) return;
-    body.innerHTML = `<p class="muted">loading…</p>`;
-    const profile = loadReporterProfile();
+    const list = journalLoad();
+    const n = list.length;
+    const good = list.filter((e) => e.success >= 2).length;
+    const judged = list.filter((e) => e.conditions && e.conditions.verdict && e.conditions.verdict !== "closed");
+    const hits = judged.filter((e) => {
+      const said = ["go", "good"].includes(e.conditions.verdict);
+      return said === (e.success >= 2);
+    }).length;
+    const stat = (v, k) => `<div class="stat"><span class="stat-v">${v}</span><span class="stat-k">${k}</span></div>`;
+    const header = `
+      <div class="stats">
+        ${stat(n, n === 1 ? "trip" : "trips")}
+        ${stat(n ? `${Math.round((good / n) * 100)}%` : "—", "good or great")}
+        ${stat(judged.length ? `${hits}/${judged.length}` : "—", "forecast right")}
+      </div>`;
+    const insights = journalInsights(list);
+    const insightHtml = insights.length
+      ? `<div class="insights"><h3>Your patterns</h3><ul>${insights.map((i) => `<li>${escapeHtml(i)}</li>`).join("")}</ul></div>`
+      : n ? `<p class="muted small">Log ${3 - Math.min(n, 3)} more trip${3 - n === 1 ? "" : "s"} to see your patterns — best water temps, times and flies.</p>` : "";
+    const fmtDate = (iso) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const entries = list.map((e) => {
+      const c = e.conditions || {};
+      const chips = [c.water_temp_f != null ? `${c.water_temp_f}°F` : null, c.flow, c.clarity, c.hatch].filter(Boolean);
+      return `<li class="jentry">
+        <div class="jentry-head"><span class="log-emoji">${OUTCOMES[e.success] ? OUTCOMES[e.success].emoji : ""}</span>
+          <span class="jentry-title">${escapeHtml(e.stream_name || e.reach_id)}</span>
+          <span class="jentry-date">${fmtDate(e.fished_at)}</span></div>
+        <div class="jentry-sub">${[e.method && e.method.charAt(0).toUpperCase() + e.method.slice(1), e.fly].filter(Boolean).map(escapeHtml).join(" · ")}${c.verdict_label ? `<span class="muted"> · forecast said ${escapeHtml(c.verdict_label)}</span>` : ""}</div>
+        ${chips.length ? `<div class="jchips">${chips.map((x) => `<span>${escapeHtml(x)}</span>`).join("")}</div>` : ""}
+        ${e.notes ? `<p class="jnotes">${escapeHtml(e.notes)}</p>` : ""}
+        <button type="button" class="jdel" data-id="${escapeHtml(e.id)}" aria-label="Delete entry">Delete</button>
+      </li>`;
+    }).join("");
+    const empty = `
+      <div class="journal-empty">
+        <p class="journal-pitch">Your fishing log, filled in for you.</p>
+        <p class="muted">Tap <strong>How was it?</strong> on any stream after a trip. We save the water temp, flow, clarity, hatch and the forecast — so over a season you learn what actually works for <em>you</em>.</p>
+        <p class="muted small">Private to this device. Only an anonymous rating is used to tune the forecast.</p>
+      </div>`;
+    let community = "";
     try {
-      const [resp, reliabilityResp] = await Promise.all([
-        fetch(`${API_BASE}/catch-log?limit=40`),
-        fetch(`${API_BASE}/reliability`),
-      ]);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const rows = await resp.json();
-      const reliability = reliabilityResp.ok ? await reliabilityResp.json() : { n: 0, by_reach_n: {} };
-      const uniqueReporters = new Set(rows.map((r) => (r.reporter_name || "").trim()).filter(Boolean));
-      const reportsHtml = rows.length
-        ? rows.map((r) => `
-            <li class="report-card">
-              <div class="report-card-head">
-                <span class="report-card-score">${["😶", "🙂", "😄", "🤩"][r.success] || "📝"}</span>
-                <div>
-                  <div class="report-card-title">${escapeHtml(r.stream_name || r.reach_id)}</div>
-                  <div class="report-card-meta">${escapeHtml(r.segment_name || "")}${r.segment_name ? " · " : ""}${timeLocal(r.fished_at)}${r.reporter_name ? ` · ${escapeHtml(r.reporter_name)}` : ""}</div>
-                </div>
-              </div>
-              ${(r.insect_activity || r.fly_used) ? `<div class="report-card-copy">${r.insect_activity ? `<strong>Bugs:</strong> ${escapeHtml(r.insect_activity)}` : ""}${r.insect_activity && r.fly_used ? " · " : ""}${r.fly_used ? `<strong>Fly:</strong> ${escapeHtml(r.fly_used)}` : ""}</div>` : ""}
-              ${(r.worked || r.didnt_work || r.notes) ? `<div class="report-card-outcome">${r.worked ? `<strong>Worked:</strong> ${escapeHtml(r.worked)}` : ""}${r.worked && r.didnt_work ? " · " : ""}${r.didnt_work ? `<strong>Didn't:</strong> ${escapeHtml(r.didnt_work)}` : ""}${(r.worked || r.didnt_work) && r.notes && r.notes !== "quick-rate" ? "<br/>" : ""}${r.notes && r.notes !== "quick-rate" ? escapeHtml(r.notes) : ""}</div>` : ""}
-              <div class="report-card-chips">
-                ${r.method ? `<span class="report-chip">${escapeHtml(r.method)}</span>` : ""}
-                ${r.session_window ? `<span class="report-chip">${escapeHtml(formatSessionWindow(r.session_window))}</span>` : ""}
-                ${r.topwater_level != null ? `<span class="report-chip report-chip-topwater-${Number(r.topwater_level)}">${escapeHtml(topwaterLabel(r.topwater_level) || "Topwater")}</span>` : ""}
-                ${r.water_temp_f ? `<span class="report-chip">${Math.round(r.water_temp_f)}°F</span>` : ""}
-                ${r.predicted_score != null ? `<span class="report-chip">Model ${Math.round(r.predicted_score * 100)}</span>` : ""}
-              </div>
-            </li>
-          `).join("")
-        : `<li class="muted small">No reports yet.</li>`;
-      body.innerHTML = `
-        <div class="reports-toolbar">
-          <div class="reports-profile">
-            <div class="reports-profile-copy">
-              <span class="reports-profile-title">Your reporter profile</span>
-              <span class="reports-profile-sub">Saved on this device so your next report is one tap. Shown with your reports.</span>
-            </div>
-            <div class="reports-profile-row">
-              <input id="reports-profile-name" type="text" value="${escapeHtml(profile.name || "")}" placeholder="Name or alias" />
-              <button id="reports-profile-save" class="cl-btn cl-btn-primary" type="button">Save</button>
-            </div>
-          </div>
-          <div class="reports-summary-card">
-            <div class="reports-profile-copy">
-              <span class="reports-profile-title">Community feedback</span>
-              <span class="reports-profile-sub">Recent field reports that can calibrate the model.</span>
-            </div>
-            <div class="reports-summary-grid">
-              <div class="reports-stat"><span class="reports-stat-label">Reports</span><span class="reports-stat-value">${reliability.n || rows.length}</span></div>
-              <div class="reports-stat"><span class="reports-stat-label">Reaches</span><span class="reports-stat-value">${Object.keys(reliability.by_reach_n || {}).length}</span></div>
-              <div class="reports-stat"><span class="reports-stat-label">Reporters</span><span class="reports-stat-value">${uniqueReporters.size}</span></div>
-            </div>
-          </div>
-        </div>
-        <ul class="reports-feed">${reportsHtml}</ul>
-      `;
-      const saveBtn = document.getElementById("reports-profile-save");
-      if (saveBtn) {
-        saveBtn.addEventListener("click", () => {
-          const name = document.getElementById("reports-profile-name").value.trim();
-          saveReporterProfile({ name });
-          saveBtn.textContent = "Saved";
-          setTimeout(() => { saveBtn.textContent = "Save"; }, 1000);
-        });
+      const resp = await fetch(`${API_BASE}/community?days=14`);
+      const cm = resp.ok ? await resp.json() : null;
+      if (cm && cm.trips) {
+        community = `<div class="community"><h3>Driftless anglers · last 2 weeks</h3>
+          <p>${cm.trips} trip${cm.trips === 1 ? "" : "s"} logged${cm.good_share != null ? ` · ${Math.round(cm.good_share * 100)}% good` : ""}${cm.top_flies.length ? ` · top fly: ${escapeHtml(cm.top_flies[0])}` : ""}</p></div>`;
       }
-    } catch (err) {
-      body.innerHTML = `<p class="error">Failed to load reports: ${err.message}</p>`;
+    } catch { /* optional */ }
+    body.innerHTML = `
+      ${n ? header + insightHtml : empty}
+      ${community}
+      ${n ? `<ol class="journal">${entries}</ol>
+        <div class="journal-tools"><button type="button" class="btn-secondary" id="journal-export">Export CSV</button></div>` : ""}`;
+    body.querySelectorAll(".jdel").forEach((b) => b.addEventListener("click", () => {
+      journalSave(journalLoad().filter((e) => e.id !== b.dataset.id));
+      loadReports();
+    }));
+    const ex = body.querySelector("#journal-export");
+    if (ex) ex.addEventListener("click", () => exportJournal(list));
+  }
+
+  function journalInsights(list) {
+    if (list.length < 3) return [];
+    const good = list.filter((e) => e.success >= 2);
+    if (!good.length) return ["No good trips logged yet — the patterns will show up."];
+    const out = [];
+    const temps = good.map((e) => e.conditions && e.conditions.water_temp_f).filter((t) => t != null);
+    if (temps.length >= 2) {
+      const lo = Math.min(...temps), hi = Math.max(...temps);
+      out.push(lo === hi ? `Your good trips came at ${lo}°F water` : `Your good trips came in ${lo}–${hi}°F water`);
     }
+    const tally = (arr) => {
+      const m = {};
+      arr.filter(Boolean).forEach((x) => { m[x] = (m[x] || 0) + 1; });
+      const best = Object.entries(m).sort((a, b) => b[1] - a[1])[0];
+      return best && best[1] >= 2 ? best[0] : null;
+    };
+    const part = (iso) => { const h = new Date(iso).getHours(); return h < 10 ? "mornings" : h < 15 ? "midday" : h < 19 ? "afternoons" : "evenings"; };
+    const when = tally(good.map((e) => part(e.fished_at)));
+    if (when) out.push(`Best time for you: ${when}`);
+    const method = tally(good.map((e) => e.method));
+    if (method) out.push(`Most productive method: ${method.charAt(0).toUpperCase() + method.slice(1)}`);
+    const fly = tally(good.map((e) => (e.fly || "").split("#")[0].trim()));
+    if (fly) out.push(`Go-to fly: ${fly}`);
+    const clarity = tally(good.map((e) => e.conditions && e.conditions.clarity));
+    if (clarity) out.push(`You do best in ${clarity} water`);
+    return out.slice(0, 4);
+  }
+
+  function exportJournal(list) {
+    const cols = ["fished_at", "stream_name", "segment_name", "success", "method", "fly", "notes",
+                  "water_temp_f", "flow", "clarity", "air_temp_f", "sky", "hatch", "verdict_label"];
+    const esc = (v) => `"${String(v == null ? "" : v).replace(/"/g, '""')}"`;
+    const rows = list.map((e) => cols.map((k) => esc(k in e ? e[k] : (e.conditions || {})[k])).join(","));
+    const blob = new Blob([[cols.join(","), ...rows].join("\n")], { type: "text/csv" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "driftless-cast-journal.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
 
   function escapeHtml(s) {

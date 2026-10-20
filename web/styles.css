@@ -1753,3 +1753,51 @@ details.why > .why-body { padding: 14px 0 0; }
   .map-key span:nth-child(2) { display: inline-flex; }
   .map-key { gap: 7px; font-size: 0.66rem; }
 }
+
+/* ── Journal ──────────────────────────────────────────────────────────── */
+.log-jump { margin-top: 12px; background: none; border: 1px solid var(--line-strong); color: var(--ink); border-radius: 999px; padding: 5px 12px; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.log-jump:hover { background: var(--surface-2); }
+.log-rate { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.log-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 4px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); font-size: 0.8rem; font-weight: 600; color: var(--ink-2); cursor: pointer; }
+.log-btn:hover { border-color: var(--line-strong); background: var(--surface-2); }
+.log-btn.is-on { border-color: var(--accent); background: var(--accent-tint); color: var(--accent-strong); }
+.log-emoji { font-size: 1.3rem; line-height: 1; }
+.log-form { margin-top: 14px; display: grid; gap: 12px; }
+.log-field { display: grid; gap: 5px; font-size: 0.8rem; font-weight: 600; color: var(--ink-3); }
+.log-field em { font-style: normal; font-weight: 500; color: var(--ink-4); }
+.log-field input, .log-field textarea { font: inherit; font-size: 0.92rem; font-weight: 400; color: var(--ink); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); padding: 9px 10px; }
+.log-field input:focus, .log-field textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgb(var(--accent-rgb) / 0.12); }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg-btn { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 999px; padding: 5px 12px; font-size: 0.82rem; font-weight: 550; color: var(--ink-2); cursor: pointer; }
+.seg-btn.is-on { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.log-share { display: flex; gap: 8px; align-items: flex-start; font-size: 0.82rem; color: var(--ink-3); }
+.log-actions { display: flex; justify-content: flex-end; }
+.btn-primary-sm { background: var(--ink); color: var(--surface); border: none; border-radius: var(--radius-sm); padding: 9px 16px; font-weight: 650; font-size: 0.88rem; cursor: pointer; }
+.btn-primary-sm:hover { background: var(--accent-strong); }
+.log-card .btn-secondary { margin-top: 6px; }
+.stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; margin-bottom: 18px; }
+.stat { padding: 12px; border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.stat:last-child { border-right: none; }
+.stat-v { font-size: 1.3rem; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.stat-k { font-size: 0.76rem; color: var(--ink-3); }
+.insights { margin-bottom: 18px; }
+.insights ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 0.92rem; }
+.insights li { margin: 4px 0; }
+.journal { list-style: none; margin: 8px 0 0; padding: 0; }
+.jentry { position: relative; padding: 14px 0; border-top: 1px solid var(--line); }
+.jentry-head { display: flex; align-items: center; gap: 8px; }
+.jentry-title { font-weight: 650; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jentry-date { font-size: 0.8rem; color: var(--ink-4); }
+.jentry-sub { margin-top: 3px; font-size: 0.84rem; color: var(--ink-2); }
+.jchips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.jchips span { font-size: 0.74rem; padding: 3px 8px; border-radius: 999px; background: var(--surface-2); color: var(--ink-3); }
+.jnotes { margin: 8px 0 0; font-size: 0.86rem; color: var(--ink-2); }
+.jdel { position: absolute; right: 0; bottom: 12px; background: none; border: none; color: var(--ink-4); font-size: 0.74rem; cursor: pointer; opacity: 0; }
+.jentry:hover .jdel, .jdel:focus { opacity: 1; }
+.journal-tools { margin-top: 10px; }
+.journal-empty { padding: 4px 0 8px; }
+.journal-pitch { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.015em; margin: 0 0 8px; color: var(--ink); }
+.journal-empty .muted { margin-bottom: 8px; line-height: 1.5; }
+.community { margin: 18px 0; padding: 12px 14px; border-radius: var(--radius); background: var(--surface-2); }
+.community h3 { margin: 0 0 4px !important; font-size: 0.86rem !important; }
+.community p { margin: 0; font-size: 0.88rem; color: var(--ink-2); }

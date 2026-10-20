@@ -38,11 +38,11 @@ SKIP_MAX = 0.30
 BETTER_DAY_MARGIN = 0.12
 
 HARD_STOP_REASONS = {
-    "CLOSED": "season is closed",
-    "LIGHTNING": "thunderstorms",
-    "BLOWOUT": "blown out / muddy water",
-    "HAZARD": "dangerous cold or wind",
-    "HEAT_STRESS": "water too warm for trout",
+    "CLOSED": "Season closed",
+    "LIGHTNING": "Thunderstorms",
+    "BLOWOUT": "Blown out, muddy",
+    "HAZARD": "Dangerous cold or wind",
+    "HEAT_STRESS": "Water too warm",
 }
 
 
@@ -99,30 +99,30 @@ def _day_reasons(day_hours: List[Mapping[str, Any]], window: List[Mapping[str, A
     for code, text in HARD_STOP_REASONS.items():
         share = sum(1 for c in codes if c == code) / n
         if share >= 0.5:
-            reasons.append(f"{text} most of the day")
+            reasons.append(text)
         elif share > 0 and code in {"LIGHTNING", "HEAT_STRESS", "HAZARD"}:
-            reasons.append(f"{text} for part of the day")
+            reasons.append(f"{text} at times")
     hatch = _top_hatch(window or day_hours)
     if hatch:
-        reasons.append(f"{hatch} expected")
+        reasons.append(f"{hatch} likely")
     temps = [h.get("water_temp_f") for h in (window or day_hours) if h.get("water_temp_f") is not None]
     if temps:
         t = sum(temps) / len(temps)
         if t < 42:
-            reasons.append(f"cold water (~{t:.0f}°F) — slow, deep, midday bite")
+            reasons.append(f"Cold water, {t:.0f}°F")
         elif 50 <= t <= 62:
-            reasons.append(f"prime water temperature (~{t:.0f}°F)")
+            reasons.append(f"Prime water, {t:.0f}°F")
         elif t >= 66:
-            reasons.append(f"warm water (~{t:.0f}°F) — fish early")
+            reasons.append(f"Warm water, {t:.0f}°F")
     tac = (window[0].get("tactics") if window else None) or {}
     clarity = tac.get("clarity")
     if clarity in {"stained", "off"}:
-        reasons.append(f"{tac.get('clarity_label')} water — streamer/big-fish chance")
+        reasons.append("Stained water — streamer chance")
     elif clarity == "muddy":
-        reasons.append("muddy water")
+        reasons.append("Muddy water")
     elif clarity == "low_clear":
-        reasons.append("low, clear water — stealth matters")
-    return reasons[:4]
+        reasons.append("Low, clear water")
+    return reasons[:3]
 
 
 def build_days(hours: List[Dict[str, Any]], season: Optional[Mapping[str, Any]] = None) -> List[Dict[str, Any]]:
@@ -181,13 +181,13 @@ def build_days(hours: List[Dict[str, Any]], season: Optional[Mapping[str, Any]] 
 
 
 # Reasons that describe what is *good* about a day; a Skip must cite a limiter.
-_POSITIVE_MARKERS = ("prime water", "expected", "streamer/big-fish chance")
+_POSITIVE_MARKERS = ("Prime water", "likely", "streamer chance")
 
 
 def _limiting_reason(reasons: List[str]) -> str:
     for r in reasons:
         if not any(m in r for m in _POSITIVE_MARKERS):
-            return r
+            return r[0].lower() + r[1:]
     return "conditions are poor"
 
 
@@ -200,7 +200,7 @@ def _attach_advice(days: List[Dict[str, Any]], season: Optional[Mapping[str, Any
         better_by = (better["best_window"]["score"] - score) if better else 0.0
         if d["verdict"] == CLOSED:
             reopen = (season or {}).get("next_change")
-            d["advice"] = f"Season closed{f' — reopens {reopen}' if reopen else ''}. Iowa streams stay open all year."
+            d["advice"] = f"Season closed{f' — reopens {reopen}' if reopen else ''}."
             continue
         if d["verdict"] == SKIP:
             why = _limiting_reason(d["reasons"])
@@ -212,8 +212,7 @@ def _attach_advice(days: List[Dict[str, Any]], season: Optional[Mapping[str, Any
             continue
         if better and better_by >= BETTER_DAY_MARGIN and better["verdict"] in {GO, GOOD}:
             d["better_day"] = better["date"]
-            d["advice"] = (f"{d['verdict_label']} {d['best_window']['label']}, but "
-                           f"{better['weekday']} {better['best_window']['label']} looks clearly better.")
+            d["advice"] = (f"{better['weekday']} {better['best_window']['label']} looks better.")
             continue
         method = d["best_window"].get("method")
         d["advice"] = (f"{d['verdict_label']} — best {d['best_window']['label']}"
